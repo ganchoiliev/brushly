@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { cormorantGaramond, dmSans } from '@/lib/fonts'
 import SmoothScroll from '@/components/animations/SmoothScroll'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -35,11 +37,9 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-brushly-charcoal text-brushly-cream font-body">
         <SmoothScroll>
-          {/* Header — placeholder until Header component is built */}
-          <header className="fixed top-0 left-0 right-0 z-50" />
+          <Header />
           <main>{children}</main>
-          {/* Footer — placeholder until Footer component is built */}
-          <footer />
+          <Footer />
         </SmoothScroll>
       </body>
     </html>
