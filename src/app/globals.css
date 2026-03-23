@@ -94,6 +94,24 @@ html.lenis body {
   }
 }
 
+/* GSAP Pin Spacer fix */
+.pin-spacer {
+  pointer-events: none !important;
+}
+.pin-spacer > * {
+  pointer-events: auto !important;
+}
+
+/* Mobile service cards scroll snap */
+@media (max-width: 767px) {
+  .service-panel-mobile {
+    scroll-snap-type: y mandatory;
+  }
+  .service-panel-mobile > div {
+    scroll-snap-align: start;
+  }
+}
+
 /* Reduced Motion */
 
 @media (prefers-reduced-motion: reduce) {

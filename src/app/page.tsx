@@ -1,6 +1,6 @@
-import HeroVideo from '@/components/sections/HeroVideo'
+import HeroSplit from '@/components/sections/HeroSplit'
+import ServicesPinned from '@/components/sections/ServicesPinned'
 import StatsCounter from '@/components/sections/StatsCounter'
-import ServicesGrid from '@/components/sections/ServicesGrid'
 import ProcessTimeline from '@/components/sections/ProcessTimeline'
 import ParallaxBreak from '@/components/sections/ParallaxBreak'
 import ShowcaseGrid from '@/components/sections/ShowcaseGrid'
@@ -11,9 +11,9 @@ import CTASection from '@/components/sections/CTASection'
 export default function HomePage() {
   return (
     <>
-      <HeroVideo />
+      <HeroSplit />
+      <ServicesPinned />
       <StatsCounter />
-      <ServicesGrid />
       <ProcessTimeline />
       <ParallaxBreak />
       <ShowcaseGrid />
