@@ -1,4 +1,4 @@
-import HeroSplit from '@/components/sections/HeroSplit'
+import HeroCinematic from '@/components/sections/HeroCinematic'
 import ServicesPinned from '@/components/sections/ServicesPinned'
 import StatsCounter from '@/components/sections/StatsCounter'
 import ProcessTimeline from '@/components/sections/ProcessTimeline'
@@ -11,7 +11,7 @@ import CTASection from '@/components/sections/CTASection'
 export default function HomePage() {
   return (
     <>
-      <HeroSplit />
+      <HeroCinematic />
       <ServicesPinned />
       <StatsCounter />
       <ProcessTimeline />
