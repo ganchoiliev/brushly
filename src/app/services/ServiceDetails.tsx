@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import LineReveal from '@/components/animations/LineReveal'
+import ParallaxImage from '@/components/animations/ParallaxImage'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -35,7 +36,7 @@ const services = [
       'Window and door frame finishing',
       'Weather-resistant coating systems',
     ],
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
   },
   {
     id: 'wallpapering',
@@ -49,7 +50,7 @@ const services = [
       'Feature wall and full room hanging',
       'Wallpaper removal and wall preparation',
     ],
-    image: 'https://images.unsplash.com/photo-1615529328331-f8917597711f?w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80',
   },
   {
     id: 'specialist',
@@ -63,7 +64,7 @@ const services = [
       'Colour washing and rag rolling',
       'Metallic and pearlescent effects',
     ],
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80',
   },
 ]
 
@@ -120,16 +121,16 @@ export default function ServiceDetails() {
                 </ul>
               </div>
 
-              {/* Image */}
+              {/* Image with parallax */}
               <div
                 className={`overflow-hidden ${i % 2 !== 0 ? 'md:order-1' : ''}`}
-                style={{ aspectRatio: '4/5' }}
+                style={{ aspectRatio: '3/4' }}
               >
-                <div
-                  className="h-full w-full bg-cover bg-center transition-transform duration-700 hover:scale-105"
-                  style={{
-                    backgroundImage: `url(${service.image})`,
-                  }}
+                <ParallaxImage
+                  src={service.image}
+                  alt={service.title}
+                  speed={0.15}
+                  className="h-full w-full"
                 />
               </div>
             </div>

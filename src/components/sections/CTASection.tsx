@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import Button from '@/components/ui/Button'
+import ParallaxImage from '@/components/animations/ParallaxImage'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -32,8 +33,19 @@ export default function CTASection() {
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden bg-brushly-black py-32 md:py-44"
+      className="relative overflow-hidden py-32 md:py-44"
     >
+      {/* Background parallax image */}
+      <div className="absolute inset-0">
+        <ParallaxImage
+          src="https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=1920&q=80"
+          alt="Premium interior"
+          speed={0.1}
+          className="h-full w-full"
+        />
+      </div>
+      <div className="absolute inset-0 bg-brushly-black/75" />
+
       {/* Radial Glow */}
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"

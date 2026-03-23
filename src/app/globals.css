@@ -17,6 +17,9 @@
 
   /* Custom Easing */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Marquee Animation */
+  --animate-marquee: marquee 30s linear infinite;
 }
 
 /* Base Styles */
@@ -79,6 +82,15 @@ html.lenis body {
   }
   100% {
     transform: translateY(100%);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
   }
 }
 

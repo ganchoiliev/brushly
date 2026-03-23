@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
+import ParallaxImage from '@/components/animations/ParallaxImage'
 
 const testimonials = [
   {
@@ -39,12 +40,28 @@ export default function Testimonials() {
   }, [next])
 
   return (
-    <section className="bg-brushly-cream py-28 md:py-40">
-      <Container>
-        <div className="mx-auto max-w-3xl text-center">
-          <Badge className="text-brushly-gold-dark">Testimonials</Badge>
+    <section className="relative py-28 md:py-40 overflow-hidden">
+      {/* Background parallax image */}
+      <div className="absolute inset-0">
+        <ParallaxImage
+          src="https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1920&q=80"
+          alt="Interior finish detail"
+          speed={0.1}
+          className="h-full w-full"
+        />
+      </div>
+      <div className="absolute inset-0 bg-brushly-black/70" />
 
-          <div className="relative mt-12 min-h-[280px]">
+      <Container>
+        <div className="relative z-10 mx-auto max-w-3xl text-center">
+          <Badge>Testimonials</Badge>
+
+          {/* Decorative quotation mark */}
+          <span className="mt-8 block font-display text-brushly-gold/20" style={{ fontSize: '120px', lineHeight: '0.8' }}>
+            &ldquo;
+          </span>
+
+          <div className="relative mt-4 min-h-[280px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={current}
@@ -54,16 +71,16 @@ export default function Testimonials() {
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               >
                 <blockquote
-                  className="font-display font-light italic leading-relaxed text-brushly-black"
+                  className="font-display font-light italic leading-relaxed text-brushly-cream"
                   style={{ fontSize: 'clamp(22px, 3vw, 36px)' }}
                 >
-                  &ldquo;{testimonials[current].quote}&rdquo;
+                  {testimonials[current].quote}
                 </blockquote>
                 <div className="mt-8">
-                  <p className="text-[15px] font-body font-medium text-brushly-black">
+                  <p className="text-[15px] font-body font-medium text-brushly-cream">
                     {testimonials[current].author}
                   </p>
-                  <p className="mt-1 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-gold-dark">
+                  <p className="mt-1 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-gold">
                     {testimonials[current].location}
                   </p>
                 </div>
@@ -79,8 +96,8 @@ export default function Testimonials() {
                 onClick={() => setCurrent(i)}
                 className={`h-2 rounded-full transition-all duration-500 ${
                   i === current
-                    ? 'w-8 bg-brushly-gold-dark'
-                    : 'w-2 bg-brushly-black/20 hover:bg-brushly-gold-dark/50'
+                    ? 'w-8 bg-brushly-gold'
+                    : 'w-2 bg-brushly-cream/30 hover:bg-brushly-gold/50'
                 }`}
                 aria-label={`Go to testimonial ${i + 1}`}
               />

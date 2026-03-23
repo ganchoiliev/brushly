@@ -1,8 +1,12 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import Image from 'next/image'
 import gsap from 'gsap'
 import Badge from '@/components/ui/Badge'
+
+const blurDataURL =
+  'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAoHBwgHBgoICAgLCgoLDhgQDg0NDh0VFhEYIx8lJCIfIiEmKzcvJik0KSEiMEExNDk7Pj4+JS5ESUM8SDc9Pjv/2wBDAQoLCw4NDhwQEBw7KCIoOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozv/wAARCAAIAAoDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EAB8QAAICAgIDAQAAAAAAAAAAAAECAwQAEQUhEjFBUf/EABQBAQAAAAAAAAAAAAAAAAAAAAP/xAAWEQEBAQAAAAAAAAAAAAAAAAABAAL/2gAMAwEAAhEDEQA/AK3H8RFkWJLF2ZYoY/bBNDf3GMYLR3P/2Q=='
 
 export default function HeroVideo() {
   const heroRef = useRef<HTMLDivElement>(null)
@@ -55,29 +59,31 @@ export default function HeroVideo() {
   return (
     <section
       ref={heroRef}
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brushly-black"
+      className="relative flex min-h-screen items-end justify-start overflow-hidden bg-brushly-black"
     >
       {/* Background Image */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage:
-            'url(https://images.unsplash.com/photo-1562259929-b4e1fd3aef09?w=1920&q=80)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <div className="absolute inset-0 bg-brushly-black/60" />
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="https://images.unsplash.com/photo-1562259929-b4e1fd3aef09?w=1920&q=80"
+          alt="Premium interior painting"
+          fill
+          priority
+          placeholder="blur"
+          blurDataURL={blurDataURL}
+          className="object-cover"
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-brushly-black/40 via-transparent to-brushly-black/80" />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 mx-auto max-w-[1400px] px-6 py-32 text-center md:px-10 lg:px-16">
+      {/* Content — bottom-left aligned */}
+      <div className="relative z-10 mx-auto w-full max-w-[1400px] px-6 pb-24 pt-40 md:px-10 lg:px-16">
         <div className="hero-badge">
           <Badge>Premium Painting &amp; Decorating</Badge>
         </div>
 
         <h1
-          className="hero-heading mt-6 font-display font-light leading-[1.05] text-brushly-cream"
+          className="hero-heading mt-6 max-w-4xl font-display font-light leading-[1.05] text-brushly-cream"
           style={{ fontSize: 'clamp(40px, 7vw, 96px)' }}
         >
           <span className="inline-block overflow-hidden">
@@ -97,7 +103,7 @@ export default function HeroVideo() {
         </h1>
 
         <p
-          className="hero-body mx-auto mt-8 max-w-xl font-body font-light leading-relaxed text-brushly-cream/70"
+          className="hero-body mt-8 max-w-xl font-body font-light leading-relaxed text-brushly-cream/70"
           style={{ fontSize: 'clamp(15px, 1.2vw, 18px)' }}
         >
           Flawless finishes for homes and businesses that demand more than just a

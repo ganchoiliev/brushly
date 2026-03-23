@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import AboutHero from './AboutHero'
 import StorySection from './StorySection'
 import ValuesSection from './ValuesSection'
+import StatsCounter from '@/components/sections/StatsCounter'
 import CTASection from '@/components/sections/CTASection'
 
 export const metadata: Metadata = {
@@ -14,6 +15,7 @@ export default function AboutPage() {
   return (
     <>
       <AboutHero />
+      <StatsCounter />
       <StorySection />
       <ValuesSection />
       <CTASection />

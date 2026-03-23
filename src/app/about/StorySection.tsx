@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
+import ParallaxImage from '@/components/animations/ParallaxImage'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -33,14 +34,13 @@ export default function StorySection() {
     <section ref={ref} className="bg-brushly-cream py-28 md:py-40">
       <Container>
         <div className="grid grid-cols-1 gap-16 md:grid-cols-2">
-          {/* Image */}
+          {/* Image with parallax */}
           <div className="overflow-hidden" style={{ aspectRatio: '4/5' }}>
-            <div
-              className="h-full w-full bg-cover bg-center"
-              style={{
-                backgroundImage:
-                  'url(https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80)',
-              }}
+            <ParallaxImage
+              src="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80"
+              alt="Brushly craftsmanship"
+              speed={0.15}
+              className="h-full w-full"
             />
           </div>
 
@@ -64,32 +64,6 @@ export default function StorySection() {
               We use only the finest materials and proven techniques to ensure
               every project exceeds expectations.
             </p>
-            <div className="mt-12 grid grid-cols-3 gap-8">
-              <div>
-                <span className="font-display text-4xl font-light text-brushly-gold-dark">
-                  10+
-                </span>
-                <p className="mt-2 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-black/40">
-                  Years Experience
-                </p>
-              </div>
-              <div>
-                <span className="font-display text-4xl font-light text-brushly-gold-dark">
-                  500+
-                </span>
-                <p className="mt-2 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-black/40">
-                  Projects Done
-                </p>
-              </div>
-              <div>
-                <span className="font-display text-4xl font-light text-brushly-gold-dark">
-                  100%
-                </span>
-                <p className="mt-2 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-black/40">
-                  Satisfaction
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </Container>
