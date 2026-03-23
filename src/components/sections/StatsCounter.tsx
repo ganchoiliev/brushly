@@ -5,6 +5,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import LineReveal from '@/components/animations/LineReveal'
+import PaintTexture from '@/components/ui/PaintTexture'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -59,9 +60,10 @@ export default function StatsCounter() {
   }, [])
 
   return (
-    <section ref={sectionRef} className="bg-brushly-off-black py-20 md:py-28">
+    <section ref={sectionRef} className="relative bg-brushly-off-black py-20 md:py-28 overflow-hidden">
+      <PaintTexture variant="splatter" opacity={0.03} />
       <Container>
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-4">
+        <div className="relative z-10 grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-4">
           {stats.map((stat, i) => (
             <div key={stat.label} className="stat-item text-center">
               <span

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import ContactHero from './ContactHero'
 import ContactForm from './ContactForm'
+import MapSection from './MapSection'
 
 export const metadata: Metadata = {
   title: 'Contact',
@@ -13,6 +14,7 @@ export default function ContactPage() {
     <>
       <ContactHero />
       <ContactForm />
+      <MapSection />
     </>
   )
 }

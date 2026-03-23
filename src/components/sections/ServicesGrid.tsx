@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
 import LineReveal from '@/components/animations/LineReveal'
+import ServiceIcon from '@/components/ui/ServiceIcon'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -13,6 +14,7 @@ const services = [
   {
     number: '01',
     title: 'Interior Painting',
+    icon: 'interior' as const,
     description:
       'From feature walls to full property interiors. Precision preparation, premium paints, and meticulous attention to detail.',
     image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=800&q=80',
@@ -20,6 +22,7 @@ const services = [
   {
     number: '02',
     title: 'Exterior Painting',
+    icon: 'exterior' as const,
     description:
       'Weather-resistant finishes that protect and transform. We work with the finest exterior-grade coatings.',
     image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80',
@@ -27,6 +30,7 @@ const services = [
   {
     number: '03',
     title: 'Wallpapering',
+    icon: 'wallpaper' as const,
     description:
       'Expert hanging of designer wallpapers. Pattern matching, feature walls, and full room installations.',
     image: 'https://images.unsplash.com/photo-1615529328331-f8917597711f?w=800&q=80',
@@ -34,6 +38,7 @@ const services = [
   {
     number: '04',
     title: 'Specialist Finishes',
+    icon: 'specialist' as const,
     description:
       'Venetian plaster, limewash, colour washing, and bespoke decorative techniques for statement spaces.',
     image: 'https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&q=80',
@@ -83,9 +88,12 @@ export default function ServicesGrid() {
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
               >
-                <span className="font-body text-[13px] font-medium text-brushly-gold-dark/50 md:col-span-1">
-                  {service.number}
-                </span>
+                <div className="flex items-center gap-4 md:col-span-1">
+                  <ServiceIcon type={service.icon} className="hidden text-brushly-gold-dark/40 md:block" size={40} />
+                  <span className="font-body text-[13px] font-medium text-brushly-gold-dark/50">
+                    {service.number}
+                  </span>
+                </div>
                 <h3 className="font-display text-3xl font-light text-brushly-black transition-colors duration-300 group-hover:text-brushly-gold-dark md:col-span-4 md:text-4xl">
                   {service.title}
                 </h3>

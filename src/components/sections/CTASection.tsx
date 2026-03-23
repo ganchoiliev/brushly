@@ -6,6 +6,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import Button from '@/components/ui/Button'
 import ParallaxImage from '@/components/animations/ParallaxImage'
+import PaintTexture from '@/components/ui/PaintTexture'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -45,6 +46,9 @@ export default function CTASection() {
         />
       </div>
       <div className="absolute inset-0 bg-brushly-black/75" />
+
+      {/* Paint texture overlay */}
+      <PaintTexture variant="brush-strokes" opacity={0.03} />
 
       {/* Radial Glow */}
       <div

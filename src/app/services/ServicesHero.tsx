@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react'
 import gsap from 'gsap'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
+import PaintTexture from '@/components/ui/PaintTexture'
 
 export default function ServicesHero() {
   const ref = useRef<HTMLElement>(null)
@@ -38,6 +39,7 @@ export default function ServicesHero() {
       >
         <div className="absolute inset-0 bg-brushly-black/70" />
       </div>
+      <PaintTexture variant="grain" opacity={0.06} />
       <Container>
         <div className="services-hero-content relative z-10 max-w-2xl">
           <Badge>Our Services</Badge>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import GalleryHero from './GalleryHero'
+import BeforeAfterSection from './BeforeAfterSection'
 import GalleryGrid from './GalleryGrid'
 import CTASection from '@/components/sections/CTASection'
 
@@ -13,6 +14,7 @@ export default function GalleryPage() {
   return (
     <>
       <GalleryHero />
+      <BeforeAfterSection />
       <GalleryGrid />
       <CTASection />
     </>
