@@ -3,18 +3,21 @@
 import ParallaxImage from '@/components/animations/ParallaxImage'
 import TextReveal from '@/components/animations/TextReveal'
 import LineReveal from '@/components/animations/LineReveal'
+import ImageReveal from '@/components/animations/ImageReveal'
 
 export default function ParallaxBreak() {
   return (
     <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
       {/* Background parallax image */}
       <div className="absolute inset-0">
-        <ParallaxImage
-          src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80"
-          alt="Beautiful interior"
-          speed={0.2}
-          className="h-full w-full"
-        />
+        <ImageReveal direction="up" className="h-full w-full">
+          <ParallaxImage
+            src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80"
+            alt="Beautiful interior"
+            speed={0.2}
+            className="h-full w-full"
+          />
+        </ImageReveal>
       </div>
 
       {/* Dark overlay */}

@@ -3,8 +3,10 @@
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
 import ScrollReveal from '@/components/animations/ScrollReveal'
+import SlideReveal from '@/components/animations/SlideReveal'
 import ParallaxImage from '@/components/animations/ParallaxImage'
 import LineReveal from '@/components/animations/LineReveal'
+import TextReveal from '@/components/animations/TextReveal'
 
 const steps = [
   {
@@ -39,13 +41,15 @@ export default function ProcessTimeline() {
       <Container>
         <ScrollReveal>
           <Badge className="text-brushly-gold-dark">How We Work</Badge>
-          <h2
-            className="mt-4 font-display font-light text-brushly-black"
-            style={{ fontSize: 'clamp(32px, 5vw, 64px)' }}
-          >
-            Our Process
-          </h2>
         </ScrollReveal>
+        <TextReveal
+          as="h2"
+          className="mt-4 font-display font-light text-brushly-black"
+          style={{ fontSize: 'clamp(32px, 5vw, 64px)' }}
+          staggerDelay={0.04}
+        >
+          Our Process
+        </TextReveal>
 
         <div className="relative mt-20">
           {/* Vertical connecting line — desktop only */}
@@ -53,7 +57,7 @@ export default function ProcessTimeline() {
 
           {steps.map((step, i) => (
             <div key={step.number}>
-              <ScrollReveal delay={i * 0.15}>
+              <SlideReveal from={i % 2 === 0 ? 'left' : 'right'} delay={i * 0.15}>
                 <div
                   className={`relative grid grid-cols-1 gap-8 py-12 md:grid-cols-2 md:gap-20 md:py-16 ${
                     i % 2 === 0 ? '' : 'md:direction-rtl'
@@ -81,7 +85,7 @@ export default function ProcessTimeline() {
                     <div className="absolute left-1/2 top-1/2 hidden h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brushly-gold md:block" />
                   </div>
                 </div>
-              </ScrollReveal>
+              </SlideReveal>
 
               {/* Parallax image between steps 2 and 3 */}
               {i === 1 && (

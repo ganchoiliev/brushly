@@ -112,6 +112,46 @@ html.lenis body {
   }
 }
 
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-brushly-charcoal);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-brushly-gold);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brushly-gold-light);
+}
+
+/* Form Input Focus */
+.form-input {
+  background: transparent;
+  border: 1px solid rgba(200, 169, 110, 0.2);
+  padding: 0.75rem 1rem;
+  color: var(--color-brushly-cream);
+  font-family: var(--font-body);
+  transition: all 0.3s ease;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-brushly-gold);
+  box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.15);
+}
+.form-input::placeholder {
+  color: rgba(245, 240, 235, 0.3);
+}
+
+/* Custom Cursor — hide default on pointer devices */
+@media (pointer: fine) {
+  * {
+    cursor: none !important;
+  }
+}
+
 /* Reduced Motion */
 
 @media (prefers-reduced-motion: reduce) {

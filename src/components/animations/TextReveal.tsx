@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useMemo, createElement } from 'react'
+import { useRef, useEffect, useMemo, createElement, CSSProperties } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -12,6 +12,7 @@ interface TextRevealProps {
   as?: 'h1' | 'h2' | 'h3' | 'h4' | 'p' | 'span'
   staggerDelay?: number
   duration?: number
+  style?: CSSProperties
 }
 
 export default function TextReveal({
@@ -20,6 +21,7 @@ export default function TextReveal({
   as: tag = 'p',
   staggerDelay = 0.05,
   duration = 0.8,
+  style,
 }: TextRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -56,7 +58,7 @@ export default function TextReveal({
 
   return createElement(
     tag,
-    { ref: containerRef, className },
+    { ref: containerRef, className, style },
     ...content
   )
 }

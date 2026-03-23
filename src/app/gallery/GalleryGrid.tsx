@@ -4,10 +4,13 @@ import { useRef, useEffect, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
+import ImageReveal from '@/components/animations/ImageReveal'
 
 gsap.registerPlugin(ScrollTrigger)
 
 const filters = ['All', 'Interior', 'Exterior', 'Wallpaper', 'Specialist']
+
+const directions = ['left', 'up', 'right'] as const
 
 const projects = [
   {
@@ -117,28 +120,34 @@ export default function GalleryGrid() {
 
         {/* Grid */}
         <div className="mt-12 grid auto-rows-[280px] grid-cols-1 gap-4 md:grid-cols-3">
-          {filtered.map((project) => (
-            <div
+          {filtered.map((project, i) => (
+            <ImageReveal
               key={project.title}
-              className={`gallery-item group relative cursor-pointer overflow-hidden ${project.span}`}
+              direction={directions[i % 3]}
+              delay={i * 0.08}
+              className={project.span}
             >
               <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
-                style={{ backgroundImage: `url(${project.image})` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-brushly-black/80 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-              <div className="absolute bottom-0 left-0 right-0 translate-y-4 p-6 opacity-0 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0 group-hover:opacity-100">
-                <span className="text-[11px] font-body uppercase tracking-[0.2em] text-brushly-gold">
-                  {project.category}
-                </span>
-                <h3 className="mt-1 font-display text-xl font-light text-brushly-cream">
-                  {project.title}
-                </h3>
-                <p className="mt-1 text-[13px] font-body text-brushly-cream/60">
-                  {project.location}
-                </p>
+                className="gallery-item group relative h-full cursor-pointer overflow-hidden"
+              >
+                <div
+                  className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
+                  style={{ backgroundImage: `url(${project.image})` }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-brushly-black/80 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="absolute bottom-0 left-0 right-0 translate-y-4 p-6 opacity-0 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0 group-hover:opacity-100">
+                  <span className="text-[11px] font-body uppercase tracking-[0.2em] text-brushly-gold">
+                    {project.category}
+                  </span>
+                  <h3 className="mt-1 font-display text-xl font-light text-brushly-cream">
+                    {project.title}
+                  </h3>
+                  <p className="mt-1 text-[13px] font-body text-brushly-cream/60">
+                    {project.location}
+                  </p>
+                </div>
               </div>
-            </div>
+            </ImageReveal>
           ))}
         </div>
       </Container>

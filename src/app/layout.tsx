@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
 import { cormorantGaramond, dmSans } from '@/lib/fonts'
 import SmoothScroll from '@/components/animations/SmoothScroll'
+import PageLoader from '@/components/layout/PageLoader'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import CustomCursor from '@/components/animations/CustomCursor'
+import GrainOverlay from '@/components/animations/GrainOverlay'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -37,10 +40,13 @@ export default function RootLayout({
     >
       <body className="min-h-screen bg-brushly-charcoal text-brushly-cream font-body">
         <SmoothScroll>
+          <PageLoader />
           <Header />
           <main>{children}</main>
           <Footer />
         </SmoothScroll>
+        <CustomCursor />
+        <GrainOverlay />
       </body>
     </html>
   )

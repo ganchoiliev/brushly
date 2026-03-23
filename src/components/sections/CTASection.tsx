@@ -7,6 +7,7 @@ import Container from '@/components/ui/Container'
 import Button from '@/components/ui/Button'
 import ParallaxImage from '@/components/animations/ParallaxImage'
 import PaintTexture from '@/components/ui/PaintTexture'
+import TextReveal from '@/components/animations/TextReveal'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -53,6 +54,7 @@ export default function CTASection() {
       {/* Radial Glow */}
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        data-speed="0.03"
         style={{
           width: '800px',
           height: '800px',
@@ -63,14 +65,14 @@ export default function CTASection() {
 
       <Container>
         <div className="cta-content will-animate relative z-10 mx-auto max-w-2xl text-center">
-          <h2
+          <TextReveal
+            as="h2"
             className="font-display font-light leading-tight text-brushly-cream"
             style={{ fontSize: 'clamp(32px, 5vw, 64px)' }}
+            staggerDelay={0.03}
           >
-            Ready to transform
-            <br />
-            <span className="italic text-brushly-gold">your space?</span>
-          </h2>
+            Ready to transform your space?
+          </TextReveal>
           <p className="mx-auto mt-6 max-w-lg text-[16px] font-body font-light leading-relaxed text-brushly-cream/60">
             Let&apos;s discuss your project. From initial consultation to final
             inspection, we ensure every detail exceeds expectations.

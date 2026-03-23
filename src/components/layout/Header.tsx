@@ -88,13 +88,14 @@ export default function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className={`text-[13px] font-body font-medium uppercase tracking-[0.15em] transition-colors duration-300 hover:text-brushly-gold ${
+              className={`group relative text-[13px] font-body font-medium uppercase tracking-[0.15em] transition-colors duration-300 hover:text-brushly-gold ${
                 pathname === link.href
                   ? 'text-brushly-gold'
                   : 'text-brushly-cream/70'
               }`}
             >
               {link.label}
+              <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-brushly-gold transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
             </Link>
           ))}
         </nav>

@@ -45,6 +45,7 @@ export default function StatsCounter() {
       gsap.from('.stat-item', {
         y: 30,
         opacity: 0,
+        scale: 0.95,
         stagger: 0.12,
         duration: 0.8,
         ease: 'power3.out',
