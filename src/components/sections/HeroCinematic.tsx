@@ -158,12 +158,11 @@ export default function HeroCinematic() {
       })
 
       gsap.to('.hero-image-mask', {
-        scale: 0.9,
-        opacity: 0,
+        scale: 1.15,
         ease: 'none',
         scrollTrigger: {
           trigger: hero,
-          start: '60% center',
+          start: 'top top',
           end: 'bottom top',
           scrub: true,
         },
@@ -177,6 +176,43 @@ export default function HeroCinematic() {
           trigger: hero,
           start: 'center center',
           end: 'bottom top',
+          scrub: true,
+        },
+      })
+
+      // "Painting" slides right on scroll
+      gsap.to('.hero-line-painting', {
+        x: 120,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: hero,
+          start: 'top top',
+          end: '60% top',
+          scrub: true,
+        },
+      })
+
+      // "& Decorating" slides left on scroll
+      gsap.to('.hero-line-decorating', {
+        x: -80,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: hero,
+          start: 'top top',
+          end: '60% top',
+          scrub: true,
+        },
+      })
+
+      // Location text fades out first
+      gsap.to('.hero-location', {
+        y: -40,
+        opacity: 0,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: hero,
+          start: 'top top',
+          end: '30% top',
           scrub: true,
         },
       })
@@ -248,7 +284,7 @@ export default function HeroCinematic() {
           >
             <div className="overflow-hidden">
               <h1
-                className="hero-line font-display font-light text-brushly-black"
+                className="hero-line hero-line-premium font-display font-light text-brushly-black"
                 style={{ fontSize: 'clamp(48px, 8vw, 120px)', lineHeight: 0.9, transform: 'translateZ(40px)' }}
               >
                 Premium
@@ -256,7 +292,7 @@ export default function HeroCinematic() {
             </div>
             <div className="overflow-hidden">
               <h1
-                className="hero-line font-display font-light italic"
+                className="hero-line hero-line-painting font-display font-light italic"
                 style={{
                   fontSize: 'clamp(48px, 8vw, 120px)',
                   lineHeight: 0.9,
@@ -270,7 +306,7 @@ export default function HeroCinematic() {
             </div>
             <div className="overflow-hidden">
               <h1
-                className="hero-line font-display font-light text-brushly-black"
+                className="hero-line hero-line-decorating font-display font-light text-brushly-black"
                 style={{ fontSize: 'clamp(48px, 8vw, 120px)', lineHeight: 0.9, transform: 'translateZ(20px)' }}
               >
                 &amp; Decorating
