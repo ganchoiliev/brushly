@@ -79,7 +79,7 @@ export default function ServicesGrid() {
             <div key={service.number}>
               {i === 0 && <LineReveal />}
               <div
-                className="service-row group relative grid cursor-pointer grid-cols-1 items-center gap-4 py-8 md:grid-cols-12 md:py-10"
+                className="service-row will-animate group relative grid cursor-pointer grid-cols-1 items-center gap-4 py-8 md:grid-cols-12 md:py-10"
                 onMouseEnter={() => setHoveredIndex(i)}
                 onMouseLeave={() => setHoveredIndex(null)}
               >

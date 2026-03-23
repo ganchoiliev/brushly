@@ -55,6 +55,22 @@ html.lenis body {
   overflow: hidden;
 }
 
+/* Initial state for scroll-animated elements — GSAP takes over on hydration */
+.will-animate {
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+/* Fallback: if JS fails, make content visible after 3s */
+@supports (animation: none) {
+  .will-animate {
+    animation: fallback-reveal 0s 3s forwards;
+  }
+  @keyframes fallback-reveal {
+    to { opacity: 1; transform: none; }
+  }
+}
+
 /* Keyframes */
 
 @keyframes scrollDown {

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import gsap from 'gsap'
+import { useLenis } from '@/components/animations/SmoothScroll'
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -17,12 +18,23 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+  const lenis = useLenis()
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+    if (!lenis) {
+      // Fallback to native scroll if Lenis not ready
+      const onScroll = () => setScrolled(window.scrollY > 50)
+      window.addEventListener('scroll', onScroll, { passive: true })
+      return () => window.removeEventListener('scroll', onScroll)
+    }
+
+    const onScroll = ({ scroll }: { scroll: number }) => {
+      setScrolled(scroll > 50)
+    }
+
+    lenis.on('scroll', onScroll)
+    return () => lenis.off('scroll', onScroll)
+  }, [lenis])
 
   // Close mobile menu on route change
   useEffect(() => {

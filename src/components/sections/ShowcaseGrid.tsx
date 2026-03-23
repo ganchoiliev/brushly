@@ -73,7 +73,7 @@ export default function ShowcaseGrid() {
           {projects.map((project) => (
             <div
               key={project.title}
-              className="showcase-card group relative cursor-pointer overflow-hidden"
+              className="showcase-card will-animate group relative cursor-pointer overflow-hidden"
               style={{ aspectRatio: '4/5' }}
             >
               <div

@@ -46,7 +46,7 @@ export default function CTASection() {
       />
 
       <Container>
-        <div className="cta-content relative z-10 mx-auto max-w-2xl text-center">
+        <div className="cta-content will-animate relative z-10 mx-auto max-w-2xl text-center">
           <h2
             className="font-display font-light leading-tight text-brushly-cream"
             style={{ fontSize: 'clamp(32px, 5vw, 64px)' }}

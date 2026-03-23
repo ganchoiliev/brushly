@@ -9,7 +9,10 @@ export default function HeroVideo() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+      const tl = gsap.timeline({
+        defaults: { ease: 'power3.out' },
+        delay: 0.6,
+      })
 
       tl.from('.hero-badge', {
         y: 30,
