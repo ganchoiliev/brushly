@@ -268,7 +268,7 @@ export default function ProcessTimeline() {
       <div className="relative px-12 pt-32 pb-8 lg:px-20">
         <div className="process-top-line mx-auto mb-8 h-px w-24 origin-center" style={{ backgroundColor: 'rgba(200,169,110,0.4)' }} />
         <div className="text-center">
-          <span className="process-label block font-body text-[11px] uppercase tracking-[0.3em] text-brushly-black/30">
+          <span className="process-label block font-body text-[11px] uppercase tracking-[0.3em] text-brushly-black/60">
             How We Work
           </span>
         </div>
@@ -277,7 +277,7 @@ export default function ProcessTimeline() {
             className="process-ghost block font-display font-light leading-none"
             style={{
               fontSize: 'clamp(60px, 10vw, 120px)',
-              WebkitTextStroke: '1.5px rgba(200,169,110,0.35)',
+              WebkitTextStroke: '2px rgba(200,169,110,0.6)',
               color: 'transparent',
             }}
           >
