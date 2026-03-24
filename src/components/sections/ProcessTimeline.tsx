@@ -277,7 +277,7 @@ export default function ProcessTimeline() {
             className="process-ghost block font-display font-light leading-none"
             style={{
               fontSize: 'clamp(60px, 10vw, 120px)',
-              WebkitTextStroke: '1px rgba(200,169,110,0.12)',
+              WebkitTextStroke: '1.5px rgba(200,169,110,0.35)',
               color: 'transparent',
             }}
           >
