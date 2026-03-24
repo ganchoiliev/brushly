@@ -95,6 +95,7 @@ function SplitText({ children, className = '' }: { children: string; className?:
 export default function HeroCinematic() {
   const heroRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const brushVideoRef = useRef<HTMLVideoElement>(null)
   const [activePalette, setActivePalette] = useState(0)
   const [videoLoaded, setVideoLoaded] = useState(false)
   const [isMobile, setIsMobile] = useState(true)
@@ -219,6 +220,29 @@ export default function HeroCinematic() {
             scrub: true,
           },
         })
+
+        // Desktop video crossfade: consultation → brush video
+        gsap.to('.hero-video-consultation', {
+          opacity: 0,
+          ease: 'power1.inOut',
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: '20% top',
+            end: '45% top',
+            scrub: true,
+          },
+        })
+
+        gsap.to('.hero-video-brush', {
+          opacity: 1,
+          ease: 'power1.inOut',
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: '20% top',
+            end: '45% top',
+            scrub: true,
+          },
+        })
       })
 
       mm.add("(max-width: 767px)", () => {
@@ -299,7 +323,27 @@ export default function HeroCinematic() {
     observer.observe(video)
 
     return () => observer.disconnect()
-  }, [isMobile])
+  }, [])
+
+  // --- BRUSH VIDEO AUTOPLAY (desktop only) ---
+  useEffect(() => {
+    const video = brushVideoRef.current
+    if (!video) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          video.play().catch(() => {})
+        } else {
+          video.pause()
+        }
+      },
+      { threshold: 0.25 }
+    )
+    observer.observe(video)
+
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <section
@@ -310,7 +354,7 @@ export default function HeroCinematic() {
       <div className="sticky top-0 flex h-screen flex-col overflow-hidden md:flex-row" style={{ height: '100dvh' }}>
       {/* --- LEFT SIDE --- */}
       <div
-        className={`hero-left-panel relative z-20 flex w-full flex-col justify-between px-6 pt-20 pb-6 md:w-1/2 md:px-10 lg:px-14 ${isMobile ? 'flex-1' : ''}`}
+        className="hero-left-panel relative z-20 flex w-full flex-1 md:flex-initial flex-col justify-between px-6 pt-20 pb-6 md:w-1/2 md:px-10 lg:px-14"
         style={{ backgroundColor: '#1A1A1A', flexShrink: 0 }}
       >
         {/* Background wipe reveal */}
@@ -473,22 +517,48 @@ export default function HeroCinematic() {
       </div>
 
       {/* --- RIGHT SIDE / FULL-VIEWPORT VIDEO (mobile: absolute bg, desktop: flex child) --- */}
-      <div className={`hero-image-mask overflow-hidden ${isMobile ? 'absolute inset-0 z-[5]' : 'relative flex-1'}`} style={isMobile ? undefined : { minHeight: '50vh' }}>
+      <div className="hero-image-mask overflow-hidden absolute inset-0 z-[5] md:relative md:inset-auto md:z-auto md:flex-1 md:min-h-[50vh]">
         <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center', willChange: 'transform' }}>
-          {/* Video layer — mobile gets compressed version */}
+
+          {/* Desktop: Consultation video (visible on load, fades out on scroll) */}
           <video
-            key={isMobile ? 'mobile' : 'desktop'}
             ref={videoRef}
-            className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+            className="hero-video-consultation absolute inset-0 z-20 h-full w-full object-cover hidden md:block"
             autoPlay
             muted
             loop
             playsInline
-            preload={isMobile ? "metadata" : "auto"}
+            preload="auto"
+          >
+            <source src="/videos/hero-desktop.mp4" type="video/mp4" />
+          </video>
+
+          {/* Desktop: Brush video (hidden initially, fades in on scroll via GSAP) */}
+          <video
+            ref={brushVideoRef}
+            className="hero-video-brush absolute inset-0 z-10 h-full w-full object-cover hidden md:block"
+            style={{ opacity: 0 }}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+          >
+            <source src="/videos/hero.mp4" type="video/mp4" />
+          </video>
+
+          {/* Mobile: Single video (brush video as full-viewport background) */}
+          <video
+            className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 md:hidden ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
             onLoadedData={() => setVideoLoaded(true)}
             onPlaying={() => setVideoLoaded(true)}
           >
-            <source src={isMobile ? '/videos/hero-mobile.mp4' : '/videos/hero.mp4'} type="video/mp4" />
+            <source src="/videos/hero-mobile.mp4" type="video/mp4" />
           </video>
 
           {/* Fallback image */}
@@ -528,7 +598,7 @@ export default function HeroCinematic() {
       {/* Scroll overlay — cinematic editorial reveal (covers full viewport) */}
       <div className="hero-scroll-overlay absolute inset-0 z-40 flex items-center justify-center pointer-events-none" style={{ opacity: 0 }}>
         {/* Dark vignette layers — lighter on mobile so video shows through */}
-        <div className={`absolute inset-0 ${isMobile ? 'bg-black/40' : 'bg-black/60'}`} />
+        <div className="absolute inset-0 bg-black/40 md:bg-black/60" />
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)' }} />
 
         {/* Large background monogram */}
