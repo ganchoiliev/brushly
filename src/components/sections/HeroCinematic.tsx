@@ -272,7 +272,7 @@ export default function HeroCinematic() {
       <div className="sticky top-0 flex h-screen flex-col overflow-hidden md:flex-row" style={{ height: '100dvh' }}>
       {/* --- LEFT SIDE --- */}
       <div
-        className="hero-left-panel relative z-20 flex w-full flex-col justify-between px-6 pt-24 pb-8 md:w-1/2 md:px-12 lg:px-16"
+        className="hero-left-panel relative z-20 flex w-full flex-col justify-between px-6 pt-20 pb-6 md:w-1/2 md:px-10 lg:px-14"
         style={{ backgroundColor: '#1A1A1A', flexShrink: 0 }}
       >
         {/* Background wipe reveal */}
@@ -282,9 +282,9 @@ export default function HeroCinematic() {
         />
 
         {/* All content wrapped for z-index */}
-        <div className="relative z-10 flex h-full flex-col justify-between overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+        <div className="relative z-10 flex min-h-0 h-full flex-col justify-between">
         {/* Location */}
-        <div className="hero-location">
+        <div className="hero-location shrink-0">
           <span
             className="font-body text-[11px] uppercase tracking-[0.3em]"
             style={{ color: p.textLabel, transition: 'color 0.8s ease' }}
@@ -292,7 +292,7 @@ export default function HeroCinematic() {
             Based in:
           </span>
           <div
-            className="mt-2 font-body text-[14px] font-medium"
+            className="mt-1.5 font-body text-[14px] font-medium"
             style={{ color: p.text, transition: 'color 0.8s ease' }}
           >
             Surrey &middot; Epsom &middot; Reigate
@@ -300,12 +300,12 @@ export default function HeroCinematic() {
         </div>
 
         {/* --- HEADLINE --- */}
-        <div className="hero-left-fade my-auto py-6">
-          <div className="overflow-hidden pb-[0.15em]">
+        <div className="hero-left-fade my-auto py-4">
+          <div className="overflow-hidden pb-[0.1em]">
             <h1
               className="hero-line hero-line-premium font-display font-light whitespace-nowrap"
               style={{
-                fontSize: 'clamp(48px, 8vw, 120px)',
+                fontSize: 'clamp(42px, 6.5vw, 110px)',
                 lineHeight: 0.9,
                 color: p.text,
                 transition: 'color 0.8s ease',
@@ -315,11 +315,11 @@ export default function HeroCinematic() {
               <SplitText>Premium</SplitText>
             </h1>
           </div>
-          <div className="overflow-hidden pb-[0.15em]">
+          <div className="overflow-hidden pb-[0.1em]">
             <h1
               className="hero-line hero-line-painting font-display font-light italic whitespace-nowrap"
               style={{
-                fontSize: 'clamp(48px, 8vw, 120px)',
+                fontSize: 'clamp(42px, 6.5vw, 110px)',
                 lineHeight: 0.9,
                 color: p.accent,
                 transition: 'color 0.8s ease',
@@ -329,11 +329,11 @@ export default function HeroCinematic() {
               <SplitText>Painting</SplitText>
             </h1>
           </div>
-          <div className="overflow-hidden pb-[0.15em]">
+          <div className="overflow-hidden pb-[0.1em]">
             <h1
               className="hero-line hero-line-decorating font-display font-light whitespace-nowrap"
               style={{
-                fontSize: 'clamp(48px, 8vw, 120px)',
+                fontSize: 'clamp(42px, 6.5vw, 110px)',
                 lineHeight: 0.9,
                 color: p.text,
                 transition: 'color 0.8s ease',
@@ -346,7 +346,7 @@ export default function HeroCinematic() {
 
           {/* Tagline */}
           <p
-            className="hero-tagline mt-6 max-w-sm font-body text-[15px] leading-relaxed"
+            className="hero-tagline mt-4 max-w-sm font-body text-[14px] leading-relaxed"
             style={{ color: p.textMuted, transition: 'color 0.8s ease' }}
           >
             We combine skilled craftsmanship with an artist&apos;s touch.
@@ -354,35 +354,35 @@ export default function HeroCinematic() {
           </p>
 
           {/* --- SWATCHES --- */}
-          <div className="hero-swatches mt-5">
+          <div className="hero-swatches mt-4">
             <span
               className="font-body text-[10px] uppercase tracking-[0.2em]"
               style={{ color: p.textLabel, transition: 'color 0.8s ease' }}
             >
               Visualise your space:
             </span>
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-2.5 flex items-center gap-2.5">
               {PALETTES.map((palette, i) => (
                 <button
                   key={palette.name}
                   onClick={() => setActivePalette(i)}
-                  className="group relative flex h-11 w-11 items-center justify-center"
+                  className="group relative flex h-10 w-10 items-center justify-center"
                   title={palette.name}
                 >
                   <div
-                    className="h-8 w-8 rounded-full transition-all duration-500"
+                    className="h-7 w-7 rounded-full transition-all duration-500"
                     style={{
                       backgroundColor: palette.swatch,
                       border: palette.swatchBorder !== 'none' ? `1px solid ${palette.swatchBorder}` : '1px solid rgba(255,255,255,0.15)',
                       transform: activePalette === i ? 'scale(1.3)' : 'scale(1)',
                       boxShadow: activePalette === i
-                        ? `0 0 0 2px ${palette.bg}, 0 0 0 4px ${palette.accent}`
+                        ? `0 0 0 2px ${palette.bg}, 0 0 0 3px ${palette.accent}`
                         : 'none',
                     }}
                   />
                   {/* Name tooltip */}
                   <span
-                    className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap font-body text-[9px] uppercase tracking-[0.15em] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                    className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap font-body text-[9px] uppercase tracking-[0.15em] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
                     style={{ color: p.textLabel }}
                   >
                     {palette.name}
@@ -393,11 +393,11 @@ export default function HeroCinematic() {
           </div>
 
           {/* CTA */}
-          <div className="hero-cta-group mt-6 flex items-center gap-6">
+          <div className="hero-cta-group mt-5 flex items-center gap-5">
             <MagneticButton>
               <a
                 href="/contact"
-                className="inline-block px-6 py-3 font-body text-[11px] uppercase tracking-[0.2em] transition-all duration-500"
+                className="inline-block px-5 py-2.5 font-body text-[11px] uppercase tracking-[0.2em] transition-all duration-500"
                 style={{
                   backgroundColor: p.btnBg,
                   color: p.btnText,
@@ -417,7 +417,7 @@ export default function HeroCinematic() {
         </div>
 
         {/* Scroll hint */}
-        <div className="hero-scroll-hint hidden md:block">
+        <div className="hero-scroll-hint hidden shrink-0 md:block">
           <div className="flex items-center gap-3">
             <div
               className="h-[1px] w-8 transition-colors duration-800"
