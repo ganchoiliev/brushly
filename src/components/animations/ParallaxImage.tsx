@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import Image from 'next/image'
+import { blurDataURL } from '@/lib/shimmer'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import useReducedMotion from '@/hooks/useReducedMotion'
@@ -60,6 +61,8 @@ export default function ParallaxImage({
           className="object-cover"
           sizes="100vw"
           priority={priority}
+          placeholder="blur"
+          blurDataURL={blurDataURL}
         />
       </div>
     </div>

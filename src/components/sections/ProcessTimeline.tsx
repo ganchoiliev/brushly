@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
+import { blurDataURL } from '@/lib/shimmer'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
@@ -239,6 +240,8 @@ export default function ProcessTimeline() {
                 width={800}
                 height={600}
                 className="h-full w-full object-cover"
+                placeholder="blur"
+                blurDataURL={blurDataURL}
               />
             </div>
             <div className="mt-6 grid grid-cols-2 gap-3">

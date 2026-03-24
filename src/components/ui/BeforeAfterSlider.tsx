@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import Image from 'next/image'
+import { blurDataURL } from '@/lib/shimmer'
 
 interface BeforeAfterSliderProps {
   beforeSrc: string
@@ -65,12 +66,12 @@ export default function BeforeAfterSlider({
     >
       {/* After image (full) */}
       <div className="absolute inset-0">
-        <Image src={afterSrc} alt={afterAlt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" />
+        <Image src={afterSrc} alt={afterAlt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" placeholder="blur" blurDataURL={blurDataURL} />
       </div>
 
       {/* Before image (clipped) */}
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
-        <Image src={beforeSrc} alt={beforeAlt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" />
+        <Image src={beforeSrc} alt={beforeAlt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 50vw" placeholder="blur" blurDataURL={blurDataURL} />
       </div>
 
       {/* Slider handle */}

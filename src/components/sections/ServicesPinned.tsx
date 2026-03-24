@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
+import { blurDataURL } from '@/lib/shimmer'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import MagneticButton from '@/components/animations/MagneticButton'

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
-import { motion, AnimatePresence } from 'framer-motion'
+import gsap from 'gsap'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
 import ParallaxImage from '@/components/animations/ParallaxImage'
@@ -28,32 +28,104 @@ const testimonials = [
   },
 ]
 
-const slideVariants = {
-  enter: (dir: number) => ({ opacity: 0, x: dir * 80 }),
-  center: { opacity: 1, x: 0 },
-  exit: (dir: number) => ({ opacity: 0, x: dir * -80 }),
-}
-
 export default function Testimonials() {
   const [current, setCurrent] = useState(0)
-  const [direction, setDirection] = useState(1)
   const reduced = useReducedMotion()
+  const contentRef = useRef<HTMLDivElement>(null)
+  const isAnimating = useRef(false)
+  const touchStart = useRef<{ x: number; time: number } | null>(null)
 
-  const next = () => {
-    setDirection(1)
-    setCurrent((prev) => (prev + 1) % testimonials.length)
-  }
+  const animateTo = useCallback(
+    (newIndex: number, dir: number) => {
+      if (isAnimating.current || newIndex === current) return
+      isAnimating.current = true
 
-  const prev = () => {
-    setDirection(-1)
-    setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length)
-  }
+      const el = contentRef.current
+      if (!el) {
+        setCurrent(newIndex)
+        isAnimating.current = false
+        return
+      }
 
-  const goTo = (index: number) => {
-    if (index === current) return
-    setDirection(index > current ? 1 : -1)
-    setCurrent(index)
-  }
+      if (reduced) {
+        setCurrent(newIndex)
+        isAnimating.current = false
+        return
+      }
+
+      const tl = gsap.timeline({
+        onComplete: () => {
+          isAnimating.current = false
+        },
+      })
+
+      // Animate out
+      tl.to(el, {
+        opacity: 0,
+        x: dir * -80,
+        duration: 0.25,
+        ease: 'power2.in',
+        onComplete: () => setCurrent(newIndex),
+      })
+
+      // Animate in from opposite side
+      tl.fromTo(
+        el,
+        { opacity: 0, x: dir * 80 },
+        { opacity: 1, x: 0, duration: 0.35, ease: 'power2.out' },
+      )
+    },
+    [current, reduced],
+  )
+
+  const next = useCallback(() => {
+    const newIndex = (current + 1) % testimonials.length
+    animateTo(newIndex, 1)
+  }, [current, animateTo])
+
+  const prev = useCallback(() => {
+    const newIndex = (current - 1 + testimonials.length) % testimonials.length
+    animateTo(newIndex, -1)
+  }, [current, animateTo])
+
+  const goTo = useCallback(
+    (index: number) => {
+      if (index === current) return
+      animateTo(index, index > current ? 1 : -1)
+    },
+    [current, animateTo],
+  )
+
+  // Swipe handlers
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    touchStart.current = { x: e.clientX, time: Date.now() }
+  }, [])
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (!touchStart.current) return
+      const dx = e.clientX - touchStart.current.x
+      const dt = Date.now() - touchStart.current.time
+      const velocity = Math.abs(dx) / (dt / 1000)
+      touchStart.current = null
+
+      const swipeThreshold = 50
+      const velocityThreshold = 300
+      if (dx < -swipeThreshold || (velocity > velocityThreshold && dx < 0)) {
+        next()
+      } else if (dx > swipeThreshold || (velocity > velocityThreshold && dx > 0)) {
+        prev()
+      }
+    },
+    [next, prev],
+  )
+
+  // Cleanup GSAP on unmount
+  useEffect(() => {
+    return () => {
+      if (contentRef.current) gsap.killTweensOf(contentRef.current)
+    }
+  }, [])
 
   return (
     <section className="relative py-28 md:py-40 overflow-hidden">
@@ -100,46 +172,29 @@ export default function Testimonials() {
               </button>
             </div>
 
-            <AnimatePresence mode="wait" custom={direction}>
-              <motion.div
-                key={current}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: reduced ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] }}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.15}
-                onDragEnd={(_e, info) => {
-                  const swipeThreshold = 50
-                  const velocityThreshold = 300
-                  if (info.offset.x < -swipeThreshold || info.velocity.x < -velocityThreshold) {
-                    next()
-                  } else if (info.offset.x > swipeThreshold || info.velocity.x > velocityThreshold) {
-                    prev()
-                  }
-                }}
-                data-cursor="drag"
-                aria-live="polite"
+            <div
+              ref={contentRef}
+              data-cursor="drag"
+              aria-live="polite"
+              onPointerDown={onPointerDown}
+              onPointerUp={onPointerUp}
+              style={{ touchAction: 'pan-y' }}
+            >
+              <blockquote
+                className="font-display font-light italic leading-relaxed text-brushly-cream"
+                style={{ fontSize: 'clamp(22px, 3vw, 36px)' }}
               >
-                <blockquote
-                  className="font-display font-light italic leading-relaxed text-brushly-cream"
-                  style={{ fontSize: 'clamp(22px, 3vw, 36px)' }}
-                >
-                  {testimonials[current].quote}
-                </blockquote>
-                <div className="mt-8">
-                  <p className="text-[15px] font-body font-medium text-brushly-cream">
-                    {testimonials[current].author}
-                  </p>
-                  <p className="mt-1 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-gold">
-                    {testimonials[current].location}
-                  </p>
-                </div>
-              </motion.div>
-            </AnimatePresence>
+                {testimonials[current].quote}
+              </blockquote>
+              <div className="mt-8">
+                <p className="text-[15px] font-body font-medium text-brushly-cream">
+                  {testimonials[current].author}
+                </p>
+                <p className="mt-1 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-gold">
+                  {testimonials[current].location}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Dot Indicators — 44px touch target with visual dot inside */}

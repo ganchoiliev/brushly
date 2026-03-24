@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
+import { blurDataURL } from '@/lib/shimmer'
 import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -224,7 +225,7 @@ export default function HeroCinematic() {
           },
         })
 
-        // Desktop video crossfade: consultation → brush video
+        // Desktop video crossfade: brush → consultation video
         gsap.to('.hero-video-consultation', {
           opacity: 0,
           ease: 'power1.inOut',
@@ -523,7 +524,7 @@ export default function HeroCinematic() {
       <div className="hero-image-mask overflow-hidden absolute inset-0 z-[5] md:relative md:inset-auto md:z-auto md:flex-1 md:min-h-[50vh]">
         <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center', willChange: 'transform' }}>
 
-          {/* Desktop: Consultation video (visible on load, fades out on scroll) */}
+          {/* Desktop: Brush video (visible on load, fades out on scroll) */}
           <video
             ref={videoRef}
             className="hero-video-consultation absolute inset-0 z-20 h-full w-full object-cover hidden md:block"
@@ -533,10 +534,10 @@ export default function HeroCinematic() {
             playsInline
             preload="auto"
           >
-            <source src="/videos/hero-desktop.mp4" type="video/mp4" />
+            <source src="/videos/hero.mp4" type="video/mp4" />
           </video>
 
-          {/* Desktop: Brush video (hidden initially, fades in on scroll via GSAP) */}
+          {/* Desktop: Consultation video (hidden initially, fades in on scroll via GSAP) */}
           <video
             ref={brushVideoRef}
             className="hero-video-brush absolute inset-0 z-10 h-full w-full object-cover hidden md:block"
@@ -547,7 +548,7 @@ export default function HeroCinematic() {
             playsInline
             preload="auto"
           >
-            <source src="/videos/hero.mp4" type="video/mp4" />
+            <source src="/videos/hero-desktop.mp4" type="video/mp4" />
           </video>
 
           {/* Mobile: Single video (brush video as full-viewport background) */}
@@ -573,6 +574,8 @@ export default function HeroCinematic() {
               priority
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
+              placeholder="blur"
+              blurDataURL={blurDataURL}
             />
           </div>
         </div>

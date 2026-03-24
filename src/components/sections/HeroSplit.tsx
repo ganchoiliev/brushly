@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
+import { blurDataURL } from '@/lib/shimmer'
 import Image from 'next/image'
 import gsap from 'gsap'
 import MagneticButton from '@/components/animations/MagneticButton'
@@ -118,6 +119,8 @@ export default function HeroSplit() {
             priority
             className="object-cover"
             sizes="50vw"
+            placeholder="blur"
+            blurDataURL={blurDataURL}
           />
         </div>
         {/* Subtle gradient overlay at bottom */}

@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { blurDataURL } from '@/lib/shimmer'
 import Link from 'next/link'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
@@ -142,6 +143,8 @@ export default function ShowcaseGrid() {
                         className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
                         sizes={config.sizes}
                         priority={i === 0}
+                        placeholder="blur"
+                        blurDataURL={blurDataURL}
                       />
                     </div>
                   </ImageReveal>
