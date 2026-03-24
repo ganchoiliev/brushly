@@ -89,6 +89,37 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     return () => clearTimeout(timeout)
   }, [pathname])
 
+  // Smooth scroll-to-anchor for hash links (e.g. /services#interior)
+  useEffect(() => {
+    const scrollToHash = () => {
+      const hash = window.location.hash
+      if (!hash) return
+      const target = document.querySelector(hash)
+      if (!target) return
+
+      if (lenis) {
+        setTimeout(() => {
+          lenis.scrollTo(target as HTMLElement, { offset: -100, duration: 1.5 })
+        }, 100)
+      } else {
+        // Fallback for touch devices / reduced motion (no Lenis)
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 100)
+      }
+    }
+
+    // Handle initial page load with hash
+    const initialTimeout = setTimeout(scrollToHash, 800)
+
+    // Handle in-page hash changes
+    window.addEventListener('hashchange', scrollToHash)
+    return () => {
+      clearTimeout(initialTimeout)
+      window.removeEventListener('hashchange', scrollToHash)
+    }
+  }, [lenis, pathname])
+
   // Subtle parallax on elements with data-speed attribute
   useEffect(() => {
     if (isTouchRef.current) return

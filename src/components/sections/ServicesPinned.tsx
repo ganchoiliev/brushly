@@ -37,7 +37,7 @@ const services = [
     image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80',
   },
   {
-    id: 'wallpaper',
+    id: 'wallpapering',
     title: 'Wall-\npapering',
     description: 'Expert installation of designer wallpapers with perfect pattern matching and seamless joins. From delicate hand-printed papers to heavy vinyls, we handle every type with care.',
     items: [

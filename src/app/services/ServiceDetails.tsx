@@ -97,7 +97,7 @@ export default function ServiceDetails() {
     <section ref={sectionRef} className="bg-brushly-cream py-28 md:py-40">
       <Container>
         {services.map((service, i) => (
-          <div key={service.id} id={service.id}>
+          <div key={service.id} id={service.id} className="scroll-mt-28">
             {i === 0 && <LineReveal />}
             <div className="service-detail grid grid-cols-1 gap-10 py-16 md:grid-cols-2 md:gap-20 md:py-24">
               {/* Text */}
