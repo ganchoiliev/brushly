@@ -34,7 +34,7 @@ export default function StatsCounter() {
           scrollTrigger: {
             trigger: sectionRef.current,
             start: 'top 75%',
-            toggleActions: 'play none none none',
+            toggleActions: 'play none none reverse',
           },
           onUpdate: () => {
             el.textContent = Math.round(obj.val) + stat.suffix
@@ -52,7 +52,7 @@ export default function StatsCounter() {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 75%',
-          toggleActions: 'play none none none',
+          toggleActions: 'play none none reverse',
         },
       })
     }, sectionRef)

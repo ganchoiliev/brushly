@@ -44,7 +44,7 @@ export default function ImageReveal({
           scrollTrigger: {
             trigger: ref.current,
             start: 'top 80%',
-            toggleActions: 'play none none none',
+            toggleActions: 'play none none reverse',
           },
         }
       )
@@ -58,7 +58,7 @@ export default function ImageReveal({
         scrollTrigger: {
           trigger: ref.current,
           start: 'top 80%',
-          toggleActions: 'play none none none',
+          toggleActions: 'play none none reverse',
         },
       })
     }, ref)

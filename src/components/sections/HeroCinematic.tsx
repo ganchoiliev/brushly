@@ -97,8 +97,17 @@ export default function HeroCinematic() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [activePalette, setActivePalette] = useState(0)
   const [videoLoaded, setVideoLoaded] = useState(false)
+  const [isMobile, setIsMobile] = useState(true)
 
   const p = PALETTES[activePalette]
+
+  // Detect mobile
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // --- ENTRANCE ANIMATION ---
   useEffect(() => {
@@ -126,7 +135,6 @@ export default function HeroCinematic() {
       }, '-=0.6')
 
       // PHASE 4: Headline — LETTER BY LETTER reveal
-      // "Premium" — each letter staggers in
       .from('.hero-line-premium .char', {
         yPercent: 100,
         opacity: 0,
@@ -136,7 +144,6 @@ export default function HeroCinematic() {
         ease: 'power3.out',
       }, '-=0.2')
 
-      // "Painting" — each letter staggers in
       .from('.hero-line-painting .char', {
         yPercent: 100,
         opacity: 0,
@@ -146,7 +153,6 @@ export default function HeroCinematic() {
         ease: 'power3.out',
       }, '-=0.5')
 
-      // "& Decorating" — each letter staggers in
       .from('.hero-line-decorating .char', {
         yPercent: 100,
         opacity: 0,
@@ -164,7 +170,6 @@ export default function HeroCinematic() {
 
       // --- SCROLL EFFECTS (Aventura-style) ---
 
-      // Scroll hint fades first
       gsap.to('.hero-scroll-hint', {
         opacity: 0,
         ease: 'none',
@@ -176,7 +181,6 @@ export default function HeroCinematic() {
         },
       })
 
-      // Left panel shrinks away (content fades)
       gsap.to('.hero-left-panel', {
         width: 0,
         opacity: 0,
@@ -189,7 +193,6 @@ export default function HeroCinematic() {
         },
       })
 
-      // Video panel expands to fill full width
       gsap.to('.hero-image-mask', {
         width: '100%',
         ease: 'power1.inOut',
@@ -201,7 +204,6 @@ export default function HeroCinematic() {
         },
       })
 
-      // Video zooms on scroll
       gsap.to('.hero-image-inner', {
         scale: 1.15,
         ease: 'none',
@@ -213,7 +215,6 @@ export default function HeroCinematic() {
         },
       })
 
-      // Overlay text fades in once video is expanded
       gsap.to('.hero-scroll-overlay', {
         opacity: 1,
         ease: 'none',
@@ -230,8 +231,9 @@ export default function HeroCinematic() {
     return () => ctx.revert()
   }, [])
 
-  // --- VIDEO AUTOPLAY ---
+  // --- VIDEO AUTOPLAY (desktop only) ---
   useEffect(() => {
+    if (isMobile) return
     const video = videoRef.current
     if (!video) return
 
@@ -248,7 +250,7 @@ export default function HeroCinematic() {
     observer.observe(video)
 
     return () => observer.disconnect()
-  }, [])
+  }, [isMobile])
 
   return (
     <section
@@ -424,18 +426,20 @@ export default function HeroCinematic() {
       {/* --- RIGHT SIDE --- */}
       <div className="hero-image-mask relative flex-1 overflow-hidden" style={{ minHeight: '50vh' }}>
         <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center', willChange: 'transform' }}>
-          {/* Video layer */}
-          <video
-            ref={videoRef}
-            className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
-            muted
-            loop
-            playsInline
-            preload="auto"
-            onLoadedData={() => setVideoLoaded(true)}
-          >
-            <source src="/videos/hero.mp4" type="video/mp4" />
-          </video>
+          {/* Video layer — desktop only to save mobile memory */}
+          {!isMobile && (
+            <video
+              ref={videoRef}
+              className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+              muted
+              loop
+              playsInline
+              preload="auto"
+              onLoadedData={() => setVideoLoaded(true)}
+            >
+              <source src="/videos/hero.mp4" type="video/mp4" />
+            </video>
+          )}
 
           {/* Fallback image */}
           <div className="absolute inset-0">

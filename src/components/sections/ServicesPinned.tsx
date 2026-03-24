@@ -69,7 +69,7 @@ export default function ServicesPinned() {
   const numberRef = useRef<HTMLSpanElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [prevIndex, setPrevIndex] = useState(0)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(true)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [hoveredItem, setHoveredItem] = useState<number | null>(null)
   const [imageFocus, setImageFocus] = useState({ x: 50, y: 50 })
@@ -280,7 +280,7 @@ export default function ServicesPinned() {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 70%',
-          toggleActions: 'play none none none',
+          toggleActions: 'play none none reverse',
         },
       })
 

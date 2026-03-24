@@ -61,7 +61,7 @@ function ScrollRevealBadge({ children, className }: { children: React.ReactNode;
         scrollTrigger: {
           trigger: ref.current,
           start: 'top 85%',
-          toggleActions: 'play none none none',
+          toggleActions: 'play none none reverse',
         },
       })
     }, ref)
@@ -108,7 +108,7 @@ export default function ServicesGrid() {
           scrollTrigger: {
             trigger: row,
             start: 'top 80%',
-            toggleActions: 'play none none none',
+            toggleActions: 'play none none reverse',
           },
         })
 

@@ -47,7 +47,7 @@ export default function ProcessTimeline() {
   const lineRef = useRef<SVGLineElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
-  const [isMobile, setIsMobile] = useState(false)
+  const [isMobile, setIsMobile] = useState(true)
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)
@@ -96,7 +96,7 @@ export default function ProcessTimeline() {
           scrollTrigger: {
             trigger: stepEl,
             start: 'top 70%',
-            toggleActions: 'play none none none',
+            toggleActions: 'play none none reverse',
           },
         })
 
@@ -177,7 +177,7 @@ export default function ProcessTimeline() {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 75%',
-          toggleActions: 'play none none none',
+          toggleActions: 'play none none reverse',
         },
       })
       headerTl.fromTo('.process-top-line',

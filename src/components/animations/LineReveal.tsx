@@ -39,7 +39,7 @@ export default function LineReveal({
           scrollTrigger: {
             trigger: ref.current,
             start: 'top 90%',
-            toggleActions: 'play none none none',
+            toggleActions: 'play none none reverse',
           },
         }
       )

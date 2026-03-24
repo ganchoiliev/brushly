@@ -38,7 +38,7 @@ export default function TextReveal({
         scrollTrigger: {
           trigger: containerRef.current,
           start: 'top 80%',
-          toggleActions: 'play none none none',
+          toggleActions: 'play none none reverse',
         },
       })
     }, containerRef)
