@@ -61,7 +61,7 @@ export default function Testimonials() {
             &ldquo;
           </span>
 
-          <div className="relative mt-4 min-h-[280px]">
+          <div className="relative mt-4 min-h-[200px] md:min-h-[280px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={current}
@@ -88,19 +88,23 @@ export default function Testimonials() {
             </AnimatePresence>
           </div>
 
-          {/* Dot Indicators */}
-          <div className="mt-10 flex items-center justify-center gap-3">
+          {/* Dot Indicators — 44px touch target with visual dot inside */}
+          <div className="mt-10 flex items-center justify-center gap-1">
             {testimonials.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrent(i)}
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  i === current
-                    ? 'w-8 bg-brushly-gold'
-                    : 'w-2 bg-brushly-cream/30 hover:bg-brushly-gold/50'
-                }`}
+                className="flex h-11 w-11 items-center justify-center"
                 aria-label={`Go to testimonial ${i + 1}`}
-              />
+              >
+                <span
+                  className={`block h-2 rounded-full transition-all duration-500 ${
+                    i === current
+                      ? 'w-8 bg-brushly-gold'
+                      : 'w-2 bg-brushly-cream/30'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </div>

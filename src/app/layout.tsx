@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { cormorantGaramond, dmSans } from '@/lib/fonts'
 import SmoothScroll from '@/components/animations/SmoothScroll'
 import PageLoader from '@/components/layout/PageLoader'
@@ -26,6 +26,12 @@ export const metadata: Metadata = {
     'exterior painting',
     'wallpapering',
   ],
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({

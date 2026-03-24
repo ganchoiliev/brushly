@@ -69,6 +69,7 @@ export default function Header() {
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50 bg-brushly-charcoal/80 backdrop-blur-lg border-b border-brushly-cream/5 transition-all duration-500"
+      style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5 md:px-10 lg:px-16">
         {/* Logo */}
@@ -104,10 +105,10 @@ export default function Header() {
           Get a Quote
         </Link>
 
-        {/* Mobile Menu Toggle */}
+        {/* Mobile Menu Toggle — 44x44px touch target */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
-          className="relative z-50 flex flex-col gap-[6px] md:hidden"
+          className="relative z-50 flex h-11 w-11 flex-col items-center justify-center gap-[6px] md:hidden"
           aria-label="Toggle menu"
         >
           <span

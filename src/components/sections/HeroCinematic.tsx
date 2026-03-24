@@ -76,6 +76,22 @@ const PALETTES = [
   },
 ]
 
+function SplitText({ children, className = '' }: { children: string; className?: string }) {
+  return (
+    <>
+      {children.split('').map((char, i) => (
+        <span
+          key={i}
+          className={`char inline-block ${className}`}
+          style={{ display: char === ' ' ? 'inline' : 'inline-block' }}
+        >
+          {char === ' ' ? '\u00A0' : char}
+        </span>
+      ))}
+    </>
+  )
+}
+
 export default function HeroCinematic() {
   const heroRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -87,86 +103,124 @@ export default function HeroCinematic() {
   // --- ENTRANCE ANIMATION ---
   useEffect(() => {
     const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' }, delay: 0.4 })
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' }, delay: 0.3 })
 
-      // Image/video reveal
-      tl.fromTo('.hero-image-mask',
-        { clipPath: 'inset(0 0 100% 0)' },
-        { clipPath: 'inset(0 0 0% 0)', duration: 1.6, ease: 'power3.inOut' }
+      // PHASE 1: Left side background wipe-in from left
+      tl.fromTo('.hero-left-bg-reveal',
+        { scaleX: 0, transformOrigin: 'left center' },
+        { scaleX: 1, duration: 1.0, ease: 'power3.inOut' }
       )
-      // Left content stagger
-      .from('.hero-location', { y: 20, opacity: 0, duration: 0.6 }, '-=0.8')
-      .from('.hero-line', {
-        yPercent: 120,
+
+      // PHASE 2: Video reveals with a dramatic vertical wipe (bottom to top)
+      .fromTo('.hero-image-mask',
+        { clipPath: 'inset(100% 0 0 0)' },
+        { clipPath: 'inset(0% 0 0 0)', duration: 1.4, ease: 'power3.inOut' },
+        '-=0.6'
+      )
+
+      // PHASE 3: Location fades in while video is still revealing
+      .from('.hero-location', {
+        y: 15,
         opacity: 0,
-        stagger: 0.1,
-        duration: 1.2,
+        duration: 0.5,
+      }, '-=0.6')
+
+      // PHASE 4: Headline — LETTER BY LETTER reveal
+      // "Premium" — each letter staggers in
+      .from('.hero-line-premium .char', {
+        yPercent: 100,
+        opacity: 0,
+        rotateX: 40,
+        stagger: 0.03,
+        duration: 0.8,
+        ease: 'power3.out',
+      }, '-=0.2')
+
+      // "Painting" — each letter staggers in
+      .from('.hero-line-painting .char', {
+        yPercent: 100,
+        opacity: 0,
+        rotateX: 40,
+        stagger: 0.03,
+        duration: 0.8,
+        ease: 'power3.out',
       }, '-=0.5')
-      .from('.hero-tagline', { y: 20, opacity: 0, duration: 0.7 }, '-=0.5')
-      .from('.hero-swatches', { y: 15, opacity: 0, duration: 0.5 }, '-=0.4')
-      .from('.hero-cta-group', { y: 15, opacity: 0, duration: 0.5 }, '-=0.3')
-      .from('.hero-scroll-hint', { opacity: 0, duration: 0.4 }, '-=0.2')
 
-      // --- SCROLL EFFECTS ---
+      // "& Decorating" — each letter staggers in
+      .from('.hero-line-decorating .char', {
+        yPercent: 100,
+        opacity: 0,
+        rotateX: 40,
+        stagger: 0.02,
+        duration: 0.8,
+        ease: 'power3.out',
+      }, '-=0.5')
 
-      // "Painting" drifts right on scroll
-      gsap.to('.hero-line-painting', {
-        x: 100,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: heroRef.current,
-          start: 'top top',
-          end: '60% top',
-          scrub: true,
-        },
-      })
+      // PHASE 5: Supporting content fades in
+      .from('.hero-tagline', { y: 20, opacity: 0, duration: 0.6 }, '-=0.3')
+      .from('.hero-swatches', { y: 15, opacity: 0, duration: 0.5 }, '-=0.2')
+      .from('.hero-cta-group', { y: 15, opacity: 0, duration: 0.5 }, '-=0.2')
+      .from('.hero-scroll-hint', { opacity: 0, duration: 0.4 }, '-=0.1')
 
-      // "& Decorating" drifts left on scroll
-      gsap.to('.hero-line-decorating', {
-        x: -70,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: heroRef.current,
-          start: 'top top',
-          end: '60% top',
-          scrub: true,
-        },
-      })
+      // --- SCROLL EFFECTS (Aventura-style) ---
 
-      // Location fades first
-      gsap.to('.hero-location', {
-        y: -30,
+      // Scroll hint fades first
+      gsap.to('.hero-scroll-hint', {
         opacity: 0,
         ease: 'none',
         scrollTrigger: {
           trigger: heroRef.current,
-          start: 'top top',
-          end: '25% top',
+          start: '10% top',
+          end: '18% top',
           scrub: true,
         },
       })
 
-      // Left content fades on scroll
-      gsap.to('.hero-left-fade', {
-        y: -80,
+      // Left panel shrinks away (content fades)
+      gsap.to('.hero-left-panel', {
+        width: 0,
         opacity: 0,
-        ease: 'none',
+        ease: 'power1.inOut',
         scrollTrigger: {
           trigger: heroRef.current,
-          start: '30% top',
-          end: 'bottom top',
+          start: '15% top',
+          end: '55% top',
+          scrub: true,
+        },
+      })
+
+      // Video panel expands to fill full width
+      gsap.to('.hero-image-mask', {
+        width: '100%',
+        ease: 'power1.inOut',
+        scrollTrigger: {
+          trigger: heroRef.current,
+          start: '15% top',
+          end: '55% top',
           scrub: true,
         },
       })
 
       // Video zooms on scroll
       gsap.to('.hero-image-inner', {
-        scale: 1.12,
+        scale: 1.15,
         ease: 'none',
         scrollTrigger: {
           trigger: heroRef.current,
           start: 'top top',
           end: 'bottom top',
+          scrub: true,
+        },
+      })
+
+      // Overlay text fades in once video is expanded
+      gsap.to('.hero-scroll-overlay', {
+        opacity: 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: heroRef.current,
+          start: '45% top',
+          end: '60% top',
           scrub: true,
         },
       })
@@ -180,6 +234,7 @@ export default function HeroCinematic() {
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -191,22 +246,30 @@ export default function HeroCinematic() {
       { threshold: 0.25 }
     )
     observer.observe(video)
+
     return () => observer.disconnect()
   }, [])
 
   return (
     <section
       ref={heroRef}
-      className="relative flex min-h-screen flex-col overflow-hidden md:flex-row"
+      className="relative" style={{ height: '250vh' }}
     >
+      {/* h-screen with dvh fallback for iOS Safari address bar */}
+      <div className="sticky top-0 flex h-screen flex-col overflow-hidden md:flex-row" style={{ height: '100dvh' }}>
       {/* --- LEFT SIDE --- */}
       <div
-        className="relative z-20 flex w-full flex-col justify-between px-6 py-20 md:w-1/2 md:px-12 lg:px-20"
-        style={{
-          backgroundColor: p.bg,
-          transition: 'background-color 0.8s cubic-bezier(0.22, 1, 0.36, 1)',
-        }}
+        className="hero-left-panel relative z-20 flex w-full flex-col justify-between px-6 pt-24 pb-8 md:w-1/2 md:px-12 lg:px-16"
+        style={{ backgroundColor: '#1A1A1A', flexShrink: 0 }}
       >
+        {/* Background wipe reveal */}
+        <div
+          className="hero-left-bg-reveal absolute inset-0 z-0"
+          style={{ backgroundColor: p.bg, transformOrigin: 'left center' }}
+        />
+
+        {/* All content wrapped for z-index */}
+        <div className="relative z-10 flex h-full flex-col justify-between overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {/* Location */}
         <div className="hero-location">
           <span
@@ -224,50 +287,53 @@ export default function HeroCinematic() {
         </div>
 
         {/* --- HEADLINE --- */}
-        <div className="hero-left-fade my-auto py-16">
-          <div className="overflow-hidden">
+        <div className="hero-left-fade my-auto py-6">
+          <div className="overflow-hidden pb-[0.15em]">
             <h1
-              className="hero-line hero-line-premium font-display font-light"
+              className="hero-line hero-line-premium font-display font-light whitespace-nowrap"
               style={{
                 fontSize: 'clamp(48px, 8vw, 120px)',
                 lineHeight: 0.9,
                 color: p.text,
                 transition: 'color 0.8s ease',
+                perspective: '600px',
               }}
             >
-              Premium
+              <SplitText>Premium</SplitText>
             </h1>
           </div>
-          <div className="overflow-hidden">
+          <div className="overflow-hidden pb-[0.15em]">
             <h1
-              className="hero-line hero-line-painting font-display font-light italic"
+              className="hero-line hero-line-painting font-display font-light italic whitespace-nowrap"
               style={{
                 fontSize: 'clamp(48px, 8vw, 120px)',
                 lineHeight: 0.9,
                 color: p.accent,
                 transition: 'color 0.8s ease',
+                perspective: '600px',
               }}
             >
-              Painting
+              <SplitText>Painting</SplitText>
             </h1>
           </div>
-          <div className="overflow-hidden">
+          <div className="overflow-hidden pb-[0.15em]">
             <h1
-              className="hero-line hero-line-decorating font-display font-light"
+              className="hero-line hero-line-decorating font-display font-light whitespace-nowrap"
               style={{
                 fontSize: 'clamp(48px, 8vw, 120px)',
                 lineHeight: 0.9,
                 color: p.text,
                 transition: 'color 0.8s ease',
+                perspective: '600px',
               }}
             >
-              &amp; Decorating
+              <SplitText>{'& Decorating'}</SplitText>
             </h1>
           </div>
 
           {/* Tagline */}
           <p
-            className="hero-tagline mt-10 max-w-sm font-body text-[15px] leading-relaxed"
+            className="hero-tagline mt-6 max-w-sm font-body text-[15px] leading-relaxed"
             style={{ color: p.textMuted, transition: 'color 0.8s ease' }}
           >
             We combine skilled craftsmanship with an artist&apos;s touch.
@@ -275,7 +341,7 @@ export default function HeroCinematic() {
           </p>
 
           {/* --- SWATCHES --- */}
-          <div className="hero-swatches mt-8">
+          <div className="hero-swatches mt-5">
             <span
               className="font-body text-[10px] uppercase tracking-[0.2em]"
               style={{ color: p.textLabel, transition: 'color 0.8s ease' }}
@@ -287,7 +353,7 @@ export default function HeroCinematic() {
                 <button
                   key={palette.name}
                   onClick={() => setActivePalette(i)}
-                  className="group relative"
+                  className="group relative flex h-11 w-11 items-center justify-center"
                   title={palette.name}
                 >
                   <div
@@ -314,11 +380,11 @@ export default function HeroCinematic() {
           </div>
 
           {/* CTA */}
-          <div className="hero-cta-group mt-10 flex items-center gap-6">
+          <div className="hero-cta-group mt-6 flex items-center gap-6">
             <MagneticButton>
               <a
                 href="/contact"
-                className="inline-block px-8 py-4 font-body text-[12px] uppercase tracking-[0.2em] transition-all duration-500"
+                className="inline-block px-6 py-3 font-body text-[11px] uppercase tracking-[0.2em] transition-all duration-500"
                 style={{
                   backgroundColor: p.btnBg,
                   color: p.btnText,
@@ -338,7 +404,7 @@ export default function HeroCinematic() {
         </div>
 
         {/* Scroll hint */}
-        <div className="hero-scroll-hint">
+        <div className="hero-scroll-hint hidden md:block">
           <div className="flex items-center gap-3">
             <div
               className="h-[1px] w-8 transition-colors duration-800"
@@ -352,11 +418,12 @@ export default function HeroCinematic() {
             </span>
           </div>
         </div>
+        </div>
       </div>
 
       {/* --- RIGHT SIDE --- */}
-      <div className="hero-image-mask relative w-full overflow-hidden md:w-1/2" style={{ minHeight: '50vh' }}>
-        <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center' }}>
+      <div className="hero-image-mask relative flex-1 overflow-hidden" style={{ minHeight: '50vh' }}>
+        <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center', willChange: 'transform' }}>
           {/* Video layer */}
           <video
             ref={videoRef}
@@ -364,7 +431,7 @@ export default function HeroCinematic() {
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="auto"
             onLoadedData={() => setVideoLoaded(true)}
           >
             <source src="/videos/hero.mp4" type="video/mp4" />
@@ -378,7 +445,7 @@ export default function HeroCinematic() {
               fill
               priority
               className="object-cover"
-              sizes="50vw"
+              sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
         </div>
@@ -402,6 +469,23 @@ export default function HeroCinematic() {
             B
           </span>
         </div>
+
+        {/* Scroll overlay text */}
+        <div className="hero-scroll-overlay absolute inset-0 z-30 flex items-center justify-center pointer-events-none" style={{ opacity: 0 }}>
+          {/* Dark vignette for readability */}
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)' }} />
+          <div className="relative z-10 text-center">
+            <p className="font-body text-[13px] uppercase tracking-[0.5em] text-white/70">
+              Transforming Surrey homes
+            </p>
+            <p className="mt-4 font-display font-light text-white leading-tight" style={{ fontSize: 'clamp(40px, 6vw, 80px)' }}>
+              Since 2015
+            </p>
+            <div className="mx-auto mt-6 h-[1px] w-16 bg-brushly-gold/60" />
+          </div>
+        </div>
+      </div>
       </div>
     </section>
   )
