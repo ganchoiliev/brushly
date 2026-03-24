@@ -237,14 +237,31 @@ export default function HeroCinematic() {
         },
       })
 
+      // Staggered reveal for overlay inner elements
+      const overlayTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: heroRef.current,
+          start: '55% top',
+          end: '70% top',
+          scrub: true,
+        },
+      })
+
+      overlayTl
+        .from('.overlay-bracket', { opacity: 0, scale: 0.5, stagger: 0.05, duration: 0.3 })
+        .from('.overlay-label', { opacity: 0, y: -15, duration: 0.3 }, '<0.1')
+        .from('.overlay-headline', { opacity: 0, y: 30, duration: 0.4 }, '<0.1')
+        .from('.overlay-divider', { scaleX: 0, duration: 0.3 }, '<0.15')
+        .from('.overlay-stats', { opacity: 0, y: 20, duration: 0.3 }, '<0.1')
+        .from('.overlay-ring', { opacity: 0, scale: 0.5, duration: 0.3 }, '<')
+
     }, heroRef)
 
     return () => ctx.revert()
   }, [])
 
-  // --- VIDEO AUTOPLAY (desktop only) ---
+  // --- VIDEO AUTOPLAY ---
   useEffect(() => {
-    if (isMobile) return
     const video = videoRef.current
     if (!video) return
 
@@ -437,20 +454,18 @@ export default function HeroCinematic() {
       {/* --- RIGHT SIDE --- */}
       <div className="hero-image-mask relative flex-1 overflow-hidden" style={{ minHeight: '50vh' }}>
         <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center', willChange: 'transform' }}>
-          {/* Video layer — desktop only to save mobile memory */}
-          {!isMobile && (
-            <video
-              ref={videoRef}
-              className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
-              muted
-              loop
-              playsInline
-              preload="auto"
-              onLoadedData={() => setVideoLoaded(true)}
-            >
-              <source src="/videos/hero.mp4" type="video/mp4" />
-            </video>
-          )}
+          {/* Video layer — mobile gets compressed version */}
+          <video
+            ref={videoRef}
+            className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+            muted
+            loop
+            playsInline
+            preload="auto"
+            onLoadedData={() => setVideoLoaded(true)}
+          >
+            <source src={isMobile ? '/videos/hero-mobile.mp4' : '/videos/hero.mp4'} type="video/mp4" />
+          </video>
 
           {/* Fallback image */}
           <div className="absolute inset-0">
@@ -484,66 +499,178 @@ export default function HeroCinematic() {
             B
           </span>
         </div>
+      </div>
 
-        {/* Scroll overlay text */}
-        <div className="hero-scroll-overlay absolute inset-0 z-30 flex items-center justify-center pointer-events-none" style={{ opacity: 0 }}>
-          {/* Dark vignette for readability */}
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 100%)' }} />
-          <div className="relative z-10 text-center">
-            <p className="font-body text-[13px] uppercase tracking-[0.5em] text-white/70">
-              Transforming Surrey homes
-            </p>
-            <p className="mt-4 font-display font-light text-white leading-tight" style={{ fontSize: 'clamp(40px, 6vw, 80px)' }}>
-              Since 2015
-            </p>
-            <div className="mx-auto mt-6 h-[1px] w-16 bg-brushly-gold/60" />
+      {/* Scroll overlay — cinematic editorial reveal (covers full viewport) */}
+      <div className="hero-scroll-overlay absolute inset-0 z-40 flex items-center justify-center pointer-events-none" style={{ opacity: 0 }}>
+        {/* Dark vignette layers */}
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)' }} />
+
+        {/* Large background monogram */}
+        <span
+          className="absolute font-display font-light leading-none select-none"
+          style={{
+            fontSize: 'clamp(200px, 35vw, 500px)',
+            color: 'transparent',
+            WebkitTextStroke: '1px rgba(200,169,110,0.04)',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          B
+        </span>
+
+        {/* Corner brackets */}
+        {[
+          { pos: 'top-6 left-6 md:top-10 md:left-10', rotate: 0 },
+          { pos: 'top-6 right-6 md:top-10 md:right-10', rotate: 90 },
+          { pos: 'bottom-6 right-6 md:bottom-10 md:right-10', rotate: 180 },
+          { pos: 'bottom-6 left-6 md:bottom-10 md:left-10', rotate: 270 },
+        ].map((corner, ci) => (
+          <div key={ci} className={`overlay-bracket absolute ${corner.pos} z-20`}
+            style={{ transform: `rotate(${corner.rotate}deg)` }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M0 16V0H16" stroke="rgba(200,169,110,0.25)" strokeWidth="0.75" />
+            </svg>
           </div>
+        ))}
+
+        {/* Main content */}
+        <div className="relative z-10 flex flex-col items-center px-6">
+          {/* Top label */}
+          <div className="overlay-label flex items-center gap-4">
+            <div className="h-px w-8 bg-brushly-gold/40" />
+            <span className="font-body text-[10px] uppercase tracking-[0.4em] text-white/50">
+              Est. 2015
+            </span>
+            <div className="h-px w-8 bg-brushly-gold/40" />
+          </div>
+
+          {/* Headline */}
+          <h2
+            className="overlay-headline mt-5 font-display font-light text-white text-center leading-[0.95]"
+            style={{ fontSize: 'clamp(36px, 7vw, 90px)' }}
+          >
+            Transforming
+            <br />
+            <span className="italic" style={{ color: '#C8A96E' }}>Surrey</span> Homes
+          </h2>
+
+          {/* Gold divider */}
+          <div className="overlay-divider mx-auto mt-6 h-px w-20 origin-center" style={{ backgroundColor: 'rgba(200,169,110,0.5)' }} />
+
+          {/* Stats row */}
+          <div className="overlay-stats mt-8 flex items-center gap-6 md:gap-10">
+            {[
+              { number: '500+', label: 'Projects' },
+              { number: '10+', label: 'Years' },
+              { number: '100%', label: 'Satisfaction' },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <span className="block font-display text-[28px] md:text-[36px] font-light text-brushly-gold leading-none">
+                  {stat.number}
+                </span>
+                <span className="mt-1.5 block font-body text-[9px] uppercase tracking-[0.25em] text-white/40">
+                  {stat.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Rotating ring ornament */}
+        <div className="absolute bottom-8 right-8 md:bottom-12 md:right-12 z-20">
+          <svg className="overlay-ring" width="60" height="60" viewBox="0 0 60 60" style={{ animation: 'overlayRingSpin 30s linear infinite' }}>
+            <circle cx="30" cy="30" r="28" fill="none" stroke="rgba(200,169,110,0.1)" strokeWidth="0.5" strokeDasharray="6 8" />
+            <circle cx="30" cy="30" r="20" fill="none" stroke="rgba(200,169,110,0.06)" strokeWidth="0.5" strokeDasharray="3 6" />
+          </svg>
         </div>
       </div>
 
-      {/* --- MOBILE SCROLL INDICATOR (CSS-only, no GSAP dependency) --- */}
+      {/* --- MOBILE SCROLL INDICATOR (modern mouse wheel style) --- */}
       <div
-        className="hero-mobile-scroll-hint absolute bottom-8 left-1/2 z-40 -translate-x-1/2 flex flex-col items-center gap-2 md:hidden"
+        className="hero-mobile-scroll-hint absolute bottom-10 left-1/2 z-50 -translate-x-1/2 flex flex-col items-center gap-4 md:hidden"
         style={{
-          animation: 'fadeInUp 0.6s ease-out 1.5s both',
+          animation: 'scrollHintFadeIn 0.8s ease-out 1.8s both',
         }}
       >
-        <span className="font-body text-[10px] uppercase tracking-[0.25em] text-white/70">
-          Scroll to explore
-        </span>
-        <svg
-          width="16"
-          height="24"
-          viewBox="0 0 16 24"
-          fill="none"
-          style={{ animation: 'gentleBounce 2s ease-in-out infinite' }}
+        {/* Mouse wheel icon */}
+        <div
+          className="relative flex items-start justify-center"
+          style={{
+            width: '24px',
+            height: '38px',
+            borderRadius: '12px',
+            border: '1.5px solid rgba(200,169,110,0.4)',
+          }}
         >
-          <path
-            d="M8 4L8 18M8 18L14 12M8 18L2 12"
-            stroke="rgba(200,169,110,0.8)"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          {/* Animated scroll dot */}
+          <div
+            style={{
+              width: '3px',
+              height: '8px',
+              borderRadius: '1.5px',
+              backgroundColor: 'rgba(200,169,110,0.8)',
+              marginTop: '8px',
+              animation: 'scrollDot 2s cubic-bezier(0.65, 0, 0.35, 1) infinite',
+            }}
           />
-        </svg>
+        </div>
+
+        {/* Subtle trailing line */}
+        <div
+          style={{
+            width: '1px',
+            height: '24px',
+            background: 'linear-gradient(to bottom, rgba(200,169,110,0.3), transparent)',
+            animation: 'lineGrow 2s ease-in-out infinite',
+          }}
+        />
       </div>
 
-      {/* CSS keyframes for mobile scroll hint */}
+      {/* CSS keyframes */}
       <style jsx>{`
-        @keyframes fadeInUp {
+        @keyframes scrollHintFadeIn {
           from {
             opacity: 0;
-            transform: translateX(-50%) translateY(10px);
+            transform: translateX(-50%) translateY(12px);
           }
           to {
             opacity: 1;
             transform: translateX(-50%) translateY(0);
           }
         }
-        @keyframes gentleBounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(6px); }
+        @keyframes scrollDot {
+          0% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+          50% {
+            opacity: 0.3;
+            transform: translateY(12px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes lineGrow {
+          0%, 100% {
+            opacity: 0.4;
+            transform: scaleY(0.6);
+            transform-origin: top;
+          }
+          50% {
+            opacity: 1;
+            transform: scaleY(1);
+            transform-origin: top;
+          }
+        }
+        @keyframes overlayRingSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
       `}</style>
       </div>
