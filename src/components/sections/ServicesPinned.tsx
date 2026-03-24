@@ -256,7 +256,7 @@ export default function ServicesPinned() {
 
   // Desktop layout
   return (
-    <section ref={sectionRef} className="relative" style={{ height: '400vh' }}>
+    <section ref={sectionRef} className="relative" style={{ height: '280vh' }}>
       <div ref={pinnedRef} className="relative h-screen w-full overflow-hidden">
         {/* Background color transition */}
         <div
