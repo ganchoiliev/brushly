@@ -400,6 +400,8 @@ export default function ServicesPinned() {
                   className="object-cover"
                   sizes="100vw"
                   priority={i === 0}
+                  placeholder="blur"
+                  blurDataURL={blurDataURL}
                 />
                 {/* Dark gradient overlay for number readability */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -721,6 +723,8 @@ export default function ServicesPinned() {
                       }}
                       sizes="50vw"
                       priority={i === 0}
+                      placeholder="blur"
+                      blurDataURL={blurDataURL}
                     />
                   </div>
                 ))}

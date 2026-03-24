@@ -374,6 +374,8 @@ export default function ProcessTimeline() {
                         className="object-cover"
                         sizes="50vw"
                         priority={i === 0}
+                        placeholder="blur"
+                        blurDataURL={blurDataURL}
                       />
                     </div>
                     {/* Gradient overlay */}

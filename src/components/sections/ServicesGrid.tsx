@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
+import { blurDataURL } from '@/lib/shimmer'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
@@ -172,6 +173,8 @@ export default function ServicesGrid() {
                   fill
                   className="object-cover"
                   sizes="300px"
+                  placeholder="blur"
+                  blurDataURL={blurDataURL}
                 />
               </div>
             ))}
