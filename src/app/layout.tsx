@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import CustomCursor from '@/components/animations/CustomCursor'
 import GrainOverlay from '@/components/animations/GrainOverlay'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -53,6 +54,7 @@ export default function RootLayout({
         </SmoothScroll>
         <CustomCursor />
         <GrainOverlay />
+        <Analytics />
       </body>
     </html>
   )
