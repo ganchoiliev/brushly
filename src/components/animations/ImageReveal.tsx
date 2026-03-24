@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import useReducedMotion from '@/hooks/useReducedMotion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -29,8 +30,11 @@ export default function ImageReveal({
   className = '',
 }: ImageRevealProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
+
     const clip = clipPaths[direction]
     const ctx = gsap.context(() => {
       gsap.fromTo(
@@ -64,10 +68,14 @@ export default function ImageReveal({
     }, ref)
 
     return () => ctx.revert()
-  }, [direction, delay, duration])
+  }, [direction, delay, duration, reduced])
 
   return (
-    <div ref={ref} className={`overflow-hidden ${className}`} style={{ clipPath: clipPaths[direction].from }}>
+    <div
+      ref={ref}
+      className={`overflow-hidden ${className}`}
+      style={reduced ? undefined : { clipPath: clipPaths[direction].from }}
+    >
       {children}
     </div>
   )

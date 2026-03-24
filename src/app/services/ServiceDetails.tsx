@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
@@ -70,8 +71,10 @@ const services = [
 
 export default function ServiceDetails() {
   const sectionRef = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.utils.toArray<HTMLElement>('.service-detail').forEach((el) => {
         gsap.from(el, {
@@ -88,7 +91,7 @@ export default function ServiceDetails() {
       })
     }, sectionRef)
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   return (
     <section ref={sectionRef} className="bg-brushly-cream py-28 md:py-40">

@@ -1,14 +1,17 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
 
 export default function ContactHero() {
   const ref = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.from('.contact-hero-content > *', {
         y: 40,
@@ -20,7 +23,7 @@ export default function ContactHero() {
       })
     }, ref)
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   return (
     <section ref={ref} className="bg-brushly-black pb-20 pt-40">

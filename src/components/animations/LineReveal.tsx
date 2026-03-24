@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import useReducedMotion from '@/hooks/useReducedMotion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -20,6 +21,7 @@ export default function LineReveal({
   duration = 1.2,
 }: LineRevealProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   const transformOrigin =
     direction === 'left' ? 'left center' :
@@ -27,6 +29,8 @@ export default function LineReveal({
     'center center'
 
   useEffect(() => {
+    if (reduced) return
+
     const ctx = gsap.context(() => {
       gsap.fromTo(
         ref.current!,
@@ -46,7 +50,7 @@ export default function LineReveal({
     }, ref)
 
     return () => ctx.revert()
-  }, [delay, duration])
+  }, [delay, duration, reduced])
 
   return (
     <div

@@ -3,6 +3,7 @@
 import { useRef, useEffect, useMemo, createElement, CSSProperties } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import useReducedMotion from '@/hooks/useReducedMotion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -24,10 +25,13 @@ export default function TextReveal({
   style,
 }: TextRevealProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   const words = useMemo(() => children.split(' '), [children])
 
   useEffect(() => {
+    if (reduced) return
+
     const ctx = gsap.context(() => {
       gsap.from('.word-inner', {
         yPercent: 110,
@@ -44,7 +48,7 @@ export default function TextReveal({
     }, containerRef)
 
     return () => ctx.revert()
-  }, [duration, staggerDelay])
+  }, [duration, staggerDelay, reduced])
 
   const content = words.map((word, i) => (
     <span

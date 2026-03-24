@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
@@ -33,8 +34,10 @@ const values = [
 
 export default function ValuesSection() {
   const ref = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.from('.value-card', {
         y: 50,
@@ -50,7 +53,7 @@ export default function ValuesSection() {
       })
     }, ref)
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   return (
     <section ref={ref} className="bg-brushly-black py-28 md:py-40">

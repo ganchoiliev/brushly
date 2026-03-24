@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import { motion, AnimatePresence } from 'framer-motion'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
@@ -36,6 +37,7 @@ const slideVariants = {
 export default function Testimonials() {
   const [current, setCurrent] = useState(0)
   const [direction, setDirection] = useState(1)
+  const reduced = useReducedMotion()
 
   const next = () => {
     setDirection(1)
@@ -106,7 +108,7 @@ export default function Testimonials() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: reduced ? 0 : 0.5, ease: [0.22, 1, 0.36, 1] }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.15}

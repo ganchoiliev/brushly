@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import useReducedMotion from '@/hooks/useReducedMotion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -20,8 +21,11 @@ export default function SlideReveal({
   className = '',
 }: SlideRevealProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
+
     const x = from === 'left' ? -80 : 80
     const ctx = gsap.context(() => {
       gsap.from(ref.current, {
@@ -39,7 +43,7 @@ export default function SlideReveal({
     }, ref)
 
     return () => ctx.revert()
-  }, [from, delay])
+  }, [from, delay, reduced])
 
   return (
     <div ref={ref} className={className}>

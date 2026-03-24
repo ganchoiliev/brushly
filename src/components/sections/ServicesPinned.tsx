@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState, useCallback } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -74,6 +75,7 @@ export default function ServicesPinned() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [hoveredItem, setHoveredItem] = useState<number | null>(null)
   const [imageFocus, setImageFocus] = useState({ x: 50, y: 50 })
+  const reduced = useReducedMotion()
 
   // Detect mobile
   useEffect(() => {
@@ -99,8 +101,9 @@ export default function ServicesPinned() {
   }, [handleMouseMove, isMobile])
 
   // Apply mouse parallax to active image
+  // Skip when reduced motion preferred
   useEffect(() => {
-    if (isMobile || !imageContainerRef.current) return
+    if (isMobile || !imageContainerRef.current || reduced) return
     const offsetX = hoveredItem !== null ? (imageFocus.x - 50) * 0.3 : mousePos.x * -20
     const offsetY = hoveredItem !== null ? (imageFocus.y - 50) * 0.3 : mousePos.y * -15
 
@@ -112,7 +115,7 @@ export default function ServicesPinned() {
     })
   }, [mousePos, hoveredItem, imageFocus, isMobile])
 
-  // Number counter animation
+  // Number counter animation (skip animation for reduced motion)
   useEffect(() => {
     if (!numberRef.current) return
     const el = numberRef.current

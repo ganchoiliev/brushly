@@ -3,6 +3,7 @@
 import { useRef, useEffect } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import useReducedMotion from '@/hooks/useReducedMotion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -22,8 +23,11 @@ export default function ScrollReveal({
   duration = 1.2,
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
+
     const ctx = gsap.context(() => {
       gsap.from(ref.current!, {
         y,
@@ -40,7 +44,7 @@ export default function ScrollReveal({
     }, ref)
 
     return () => ctx.revert()
-  }, [delay, y, duration])
+  }, [delay, y, duration, reduced])
 
   return (
     <div ref={ref} className={className}>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
@@ -73,6 +74,7 @@ const projects = [
 
 export default function GalleryGrid() {
   const sectionRef = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
   const [activeFilter, setActiveFilter] = useState('All')
 
   const filtered =
@@ -81,6 +83,7 @@ export default function GalleryGrid() {
       : projects.filter((p) => p.category === activeFilter)
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.from('.gallery-item', {
         y: 50,

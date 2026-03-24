@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
@@ -18,9 +19,11 @@ const serviceOptions = [
 
 export default function ContactForm() {
   const sectionRef = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
   const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.from('.contact-form-area > *', {
         y: 40,
@@ -36,7 +39,7 @@ export default function ContactForm() {
       })
     }, sectionRef)
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

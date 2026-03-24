@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState, useCallback } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -49,9 +50,10 @@ const services = [
 
 function ScrollRevealBadge({ children, className }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
-    if (!ref.current) return
+    if (!ref.current || reduced) return
     const ctx = gsap.context(() => {
       gsap.from(ref.current, {
         y: 20,

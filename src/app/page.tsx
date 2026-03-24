@@ -6,6 +6,7 @@ import ShowcaseGrid from '@/components/sections/ShowcaseGrid'
 import BrandMarquee from '@/components/sections/BrandMarquee'
 import Testimonials from '@/components/sections/Testimonials'
 import CTASection from '@/components/sections/CTASection'
+import ParallaxBreak from '@/components/sections/ParallaxBreak'
 
 export default function HomePage() {
   return (
@@ -15,6 +16,7 @@ export default function HomePage() {
       <StatsCounter />
       <ProcessTimeline />
       <ShowcaseGrid />
+      <ParallaxBreak />
       <BrandMarquee />
       <Testimonials />
       <CTASection />

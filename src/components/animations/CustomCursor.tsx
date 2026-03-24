@@ -23,8 +23,14 @@ export default function CustomCursor() {
   useEffect(() => {
     if (!isPointerFine || !cursorRef.current) return
 
-    const xTo = gsap.quickTo(cursorRef.current, 'x', { duration: 0.5, ease: 'power3.out' })
-    const yTo = gsap.quickTo(cursorRef.current, 'y', { duration: 0.5, ease: 'power3.out' })
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    const xTo = prefersReduced
+      ? (v: number) => { if (cursorRef.current) cursorRef.current.style.left = `${v}px` }
+      : gsap.quickTo(cursorRef.current, 'x', { duration: 0.5, ease: 'power3.out' })
+    const yTo = prefersReduced
+      ? (v: number) => { if (cursorRef.current) cursorRef.current.style.top = `${v}px` }
+      : gsap.quickTo(cursorRef.current, 'y', { duration: 0.5, ease: 'power3.out' })
 
     const onMouseMove = (e: MouseEvent) => {
       if (!visible) setVisible(true)
@@ -62,6 +68,8 @@ export default function CustomCursor() {
   useEffect(() => {
     if (!cursorRef.current || !textRef.current) return
 
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
     const sizes: Record<CursorVariant, number> = {
       default: 12,
       view: 48,
@@ -69,6 +77,13 @@ export default function CustomCursor() {
     }
 
     const size = sizes[variant]
+
+    if (prefersReduced) {
+      cursorRef.current.style.width = `${size}px`
+      cursorRef.current.style.height = `${size}px`
+      textRef.current.style.opacity = variant === 'view' ? '1' : '0'
+      return
+    }
 
     gsap.to(cursorRef.current, {
       width: size,

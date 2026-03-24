@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
@@ -37,8 +38,10 @@ const steps = [
 
 export default function ProcessSection() {
   const sectionRef = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.from('.process-step', {
         y: 50,
@@ -54,7 +57,7 @@ export default function ProcessSection() {
       })
     }, sectionRef)
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   return (
     <section ref={sectionRef} className="bg-brushly-black py-28 md:py-40">

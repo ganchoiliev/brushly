@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
@@ -11,8 +12,10 @@ gsap.registerPlugin(ScrollTrigger)
 
 export default function StorySection() {
   const ref = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.from('.story-content > *', {
         y: 40,
@@ -28,7 +31,7 @@ export default function StorySection() {
       })
     }, ref)
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   return (
     <section ref={ref} className="bg-brushly-cream py-28 md:py-40">

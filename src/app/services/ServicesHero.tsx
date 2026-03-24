@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import gsap from 'gsap'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
@@ -8,8 +9,10 @@ import PaintTexture from '@/components/ui/PaintTexture'
 
 export default function ServicesHero() {
   const ref = useRef<HTMLElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       gsap.from('.services-hero-content > *', {
         y: 40,
@@ -21,7 +24,7 @@ export default function ServicesHero() {
       })
     }, ref)
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   return (
     <section

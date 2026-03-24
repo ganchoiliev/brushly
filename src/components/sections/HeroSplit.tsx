@@ -1,14 +1,17 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
 import gsap from 'gsap'
 import MagneticButton from '@/components/animations/MagneticButton'
 
 export default function HeroSplit() {
   const heroRef = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' }, delay: 0.5 })
 
@@ -40,7 +43,7 @@ export default function HeroSplit() {
     }, heroRef)
 
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   return (
     <section ref={heroRef} className="relative flex min-h-screen flex-col md:flex-row">

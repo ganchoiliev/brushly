@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import gsap from 'gsap'
@@ -19,6 +20,7 @@ export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
   const lenis = useLenis()
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     if (!lenis) {
@@ -41,30 +43,32 @@ export default function Header() {
     setMobileOpen(false)
   }, [pathname])
 
-  // Animate mobile menu
+  // Animate mobile menu (respect reduced motion)
   useEffect(() => {
     if (mobileOpen) {
       gsap.to('.mobile-nav', {
         clipPath: 'inset(0 0 0 0)',
-        duration: 0.6,
+        duration: reduced ? 0 : 0.6,
         ease: 'power3.inOut',
       })
-      gsap.from('.mobile-nav-link', {
-        y: 40,
-        opacity: 0,
-        stagger: 0.08,
-        duration: 0.5,
-        delay: 0.2,
-        ease: 'power3.out',
-      })
+      if (!reduced) {
+        gsap.from('.mobile-nav-link', {
+          y: 40,
+          opacity: 0,
+          stagger: 0.08,
+          duration: 0.5,
+          delay: 0.2,
+          ease: 'power3.out',
+        })
+      }
     } else {
       gsap.to('.mobile-nav', {
         clipPath: 'inset(0 0 100% 0)',
-        duration: 0.4,
+        duration: reduced ? 0 : 0.4,
         ease: 'power3.inOut',
       })
     }
-  }, [mobileOpen])
+  }, [mobileOpen, reduced])
 
   return (
     <header

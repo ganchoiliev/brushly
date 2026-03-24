@@ -99,6 +99,11 @@ html.lenis body {
   }
 }
 
+@keyframes wipe-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(-100%); }
+}
+
 @keyframes marquee {
   0% {
     transform: translateX(0);

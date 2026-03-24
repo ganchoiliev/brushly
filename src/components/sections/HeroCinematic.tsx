@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -98,6 +99,7 @@ export default function HeroCinematic() {
   const brushVideoRef = useRef<HTMLVideoElement>(null)
   const [activePalette, setActivePalette] = useState(0)
   const [videoLoaded, setVideoLoaded] = useState(false)
+  const reduced = useReducedMotion()
   const [isMobile, setIsMobile] = useState(true)
 
   const p = PALETTES[activePalette]
@@ -112,6 +114,7 @@ export default function HeroCinematic() {
 
   // --- ENTRANCE ANIMATION ---
   useEffect(() => {
+    if (reduced) return
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' }, delay: 0.3 })
 
@@ -303,7 +306,7 @@ export default function HeroCinematic() {
     }, heroRef)
 
     return () => ctx.revert()
-  }, [])
+  }, [reduced])
 
   // --- VIDEO AUTOPLAY ---
   useEffect(() => {
@@ -765,6 +768,11 @@ export default function HeroCinematic() {
         @keyframes overlayRingSpin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-mobile-scroll-hint * {
+            animation: none !important;
+          }
         }
       `}</style>
       </div>

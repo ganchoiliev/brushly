@@ -23,7 +23,10 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     const isTouch = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
     isTouchRef.current = isTouch
 
-    if (isTouch) {
+    // Skip Lenis when user prefers reduced motion
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    if (isTouch || prefersReduced) {
       // Still refresh ScrollTrigger for GSAP animations to work
       setTimeout(() => ScrollTrigger.refresh(), 200)
       return
@@ -89,6 +92,7 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
   // Subtle parallax on elements with data-speed attribute
   useEffect(() => {
     if (isTouchRef.current) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     const timeout = setTimeout(() => {
       const elements = gsap.utils.toArray('[data-speed]') as HTMLElement[]

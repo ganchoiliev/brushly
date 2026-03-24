@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useEffect, useState } from 'react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -48,6 +49,7 @@ export default function ProcessTimeline() {
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
   const [isMobile, setIsMobile] = useState(true)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)

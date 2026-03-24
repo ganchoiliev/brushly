@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react'
 import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import useReducedMotion from '@/hooks/useReducedMotion'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -24,8 +25,11 @@ export default function ParallaxImage({
 }: ParallaxImageProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   useEffect(() => {
+    if (reduced) return
+
     const ctx = gsap.context(() => {
       gsap.fromTo(
         innerRef.current!,
@@ -44,11 +48,11 @@ export default function ParallaxImage({
     }, containerRef)
 
     return () => ctx.revert()
-  }, [speed])
+  }, [speed, reduced])
 
   return (
     <div ref={containerRef} className={`overflow-hidden relative ${className || ''}`}>
-      <div ref={innerRef} className="relative w-full h-full" style={{ scale: '1.2' }}>
+      <div ref={innerRef} className="relative w-full h-full" style={{ scale: reduced ? '1' : '1.2' }}>
         <Image
           src={src}
           alt={alt}
