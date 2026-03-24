@@ -456,6 +456,7 @@ export default function HeroCinematic() {
         <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center', willChange: 'transform' }}>
           {/* Video layer — mobile gets compressed version */}
           <video
+            key={isMobile ? 'mobile' : 'desktop'}
             ref={videoRef}
             className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
             muted
