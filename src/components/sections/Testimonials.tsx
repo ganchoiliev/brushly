@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
@@ -27,17 +27,31 @@ const testimonials = [
   },
 ]
 
+const slideVariants = {
+  enter: (dir: number) => ({ opacity: 0, x: dir * 80 }),
+  center: { opacity: 1, x: 0 },
+  exit: (dir: number) => ({ opacity: 0, x: dir * -80 }),
+}
+
 export default function Testimonials() {
   const [current, setCurrent] = useState(0)
+  const [direction, setDirection] = useState(1)
 
-  const next = useCallback(() => {
+  const next = () => {
+    setDirection(1)
     setCurrent((prev) => (prev + 1) % testimonials.length)
-  }, [])
+  }
 
-  useEffect(() => {
-    const interval = setInterval(next, 5000)
-    return () => clearInterval(interval)
-  }, [next])
+  const prev = () => {
+    setDirection(-1)
+    setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length)
+  }
+
+  const goTo = (index: number) => {
+    if (index === current) return
+    setDirection(index > current ? 1 : -1)
+    setCurrent(index)
+  }
 
   return (
     <section className="relative py-28 md:py-40 overflow-hidden">
@@ -62,13 +76,51 @@ export default function Testimonials() {
           </span>
 
           <div className="relative mt-4 min-h-[200px] md:min-h-[280px]">
-            <AnimatePresence mode="wait">
+            {/* Navigation arrows — desktop only */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-10 hidden items-center justify-between md:flex">
+              <button
+                onClick={prev}
+                className="pointer-events-auto -ml-16 flex h-10 w-10 items-center justify-center rounded-full border border-brushly-gold/20 text-brushly-gold transition-colors hover:border-brushly-gold/60 hover:bg-brushly-gold/10"
+                aria-label="Previous testimonial"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+              <button
+                onClick={next}
+                className="pointer-events-auto -mr-16 flex h-10 w-10 items-center justify-center rounded-full border border-brushly-gold/20 text-brushly-gold transition-colors hover:border-brushly-gold/60 hover:bg-brushly-gold/10"
+                aria-label="Next testimonial"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 12L10 8L6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={current}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.15}
+                onDragEnd={(_e, info) => {
+                  const swipeThreshold = 50
+                  const velocityThreshold = 300
+                  if (info.offset.x < -swipeThreshold || info.velocity.x < -velocityThreshold) {
+                    next()
+                  } else if (info.offset.x > swipeThreshold || info.velocity.x > velocityThreshold) {
+                    prev()
+                  }
+                }}
+                data-cursor="drag"
+                aria-live="polite"
               >
                 <blockquote
                   className="font-display font-light italic leading-relaxed text-brushly-cream"
@@ -93,7 +145,7 @@ export default function Testimonials() {
             {testimonials.map((_, i) => (
               <button
                 key={i}
-                onClick={() => setCurrent(i)}
+                onClick={() => goTo(i)}
                 className="flex h-11 w-11 items-center justify-center"
                 aria-label={`Go to testimonial ${i + 1}`}
               >

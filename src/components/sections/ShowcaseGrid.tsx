@@ -148,7 +148,7 @@ export default function ShowcaseGrid() {
                 </div>
 
                 {/* Hover gradient overlay */}
-                <div className="absolute inset-0 z-10 bg-gradient-to-t from-brushly-black/80 via-brushly-black/30 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                <div className="absolute inset-0 z-10 bg-gradient-to-t from-brushly-black/80 via-brushly-black/30 to-transparent opacity-100 transition-opacity duration-500 md:opacity-0 md:group-hover:opacity-100" />
 
                 {/* Corner brackets — appear on hover */}
                 {cornerBrackets.map((corner, ci) => (
@@ -164,7 +164,7 @@ export default function ShowcaseGrid() {
                 ))}
 
                 {/* Text overlay — slides up on hover */}
-                <div className="absolute bottom-0 left-0 right-0 z-20 translate-y-4 p-6 opacity-0 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0 group-hover:opacity-100 md:p-8">
+                <div className="absolute bottom-0 left-0 right-0 z-20 translate-y-0 opacity-100 p-6 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:p-8">
                   <span className="text-[11px] font-body uppercase tracking-[0.2em] text-brushly-gold">
                     {project.category}
                   </span>
