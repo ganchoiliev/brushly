@@ -459,11 +459,13 @@ export default function HeroCinematic() {
             key={isMobile ? 'mobile' : 'desktop'}
             ref={videoRef}
             className={`absolute inset-0 z-10 h-full w-full object-cover transition-opacity duration-1000 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+            autoPlay
             muted
             loop
             playsInline
-            preload="auto"
+            preload={isMobile ? "metadata" : "auto"}
             onLoadedData={() => setVideoLoaded(true)}
+            onPlaying={() => setVideoLoaded(true)}
           >
             <source src={isMobile ? '/videos/hero-mobile.mp4' : '/videos/hero.mp4'} type="video/mp4" />
           </video>
