@@ -192,27 +192,48 @@ export default function HeroCinematic() {
         },
       })
 
-      gsap.to('.hero-left-panel', {
-        width: 0,
-        opacity: 0,
-        ease: 'power1.inOut',
-        scrollTrigger: {
-          trigger: heroRef.current,
-          start: '15% top',
-          end: '55% top',
-          scrub: true,
-        },
+      // --- RESPONSIVE SCROLL ANIMATIONS ---
+      const mm = gsap.matchMedia()
+
+      mm.add("(min-width: 768px)", () => {
+        // Desktop: left panel shrinks, image expands
+        gsap.to('.hero-left-panel', {
+          width: 0,
+          opacity: 0,
+          ease: 'power1.inOut',
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: '15% top',
+            end: '55% top',
+            scrub: true,
+          },
+        })
+
+        gsap.to('.hero-image-mask', {
+          width: '100%',
+          ease: 'power1.inOut',
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: '15% top',
+            end: '55% top',
+            scrub: true,
+          },
+        })
       })
 
-      gsap.to('.hero-image-mask', {
-        width: '100%',
-        ease: 'power1.inOut',
-        scrollTrigger: {
-          trigger: heroRef.current,
-          start: '15% top',
-          end: '55% top',
-          scrub: true,
-        },
+      mm.add("(max-width: 767px)", () => {
+        // Mobile: left panel fades out + slides up to reveal full-viewport video
+        gsap.to('.hero-left-panel', {
+          opacity: 0,
+          y: -60,
+          ease: 'power1.inOut',
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: '10% top',
+            end: '40% top',
+            scrub: true,
+          },
+        })
       })
 
       gsap.to('.hero-image-inner', {
@@ -289,7 +310,7 @@ export default function HeroCinematic() {
       <div className="sticky top-0 flex h-screen flex-col overflow-hidden md:flex-row" style={{ height: '100dvh' }}>
       {/* --- LEFT SIDE --- */}
       <div
-        className="hero-left-panel relative z-20 flex w-full flex-col justify-between px-6 pt-20 pb-6 md:w-1/2 md:px-10 lg:px-14"
+        className={`hero-left-panel relative z-20 flex w-full flex-col justify-between px-6 pt-20 pb-6 md:w-1/2 md:px-10 lg:px-14 ${isMobile ? 'flex-1' : ''}`}
         style={{ backgroundColor: '#1A1A1A', flexShrink: 0 }}
       >
         {/* Background wipe reveal */}
@@ -451,8 +472,8 @@ export default function HeroCinematic() {
         </div>
       </div>
 
-      {/* --- RIGHT SIDE --- */}
-      <div className="hero-image-mask relative flex-1 overflow-hidden" style={{ minHeight: '50vh' }}>
+      {/* --- RIGHT SIDE / FULL-VIEWPORT VIDEO (mobile: absolute bg, desktop: flex child) --- */}
+      <div className={`hero-image-mask overflow-hidden ${isMobile ? 'absolute inset-0 z-[5]' : 'relative flex-1'}`} style={isMobile ? undefined : { minHeight: '50vh' }}>
         <div className="hero-image-inner absolute inset-0" style={{ transformOrigin: 'center center', willChange: 'transform' }}>
           {/* Video layer — mobile gets compressed version */}
           <video
@@ -506,8 +527,8 @@ export default function HeroCinematic() {
 
       {/* Scroll overlay — cinematic editorial reveal (covers full viewport) */}
       <div className="hero-scroll-overlay absolute inset-0 z-40 flex items-center justify-center pointer-events-none" style={{ opacity: 0 }}>
-        {/* Dark vignette layers */}
-        <div className="absolute inset-0 bg-black/60" />
+        {/* Dark vignette layers — lighter on mobile so video shows through */}
+        <div className={`absolute inset-0 ${isMobile ? 'bg-black/40' : 'bg-black/60'}`} />
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)' }} />
 
         {/* Large background monogram */}
@@ -594,7 +615,7 @@ export default function HeroCinematic() {
 
       {/* --- MOBILE SCROLL INDICATOR (modern mouse wheel style) --- */}
       <div
-        className="hero-mobile-scroll-hint absolute bottom-10 left-1/2 z-50 -translate-x-1/2 flex flex-col items-center gap-4 md:hidden"
+        className="hero-mobile-scroll-hint absolute bottom-1 left-1/2 z-50 -translate-x-1/2 flex flex-col items-center gap-4 md:hidden"
         style={{
           animation: 'scrollHintFadeIn 0.8s ease-out 1.8s both',
         }}
