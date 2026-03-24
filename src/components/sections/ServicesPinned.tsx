@@ -370,38 +370,103 @@ export default function ServicesPinned() {
   // Mobile layout
   if (isMobile) {
     return (
-      <section className="bg-brushly-black">
-        {services.map((service, i) => (
-          <div key={service.id} className="relative min-h-screen px-6 py-20">
-            <div className="relative z-10">
-              <span className="font-display text-[80px] font-light leading-none text-brushly-gold/15">
-                0{i + 1}
-              </span>
-              <h2 className="mt-[-20px] font-display text-4xl font-light text-brushly-cream whitespace-pre-line">
-                {service.title}
-              </h2>
-              <p className="mt-6 max-w-sm font-body text-[15px] leading-relaxed text-brushly-cream/50">
-                {service.description}
-              </p>
-              <div className="mt-8 flex flex-col gap-3">
-                {service.items.map((item) => (
-                  <span key={item.label} className="font-body text-[13px] text-brushly-cream/40">
-                    {item.label}
+      <section>
+        {/* Section header */}
+        <div className="bg-brushly-cream px-6 pt-20 pb-4">
+          <div className="mb-4 h-px w-12 bg-brushly-gold/30" />
+          <span className="font-body text-[11px] uppercase tracking-[0.3em] text-brushly-black/30">
+            What We Do
+          </span>
+          <h2 className="mt-3 font-display text-4xl font-light text-brushly-black">
+            Our Services
+          </h2>
+        </div>
+
+        {services.map((service, i) => {
+          const isLight = i % 2 === 0
+          const bg = isLight ? 'bg-brushly-cream' : 'bg-brushly-black'
+          const titleColor = isLight ? 'text-brushly-black' : 'text-brushly-cream'
+          const descColor = isLight ? 'text-brushly-black/50' : 'text-brushly-cream/50'
+          const itemColor = isLight ? 'text-brushly-black/55' : 'text-brushly-cream/60'
+          const borderStyle = isLight ? 'border-brushly-black/8' : 'border-brushly-cream/8'
+          const arrowStroke = isLight ? 'rgba(26,26,26,0.25)' : 'rgba(200,169,110,0.4)'
+          const numberStroke = isLight ? '1px rgba(200,169,110,0.3)' : '1px rgba(200,169,110,0.4)'
+
+          return (
+            <div key={service.id} className={`relative ${bg} px-6 py-12`}>
+              {/* Image first — acts as visual anchor */}
+              <div className="relative aspect-[3/2] overflow-hidden">
+                <Image
+                  src={service.image}
+                  alt={service.title.replace('\n', ' ')}
+                  fill
+                  className="object-cover"
+                  sizes="100vw"
+                  priority={i === 0}
+                />
+                {/* Dark gradient overlay for number readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                {/* Number + title overlay on image */}
+                <div className="absolute bottom-4 left-5 right-5">
+                  <span
+                    className="font-display text-[56px] font-light leading-none"
+                    style={{ WebkitTextStroke: numberStroke, color: 'transparent' }}
+                  >
+                    0{i + 1}
                   </span>
-                ))}
+                  <h3 className="mt-[-8px] font-display text-2xl font-light text-brushly-cream whitespace-pre-line">
+                    {service.title.replace('\n', ' ')}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Content below image */}
+              <div className="mt-5">
+                <p className={`font-body text-[14px] leading-relaxed ${descColor}`}>
+                  {service.description}
+                </p>
+
+                {/* Service items as clickable links */}
+                <div className="mt-5 flex flex-col">
+                  {service.items.map((item) => (
+                    <a
+                      key={item.label}
+                      href={`/services#${service.id}`}
+                      className={`flex items-center justify-between border-b ${borderStyle} py-3`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="block h-[5px] w-[5px] rounded-full bg-brushly-gold/60" />
+                        <span className={`font-body text-[13px] ${itemColor}`}>
+                          {item.label}
+                        </span>
+                      </div>
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                        <path
+                          d="M4 12L12 4M12 4H5M12 4V11"
+                          stroke={arrowStroke}
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+
+                {/* Learn more link */}
+                <a
+                  href={`/services#${service.id}`}
+                  className="mt-5 inline-flex items-center gap-2 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-gold"
+                >
+                  Learn More
+                  <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                    <path d="M5 15L15 5M15 5H7M15 5V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </a>
               </div>
             </div>
-            <div className="mt-12 aspect-[4/3] overflow-hidden">
-              <Image
-                src={service.image}
-                alt={service.title.replace('\n', ' ')}
-                width={800}
-                height={600}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </section>
     )
   }

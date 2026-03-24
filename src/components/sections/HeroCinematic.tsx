@@ -181,6 +181,17 @@ export default function HeroCinematic() {
         },
       })
 
+      gsap.to('.hero-mobile-scroll-hint', {
+        opacity: 0,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: heroRef.current,
+          start: '5% top',
+          end: '15% top',
+          scrub: true,
+        },
+      })
+
       gsap.to('.hero-left-panel', {
         width: 0,
         opacity: 0,
@@ -490,6 +501,51 @@ export default function HeroCinematic() {
           </div>
         </div>
       </div>
+
+      {/* --- MOBILE SCROLL INDICATOR (CSS-only, no GSAP dependency) --- */}
+      <div
+        className="hero-mobile-scroll-hint absolute bottom-8 left-1/2 z-40 -translate-x-1/2 flex flex-col items-center gap-2 md:hidden"
+        style={{
+          animation: 'fadeInUp 0.6s ease-out 1.5s both',
+        }}
+      >
+        <span className="font-body text-[10px] uppercase tracking-[0.25em] text-white/70">
+          Scroll to explore
+        </span>
+        <svg
+          width="16"
+          height="24"
+          viewBox="0 0 16 24"
+          fill="none"
+          style={{ animation: 'gentleBounce 2s ease-in-out infinite' }}
+        >
+          <path
+            d="M8 4L8 18M8 18L14 12M8 18L2 12"
+            stroke="rgba(200,169,110,0.8)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+
+      {/* CSS keyframes for mobile scroll hint */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+        @keyframes gentleBounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(6px); }
+        }
+      `}</style>
       </div>
     </section>
   )
