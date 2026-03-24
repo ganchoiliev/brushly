@@ -5,6 +5,7 @@ import Image from 'next/image'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import MagneticButton from '@/components/animations/MagneticButton'
+import PaintTexture from '@/components/ui/PaintTexture'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -328,14 +329,6 @@ export default function ServicesPinned() {
         ease: 'sine.inOut',
       })
 
-      // Dashed divider line flowing
-      gsap.to('.divider-line line', {
-        strokeDashoffset: -18,
-        duration: 3,
-        ease: 'none',
-        repeat: -1,
-      })
-
       // Number ring rotation
       gsap.to('.number-ring', {
         rotation: 360,
@@ -481,6 +474,9 @@ export default function ServicesPinned() {
           style={{ backgroundColor: isDark ? '#1A1A1A' : '#F5F0EB' }}
         />
 
+        {/* Change 1: Grain texture overlay for depth */}
+        <PaintTexture variant="grain" opacity={0.03} />
+
         {/* Section label + top line */}
         <div className="absolute left-[220px] lg:left-[280px] right-0 top-0 z-30">
           <div className="services-top-line h-px w-full origin-left" style={{ backgroundColor: 'rgba(200,169,110,0.3)' }} />
@@ -495,7 +491,7 @@ export default function ServicesPinned() {
         </div>
 
         <div className="relative z-10 flex h-full">
-          {/* LEFT SIDEBAR */}
+          {/* LEFT SIDEBAR — Change 4: numbered nav + separators */}
           <div className="hidden w-[220px] flex-shrink-0 flex-col justify-between px-8 py-12 md:flex lg:w-[280px] lg:px-12">
             <div>
               <span
@@ -504,7 +500,7 @@ export default function ServicesPinned() {
               >
                 Services:
               </span>
-              <nav className="relative mt-8 flex flex-col gap-4">
+              <nav className="relative mt-8 flex flex-col">
                 {/* Animated active line indicator */}
                 <div
                   ref={sidebarLineRef}
@@ -512,20 +508,39 @@ export default function ServicesPinned() {
                   style={{ top: 0, height: 20, transition: 'none' }}
                 />
                 {services.map((service, i) => (
-                  <button
-                    key={service.id}
-                    className={`service-sidebar-item service-nav-${i} text-left font-body text-[14px] pl-4 transition-all duration-500`}
-                    style={{
-                      color: activeIndex === i
-                        ? '#C8A96E'
-                        : isDark
-                          ? 'rgba(245,240,235,0.35)'
-                          : 'rgba(26,26,26,0.35)',
-                      fontWeight: activeIndex === i ? 600 : 400,
-                    }}
-                  >
-                    {service.title.replace('\n', ' ')}
-                  </button>
+                  <div key={service.id}>
+                    <button
+                      className={`service-sidebar-item service-nav-${i} flex items-baseline gap-3 text-left pl-4 py-3 transition-all duration-500`}
+                      style={{
+                        color: activeIndex === i
+                          ? '#C8A96E'
+                          : isDark
+                            ? 'rgba(245,240,235,0.35)'
+                            : 'rgba(26,26,26,0.35)',
+                      }}
+                    >
+                      <span
+                        className="font-body text-[10px] tracking-wider transition-colors duration-500"
+                        style={{
+                          color: activeIndex === i ? '#C8A96E' : isDark ? 'rgba(245,240,235,0.2)' : 'rgba(26,26,26,0.2)',
+                        }}
+                      >
+                        0{i + 1}
+                      </span>
+                      <span
+                        className="font-body text-[14px] transition-all duration-500"
+                        style={{ fontWeight: activeIndex === i ? 600 : 400 }}
+                      >
+                        {service.title.replace('\n', ' ')}
+                      </span>
+                    </button>
+                    {i < services.length - 1 && (
+                      <div
+                        className="ml-4 h-px w-8 transition-colors duration-700"
+                        style={{ backgroundColor: borderColor }}
+                      />
+                    )}
+                  </div>
                 ))}
               </nav>
             </div>
@@ -542,16 +557,13 @@ export default function ServicesPinned() {
 
           {/* MAIN CONTENT */}
           <div className="relative flex flex-1 flex-col md:flex-row">
-            {/* Animated dashed divider between text and image */}
-            <div className="absolute left-1/2 top-[10%] bottom-[10%] z-20 hidden -translate-x-px md:block">
-              <svg className="divider-line h-full w-px" viewBox="0 0 1 100" preserveAspectRatio="none">
-                <line x1="0.5" y1="0" x2="0.5" y2="100"
-                  stroke="rgba(200,169,110,0.15)"
-                  strokeWidth="1"
-                  strokeDasharray="3 6"
-                />
-              </svg>
-            </div>
+            {/* Change 5: Elegant solid divider with gold gradient fade */}
+            <div
+              className="absolute left-1/2 top-[8%] bottom-[8%] z-20 hidden -translate-x-px md:block w-px"
+              style={{
+                background: 'linear-gradient(to bottom, transparent, rgba(200,169,110,0.15) 20%, rgba(200,169,110,0.15) 80%, transparent)',
+              }}
+            />
 
             {/* Left text panel */}
             <div className="relative flex w-full flex-col justify-center px-6 py-12 md:w-1/2 md:px-12 lg:px-16">
@@ -585,10 +597,10 @@ export default function ServicesPinned() {
                     </div>
                   ))}
 
-                  {/* Content overlay */}
-                  <div className="mt-[-40px] relative z-10 max-w-md md:mt-[-60px]">
+                  {/* Change 3: Content overlay with more breathing room */}
+                  <div className="mt-[-20px] relative z-10 max-w-md md:mt-[-30px]">
                     {/* Gold accent line */}
-                    <div className={`accent-line-${i} mb-6 h-px w-12 origin-left`} style={{ backgroundColor: 'rgba(200,169,110,0.5)' }} />
+                    <div className={`accent-line-${i} mb-8 h-px w-12 origin-left`} style={{ backgroundColor: 'rgba(200,169,110,0.5)' }} />
 
                     {/* Description — word spans for stagger */}
                     <p className="font-body text-[15px] leading-relaxed transition-colors duration-700"
@@ -600,8 +612,8 @@ export default function ServicesPinned() {
                       ))}
                     </p>
 
-                    {/* Sub-service list with hover interaction */}
-                    <div className="mt-8 flex flex-col">
+                    {/* Change 6: Sub-service list with hover background wash */}
+                    <div className="mt-10 flex flex-col">
                       {service.items.map((item, itemIdx) => (
                         <a
                           key={item.label}
@@ -610,7 +622,10 @@ export default function ServicesPinned() {
                           style={{
                             borderColor: borderColor,
                             paddingLeft: hoveredItem === itemIdx && activeIndex === i ? '12px' : '0px',
-                            transition: 'padding-left 0.4s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s',
+                            backgroundColor: hoveredItem === itemIdx && activeIndex === i
+                              ? (isDark ? 'rgba(200,169,110,0.04)' : 'rgba(200,169,110,0.06)')
+                              : 'transparent',
+                            transition: 'padding-left 0.4s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s, background-color 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
                           }}
                           onMouseEnter={() => handleItemHover(itemIdx)}
                           onMouseLeave={() => handleItemHover(null)}
@@ -718,6 +733,16 @@ export default function ServicesPinned() {
                 />
               </div>
 
+              {/* Change 2: Cinematic vignette overlay */}
+              <div
+                className="pointer-events-none absolute inset-0 z-[9]"
+                style={{
+                  background: `linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 40%),
+                               linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 20%),
+                               radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.15) 100%)`,
+                }}
+              />
+
               {/* Corner brackets */}
               {[
                 { pos: 'top-4 left-4', rotate: 0 },
@@ -733,17 +758,24 @@ export default function ServicesPinned() {
                 </div>
               ))}
 
-              {/* Animated service number + rotating ring */}
+              {/* Change 7: Refined service number + double rotating ring */}
               <div className="absolute bottom-8 right-8 z-20 overflow-hidden">
                 <svg className="number-ring absolute inset-[-20px]" viewBox="0 0 200 200" style={{ width: 'calc(100% + 40px)', height: 'calc(100% + 40px)' }}>
                   <circle cx="100" cy="100" r="90" fill="none"
                     stroke="rgba(200,169,110,0.08)" strokeWidth="0.5"
                     strokeDasharray="8 12" />
+                  <circle cx="100" cy="100" r="70" fill="none"
+                    stroke="rgba(200,169,110,0.05)" strokeWidth="0.5"
+                    strokeDasharray="4 8" />
                 </svg>
                 <span
                   ref={numberRef}
-                  className="block font-display font-light leading-none text-white/8"
-                  style={{ fontSize: '140px' }}
+                  className="block font-display font-light leading-none"
+                  style={{
+                    fontSize: '140px',
+                    color: 'transparent',
+                    WebkitTextStroke: isDark ? '1px rgba(245,240,235,0.06)' : '1px rgba(26,26,26,0.06)',
+                  }}
                 >
                   0{activeIndex + 1}
                 </span>
