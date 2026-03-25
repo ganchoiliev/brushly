@@ -72,76 +72,78 @@ export default function Header() {
   }, [mobileOpen, reduced])
 
   return (
-    <header
-      className="fixed top-0 left-0 right-0 z-50 bg-brushly-charcoal/80 backdrop-blur-lg border-b border-brushly-cream/5 transition-all duration-500"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5 md:px-10 lg:px-16">
-        {/* Logo */}
-        <Link href="/" className="relative z-50">
-          <Image
-            src="/logo-white.svg"
-            alt="Brushly"
-            width={160}
-            height={51}
-            className="h-12 w-auto"
-            priority
-          />
-        </Link>
+    <>
+      <header
+        className="fixed top-0 left-0 right-0 z-50 bg-brushly-charcoal/80 backdrop-blur-lg border-b border-brushly-cream/5 transition-all duration-500"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5 md:px-10 lg:px-16">
+          {/* Logo */}
+          <Link href="/" className="relative z-50">
+            <Image
+              src="/logo-white.svg"
+              alt="Brushly"
+              width={160}
+              height={51}
+              className="h-12 w-auto"
+              priority
+            />
+          </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden items-center gap-10 md:flex">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`group relative text-[13px] font-body font-medium uppercase tracking-[0.15em] transition-colors duration-300 hover:text-brushly-gold ${
-                pathname === link.href
-                  ? 'text-brushly-gold'
-                  : 'text-brushly-cream/70'
+          {/* Desktop Nav */}
+          <nav className="hidden items-center gap-10 md:flex">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`group relative text-[13px] font-body font-medium uppercase tracking-[0.15em] transition-colors duration-300 hover:text-brushly-gold ${
+                  pathname === link.href
+                    ? 'text-brushly-gold'
+                    : 'text-brushly-cream/70'
+                }`}
+              >
+                {link.label}
+                <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-brushly-gold transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
+              </Link>
+            ))}
+          </nav>
+
+          {/* Desktop CTA */}
+          <Link
+            href="/contact"
+            className="hidden text-[13px] font-body font-medium uppercase tracking-[0.15em] text-brushly-black bg-brushly-gold px-6 py-3 transition-all duration-300 hover:bg-brushly-gold-light md:inline-flex"
+          >
+            Get a Quote
+          </Link>
+
+          {/* Mobile Menu Toggle — 44x44px touch target */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="relative z-50 flex h-11 w-11 flex-col items-center justify-center gap-[6px] md:hidden"
+            aria-label="Toggle menu"
+          >
+            <span
+              className={`block h-[1.5px] w-6 bg-brushly-cream transition-all duration-300 ${
+                mobileOpen ? 'translate-y-[7.5px] rotate-45' : ''
               }`}
-            >
-              {link.label}
-              <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-brushly-gold transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-x-100" />
-            </Link>
-          ))}
-        </nav>
+            />
+            <span
+              className={`block h-[1.5px] w-6 bg-brushly-cream transition-all duration-300 ${
+                mobileOpen ? 'opacity-0' : ''
+              }`}
+            />
+            <span
+              className={`block h-[1.5px] w-6 bg-brushly-cream transition-all duration-300 ${
+                mobileOpen ? '-translate-y-[7.5px] -rotate-45' : ''
+              }`}
+            />
+          </button>
+        </div>
+      </header>
 
-        {/* Desktop CTA */}
-        <Link
-          href="/contact"
-          className="hidden text-[13px] font-body font-medium uppercase tracking-[0.15em] text-brushly-black bg-brushly-gold px-6 py-3 transition-all duration-300 hover:bg-brushly-gold-light md:inline-flex"
-        >
-          Get a Quote
-        </Link>
-
-        {/* Mobile Menu Toggle — 44x44px touch target */}
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="relative z-50 flex h-11 w-11 flex-col items-center justify-center gap-[6px] md:hidden"
-          aria-label="Toggle menu"
-        >
-          <span
-            className={`block h-[1.5px] w-6 bg-brushly-cream transition-all duration-300 ${
-              mobileOpen ? 'translate-y-[7.5px] rotate-45' : ''
-            }`}
-          />
-          <span
-            className={`block h-[1.5px] w-6 bg-brushly-cream transition-all duration-300 ${
-              mobileOpen ? 'opacity-0' : ''
-            }`}
-          />
-          <span
-            className={`block h-[1.5px] w-6 bg-brushly-cream transition-all duration-300 ${
-              mobileOpen ? '-translate-y-[7.5px] -rotate-45' : ''
-            }`}
-          />
-        </button>
-      </div>
-
-      {/* Mobile Nav Overlay */}
+      {/* Mobile Nav Overlay — outside header to avoid backdrop-filter containing block */}
       <div
-        className="mobile-nav fixed inset-0 z-40 flex flex-col items-center justify-center bg-brushly-charcoal md:hidden"
+        className="mobile-nav fixed inset-0 z-[45] flex flex-col items-center justify-center bg-brushly-charcoal md:hidden"
         style={{ clipPath: 'inset(0 0 100% 0)' }}
       >
         <nav className="flex flex-col items-center gap-8">
@@ -166,6 +168,6 @@ export default function Header() {
           </Link>
         </nav>
       </div>
-    </header>
+    </>
   )
 }
