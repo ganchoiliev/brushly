@@ -15,37 +15,37 @@ const projects = [
     title: 'Victorian Townhouse Revival',
     location: 'Epsom, Surrey',
     category: 'Interior',
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
+    image: '/img/townhouse.webp',
   },
   {
     title: 'Modern Kitchen Refresh',
     location: 'Reigate, Surrey',
     category: 'Interior',
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=800&q=80',
+    image: '/img/modern_kitchen.webp',
   },
   {
     title: 'Heritage Exterior Restoration',
     location: 'Dorking, Surrey',
     category: 'Exterior',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
+    image: '/img/heritage.webp',
   },
   {
     title: 'Venetian Plaster Feature Wall',
     location: 'Esher, Surrey',
     category: 'Specialist',
-    image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80',
+    image: '/img/plaster.webp',
   },
   {
     title: 'Period Property Hallway',
     location: 'Leatherhead, Surrey',
     category: 'Interior',
-    image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?w=800&q=80',
+    image: '/img/hallway.webp',
   },
   {
     title: 'Designer Wallpaper Installation',
     location: 'Cobham, Surrey',
     category: 'Wallpaper',
-    image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80',
+    image: '/img/designer-wall.webp',
   },
 ]
 
