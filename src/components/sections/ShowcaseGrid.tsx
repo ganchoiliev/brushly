@@ -50,19 +50,18 @@ const projects = [
 ]
 
 const cardConfigs: {
-  colSpan: number
+  grid: string
   aspect: string
-  mobileAspect?: string
   dir: 'left' | 'right' | 'up' | 'down'
   delay: number
   sizes: string
 }[] = [
-  { colSpan: 7,  aspect: '4/3',  dir: 'left',  delay: 0,    sizes: '(max-width: 768px) 100vw, 58vw' },
-  { colSpan: 5,  aspect: '3/4',  dir: 'right', delay: 0.15, sizes: '(max-width: 768px) 100vw, 42vw' },
-  { colSpan: 4,  aspect: '4/3',  dir: 'up',    delay: 0,    sizes: '(max-width: 768px) 100vw, 33vw' },
-  { colSpan: 4,  aspect: '4/3',  dir: 'up',    delay: 0.12, sizes: '(max-width: 768px) 100vw, 33vw' },
-  { colSpan: 4,  aspect: '4/3',  dir: 'up',    delay: 0.24, sizes: '(max-width: 768px) 100vw, 33vw' },
-  { colSpan: 12, aspect: '21/9', mobileAspect: '16/9', dir: 'up', delay: 0, sizes: '100vw' },
+  { grid: 'col-span-1 md:[grid-column:span_7]',  aspect: 'aspect-[4/3]',                   dir: 'left',  delay: 0,    sizes: '(max-width: 768px) 50vw, 58vw' },
+  { grid: 'col-span-1 md:[grid-column:span_5]',  aspect: 'aspect-[4/3] md:aspect-[3/4]',   dir: 'right', delay: 0.15, sizes: '(max-width: 768px) 50vw, 42vw' },
+  { grid: 'col-span-1 md:[grid-column:span_4]',  aspect: 'aspect-[4/3]',                   dir: 'up',    delay: 0,    sizes: '(max-width: 768px) 50vw, 33vw' },
+  { grid: 'col-span-1 md:[grid-column:span_4]',  aspect: 'aspect-[4/3]',                   dir: 'up',    delay: 0.12, sizes: '(max-width: 768px) 50vw, 33vw' },
+  { grid: 'col-span-2 md:[grid-column:span_4]',  aspect: 'aspect-[16/9] md:aspect-[4/3]',  dir: 'up',    delay: 0.24, sizes: '(max-width: 768px) 100vw, 33vw' },
+  { grid: 'col-span-2 md:[grid-column:span_12]', aspect: 'aspect-[16/9] md:aspect-[21/9]', dir: 'up',    delay: 0,    sizes: '100vw' },
 ]
 
 const cornerBrackets = [
@@ -106,29 +105,16 @@ export default function ShowcaseGrid() {
 
       {/* Bento Grid */}
       <Container>
-        <div className="grid grid-cols-1 gap-3 pb-16 md:grid-cols-12 md:gap-4 md:pb-24">
+        <div className="grid grid-cols-2 gap-3 pb-16 md:grid-cols-12 md:gap-4 md:pb-24">
           {projects.map((project, i) => {
             const config = cardConfigs[i]
             return (
               <Link
                 key={project.title}
                 href="/gallery"
-                className="group relative block overflow-hidden ring-1 ring-white/0 transition-all duration-500 hover:ring-brushly-gold/20"
-                style={{
-                  gridColumn: `span ${config.colSpan}`,
-                  aspectRatio: config.aspect,
-                }}
+                className={`group relative block overflow-hidden ring-1 ring-white/0 transition-all duration-500 hover:ring-brushly-gold/20 ${config.grid} ${config.aspect}`}
               >
-                {/* Responsive aspect ratio override for mobile */}
-                <style>{`
-                  @media (max-width: 767px) {
-                    [data-card="${i}"] {
-                      aspect-ratio: ${config.mobileAspect || '4/3'} !important;
-                      grid-column: span 1 !important;
-                    }
-                  }
-                `}</style>
-                <div data-card={i} className="absolute inset-0">
+                <div className="absolute inset-0">
                   {/* Image with clipPath reveal */}
                   <ImageReveal
                     direction={config.dir}

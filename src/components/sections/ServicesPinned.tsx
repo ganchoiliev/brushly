@@ -15,7 +15,7 @@ const services = [
   {
     id: 'interior',
     title: 'Interior\nPainting',
-    description: 'Transform your living spaces with precision colour application and flawless finishes. We work with premium brands including Farrow & Ball, Little Greene, and Benjamin Moore.',
+    description: 'Transform your living spaces with precision colour application and flawless finishes. Our decorators combine meticulous preparation with premium paints from Farrow & Ball, Little Greene, and Dulux Trade.',
     items: [
       { label: 'Full Room Painting', focusX: 50, focusY: 50 },
       { label: 'Feature Walls', focusX: 30, focusY: 40 },
@@ -27,7 +27,7 @@ const services = [
   {
     id: 'exterior',
     title: 'Exterior\nPainting',
-    description: 'Protect and beautify your property with weather-resistant coatings expertly applied. We assess substrate conditions and select the optimal paint system for lasting protection.',
+    description: 'Protect and transform the outside of your property, safeguarding it against the British climate whilst enhancing kerb appeal. Every project begins with a thorough substrate assessment and meticulous preparation.',
     items: [
       { label: 'Masonry & Render', focusX: 40, focusY: 60 },
       { label: 'Window & Door Frames', focusX: 60, focusY: 40 },
@@ -39,7 +39,7 @@ const services = [
   {
     id: 'wallpapering',
     title: 'Wall-\npapering',
-    description: 'Expert installation of designer wallpapers with perfect pattern matching and seamless joins. From delicate hand-printed papers to heavy vinyls, we handle every type with care.',
+    description: 'From luxury designer papers to meticulous pattern alignment and surface preparation, we ensure a flawless finish that transforms your walls into a statement. Seamless, long-lasting results every time.',
     items: [
       { label: 'Designer Installation', focusX: 50, focusY: 50 },
       { label: 'Pattern Matching', focusX: 30, focusY: 30 },
@@ -51,7 +51,7 @@ const services = [
   {
     id: 'specialist',
     title: 'Specialist\nFinishes',
-    description: 'Bespoke decorative techniques for statement interiors. Venetian plaster, limewash, colour washing, and textured finishes that elevate any space to extraordinary.',
+    description: 'Artisan decorative techniques applied by hand using traditional methods. From the timeless lustre of Venetian plaster to the soft depth of limewash and the subtle shimmer of metallic effects.',
     items: [
       { label: 'Venetian Plaster', focusX: 40, focusY: 40 },
       { label: 'Limewash Finishes', focusX: 60, focusY: 50 },

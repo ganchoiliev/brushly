@@ -20,7 +20,7 @@ const services = [
     title: 'Interior Painting',
     icon: 'interior' as const,
     description:
-      'From feature walls to full property interiors. Precision preparation, premium paints, and meticulous attention to detail.',
+      'Precision colour application with premium paints from Farrow & Ball, Little Greene, and Dulux Trade. Meticulous preparation for flawless, lasting results.',
     image: 'https://images.unsplash.com/photo-1562259929-b4e1fd3aef09?w=800&q=80',
   },
   {
@@ -28,7 +28,7 @@ const services = [
     title: 'Exterior Painting',
     icon: 'exterior' as const,
     description:
-      'Weather-resistant finishes that protect and transform. We work with the finest exterior-grade coatings.',
+      'Protect and transform your property against the British climate. Thorough substrate assessment, weather-resistant coatings, and expert finishing.',
     image: 'https://images.unsplash.com/photo-1523413363574-c30aa1c2a516?w=800&q=80',
   },
   {
@@ -36,7 +36,7 @@ const services = [
     title: 'Wallpapering',
     icon: 'wallpaper' as const,
     description:
-      'Expert hanging of designer wallpapers. Pattern matching, feature walls, and full room installations.',
+      'Expert installation of designer wallpapers with flawless pattern matching and seamless joins. From hand-printed papers to heavy vinyls.',
     image: 'https://images.unsplash.com/photo-1615529328331-f8917597711f?w=800&q=80',
   },
   {
@@ -44,7 +44,7 @@ const services = [
     title: 'Specialist Finishes',
     icon: 'specialist' as const,
     description:
-      'Venetian plaster, limewash, colour washing, and bespoke decorative techniques for statement spaces.',
+      'Artisan decorative techniques applied by hand. Venetian plaster, limewash, colour washing, and metallic effects for statement interiors.',
     image: 'https://images.unsplash.com/photo-1604014237800-1c9102c219da?w=800&q=80',
   },
 ]
