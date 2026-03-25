@@ -60,7 +60,7 @@ export default function BeforeAfterSlider({
     <div
       ref={containerRef}
       className={`relative select-none overflow-hidden ${className}`}
-      style={{ aspectRatio: '16/10', cursor: isDragging ? 'grabbing' : 'grab' }}
+      style={{ aspectRatio: '16/10', cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleMouseDown}
     >
