@@ -21,6 +21,8 @@ export default function ContactForm() {
   const sectionRef = useRef<HTMLElement>(null)
   const reduced = useReducedMotion()
   const [submitted, setSubmitted] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (reduced) return
@@ -41,9 +43,38 @@ export default function ContactForm() {
     return () => ctx.revert()
   }, [reduced])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setSubmitted(true)
+    setSending(true)
+    setError('')
+
+    const form = e.currentTarget
+    const data = {
+      name: (form.elements.namedItem('name') as HTMLInputElement).value,
+      email: (form.elements.namedItem('email') as HTMLInputElement).value,
+      phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
+      service: (form.elements.namedItem('service') as HTMLSelectElement).value,
+      message: (form.elements.namedItem('message') as HTMLTextAreaElement).value,
+    }
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      if (res.ok) {
+        setSubmitted(true)
+      } else {
+        const result = await res.json()
+        setError(result.error || 'Something went wrong. Please try again.')
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setSending(false)
+    }
   }
 
   const inputStyles =
@@ -109,11 +140,15 @@ export default function ContactForm() {
                   required
                   className={`${inputStyles} resize-none`}
                 />
+                {error && (
+                  <p className="text-[14px] font-body text-red-400">{error}</p>
+                )}
                 <button
                   type="submit"
-                  className="mt-4 self-start bg-brushly-gold px-10 py-4 text-[13px] font-body font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light"
+                  disabled={sending}
+                  className="mt-4 self-start bg-brushly-gold px-10 py-4 text-[13px] font-body font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Send Message
+                  {sending ? 'Sending...' : 'Send Message'}
                 </button>
               </form>
             )}
