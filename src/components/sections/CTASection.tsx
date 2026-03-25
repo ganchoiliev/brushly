@@ -72,8 +72,8 @@ export default function CTASection() {
           {/* Before/After Slider */}
           <div className="cta-slider will-animate order-2 lg:order-1">
             <BeforeAfterSlider
-              beforeSrc="https://images.unsplash.com/photo-1560448204-603b3fc33ddc?w=800&q=80"
-              afterSrc="https://images.unsplash.com/photo-1600585154526-990dced4db0d?w=800&q=80"
+              beforeSrc="/img/cta-before.webp"
+              afterSrc="/img/cta-after.webp"
               beforeAlt="Room before painting"
               afterAlt="Room after Brushly transformation"
               className="rounded-sm"

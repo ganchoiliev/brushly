@@ -14,7 +14,7 @@ export default function ParallaxBreak() {
       <div className="absolute inset-0">
         <ImageReveal direction="up" className="h-full w-full">
           <ParallaxImage
-            src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80"
+            src="/img/details-bg.webp"
             alt="Beautiful interior"
             speed={0.2}
             className="h-full w-full"
@@ -46,8 +46,8 @@ export default function ParallaxBreak() {
       {/* Before/After Comparison */}
       <ScrollReveal delay={0.3} className="relative z-10 mx-auto mt-12 w-full max-w-3xl px-6 md:mt-16">
         <BeforeAfterSlider
-          beforeSrc="https://images.unsplash.com/photo-1595515106969-1ce29566ff1c?w=1200&q=80"
-          afterSrc="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=1200&q=80"
+          beforeSrc="/img/before.webp"
+          afterSrc="/img/after.webp"
           beforeAlt="Room before painting"
           afterAlt="Room after painting"
           className="rounded-sm ring-1 ring-brushly-gold/20"

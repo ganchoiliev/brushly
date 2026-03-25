@@ -76,10 +76,10 @@ export default function Footer() {
               </p>
               <div className="mt-6 flex flex-col gap-2 text-[14px] font-body text-brushly-cream/50">
                 <a
-                  href="tel:+447000000000"
+                  href="tel:+441737479161"
                   className="transition-colors hover:text-brushly-gold"
                 >
-                  +44 (0) 7000 000 000
+                  01737 479 161
                 </a>
                 <a
                   href="mailto:hello@brushly.uk"

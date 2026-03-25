@@ -125,10 +125,10 @@ export default function ContactForm() {
               <div>
                 <Badge>Phone</Badge>
                 <a
-                  href="tel:+447000000000"
+                  href="tel:+441737479161"
                   className="mt-3 block font-display text-2xl font-light text-brushly-cream transition-colors hover:text-brushly-gold"
                 >
-                  +44 (0) 7000 000 000
+                  01737 479 161
                 </a>
               </div>
               <div>
