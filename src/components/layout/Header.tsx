@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import gsap from 'gsap'
 import { useLenis } from '@/components/animations/SmoothScroll'
@@ -78,9 +79,14 @@ export default function Header() {
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-6 py-5 md:px-10 lg:px-16">
         {/* Logo */}
         <Link href="/" className="relative z-50">
-          <span className="font-display text-2xl font-medium tracking-wide text-brushly-cream">
-            Brushly
-          </span>
+          <Image
+            src="/logo-white.svg"
+            alt="Brushly"
+            width={160}
+            height={51}
+            className="h-12 w-auto"
+            priority
+          />
         </Link>
 
         {/* Desktop Nav */}

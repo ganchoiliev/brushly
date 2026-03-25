@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
 import TextReveal from '@/components/animations/TextReveal'
@@ -61,9 +62,13 @@ export default function Footer() {
           <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
             {/* Brand */}
             <ScrollReveal className="md:col-span-2">
-              <span className="font-display text-3xl font-medium tracking-wide text-brushly-cream">
-                Brushly
-              </span>
+              <Image
+                src="/logo-white.svg"
+                alt="Brushly"
+                width={180}
+                height={57}
+                className="h-16 w-auto"
+              />
               <p className="mt-4 max-w-sm text-[15px] font-body leading-relaxed text-brushly-cream/50">
                 Premium painting and decorating services across Surrey, Epsom &
                 Reigate. Flawless finishes for homes and businesses that demand
