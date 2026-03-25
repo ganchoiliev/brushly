@@ -7,6 +7,7 @@ import Footer from '@/components/layout/Footer'
 import CustomCursor from '@/components/animations/CustomCursor'
 import GrainOverlay from '@/components/animations/GrainOverlay'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -55,6 +56,7 @@ export default function RootLayout({
         <CustomCursor />
         <GrainOverlay />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
