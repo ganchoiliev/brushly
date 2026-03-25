@@ -494,7 +494,7 @@ export default function ServicesPinned() {
 
         {/* Section label + top line */}
         <div className="absolute left-[220px] lg:left-[280px] right-0 top-0 z-30">
-          <div className="services-top-line h-px w-full origin-left" style={{ backgroundColor: 'rgba(200,169,110,0.3)' }} />
+          <div className="services-top-line h-px w-full origin-left" style={{ backgroundColor: `${palette.accent}4D`, transition: 'background-color 0.8s ease' }} />
           <div className="overflow-hidden px-6 pt-4 md:px-12 lg:px-16">
             <span
               className="services-section-label block font-body text-[10px] uppercase tracking-[0.3em] transition-colors duration-700"
@@ -562,7 +562,7 @@ export default function ServicesPinned() {
 
             <div
               className="transition-colors duration-700"
-              style={{ color: isDark ? 'rgba(245,240,235,0.3)' : 'rgba(26,26,26,0.3)' }}
+              style={{ color: isDark ? 'rgba(245,240,235,0.3)' : palette.textLabel }}
             >
               <span className="font-body text-[10px] uppercase tracking-[0.2em]">
                 Surrey &middot; Epsom &middot; Reigate
@@ -609,7 +609,7 @@ export default function ServicesPinned() {
                         color: textSubtle,
                         WebkitTextStroke: isDark
                           ? '1px rgba(245,240,235,0.06)'
-                          : '1px rgba(26,26,26,0.04)',
+                          : `1px ${palette.text}0A`,
                         transition: 'color 0.7s ease, -webkit-text-stroke 0.7s ease',
                         willChange: 'clip-path',
                       }}
@@ -621,11 +621,11 @@ export default function ServicesPinned() {
                   {/* Change 3: Content overlay with more breathing room */}
                   <div className="relative z-10 max-w-md">
                     {/* Gold accent line */}
-                    <div className={`accent-line-${i} mb-8 h-px w-12 origin-left`} style={{ backgroundColor: 'rgba(200,169,110,0.5)' }} />
+                    <div className={`accent-line-${i} mb-8 h-px w-12 origin-left`} style={{ backgroundColor: `${palette.accent}80` }} />
 
                     {/* Description — word spans for stagger */}
                     <p className="font-body text-[15px] leading-relaxed transition-colors duration-700"
-                      style={{ color: isDark ? 'rgba(245,240,235,0.6)' : 'rgba(26,26,26,0.6)' }}>
+                      style={{ color: isDark ? 'rgba(245,240,235,0.6)' : palette.textMuted }}>
                       {service.description.split(' ').map((word, wi) => (
                         <span key={wi} className="inline-block overflow-hidden" style={{ marginRight: '0.3em' }}>
                           <span className={`desc-word-${i} inline-block`}>{word}</span>
@@ -662,7 +662,7 @@ export default function ServicesPinned() {
                             borderColor: borderColor,
                             paddingLeft: hoveredItem === itemIdx && activeIndex === i ? '12px' : '0px',
                             backgroundColor: hoveredItem === itemIdx && activeIndex === i
-                              ? (isDark ? 'rgba(200,169,110,0.04)' : 'rgba(200,169,110,0.06)')
+                              ? (isDark ? `${palette.accent}0A` : `${palette.accent}0F`)
                               : 'transparent',
                             transition: 'padding-left 0.4s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s, background-color 0.4s cubic-bezier(0.22, 1, 0.36, 1)',
                           }}
@@ -699,7 +699,7 @@ export default function ServicesPinned() {
                           >
                             <path
                               d="M4 12L12 4M12 4H5M12 4V11"
-                              stroke={hoveredItem === itemIdx && activeIndex === i ? palette.accent : (isDark ? 'rgba(245,240,235,0.3)' : 'rgba(26,26,26,0.3)')}
+                              stroke={hoveredItem === itemIdx && activeIndex === i ? palette.accent : (isDark ? 'rgba(245,240,235,0.3)' : `${palette.text}4D`)}
                               strokeWidth="1.5"
                               strokeLinecap="round"
                               strokeLinejoin="round"
