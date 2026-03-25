@@ -8,6 +8,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import MagneticButton from '@/components/animations/MagneticButton'
 import PaintTexture from '@/components/ui/PaintTexture'
+import { useTheme } from '@/lib/ThemeContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -82,6 +83,7 @@ export default function ServicesPinned() {
   const [hoveredItem, setHoveredItem] = useState<number | null>(null)
   const [imageFocus, setImageFocus] = useState({ x: 50, y: 50 })
   const reduced = useReducedMotion()
+  const { palette } = useTheme()
 
   // Detect mobile
   useEffect(() => {
@@ -364,38 +366,38 @@ export default function ServicesPinned() {
   }
 
   const isDark = activeIndex % 2 === 0
-  const textColor = isDark ? 'rgba(245,240,235,0.7)' : 'rgba(26,26,26,0.7)'
-  const textMuted = isDark ? 'rgba(245,240,235,0.4)' : 'rgba(26,26,26,0.4)'
-  const textSubtle = isDark ? 'rgba(245,240,235,0.06)' : 'rgba(26,26,26,0.05)'
-  const borderColor = isDark ? 'rgba(245,240,235,0.06)' : 'rgba(26,26,26,0.06)'
+  // Light panels use theme palette, dark panels stay dark
+  const textColor = isDark ? 'rgba(245,240,235,0.7)' : palette.textMuted
+  const textMuted = isDark ? 'rgba(245,240,235,0.4)' : palette.textLabel
+  const textSubtle = isDark ? 'rgba(245,240,235,0.06)' : `${palette.text}0D`
+  const borderColor = isDark ? 'rgba(245,240,235,0.06)' : `${palette.text}0F`
 
   // Mobile layout
   if (isMobile) {
     return (
       <section>
         {/* Section header */}
-        <div className="bg-brushly-cream px-6 pt-20 pb-4">
-          <div className="mb-4 h-px w-12 bg-brushly-gold/30" />
-          <span className="font-body text-[11px] uppercase tracking-[0.3em] text-brushly-black/30">
+        <div className="px-6 pt-20 pb-4" style={{ backgroundColor: palette.bg, transition: 'background-color 0.8s ease' }}>
+          <div className="mb-4 h-px w-12" style={{ backgroundColor: `${palette.accent}4D` }} />
+          <span className="font-body text-[11px] uppercase tracking-[0.3em]" style={{ color: palette.textLabel }}>
             What We Do
           </span>
-          <h2 className="mt-3 font-display text-4xl font-light text-brushly-black">
+          <h2 className="mt-3 font-display text-4xl font-light" style={{ color: palette.text }}>
             Our Services
           </h2>
         </div>
 
         {services.map((service, i) => {
           const isLight = i % 2 === 0
-          const bg = isLight ? 'bg-brushly-cream' : 'bg-brushly-black'
-          const titleColor = isLight ? 'text-brushly-black' : 'text-brushly-cream'
-          const descColor = isLight ? 'text-brushly-black/50' : 'text-brushly-cream/50'
-          const itemColor = isLight ? 'text-brushly-black/55' : 'text-brushly-cream/60'
-          const borderStyle = isLight ? 'border-brushly-black/8' : 'border-brushly-cream/8'
-          const arrowStroke = isLight ? 'rgba(26,26,26,0.25)' : 'rgba(200,169,110,0.4)'
-          const numberStroke = isLight ? '1px rgba(200,169,110,0.3)' : '1px rgba(200,169,110,0.4)'
+          const titleColor = isLight ? palette.text : '#F5F0EB'
+          const descColor = isLight ? palette.textMuted : 'rgba(245,240,235,0.5)'
+          const itemColor = isLight ? palette.textMuted : 'rgba(245,240,235,0.6)'
+          const borderStyle = isLight ? `${palette.text}14` : 'rgba(245,240,235,0.08)'
+          const arrowStroke = isLight ? `${palette.text}40` : `${palette.accent}66`
+          const numberStroke = isLight ? `1px ${palette.accent}4D` : `1px ${palette.accent}66`
 
           return (
-            <div key={service.id} className={`relative ${bg} px-6 py-12`}>
+            <div key={service.id} className="relative px-6 py-12" style={{ backgroundColor: isLight ? palette.bg : '#1A1A1A', transition: 'background-color 0.8s ease' }}>
               {/* Image first — acts as visual anchor */}
               <div className="relative aspect-[3/2] overflow-hidden">
                 <Image
@@ -426,7 +428,7 @@ export default function ServicesPinned() {
 
               {/* Content below image */}
               <div className="mt-5">
-                <p className={`font-body text-[14px] leading-relaxed ${descColor}`}>
+                <p className="font-body text-[14px] leading-relaxed" style={{ color: descColor }}>
                   {service.description}
                 </p>
 
@@ -436,11 +438,12 @@ export default function ServicesPinned() {
                     <a
                       key={item.label}
                       href={`/services#${service.id}`}
-                      className={`flex items-center justify-between border-b ${borderStyle} py-3`}
+                      className="flex items-center justify-between border-b py-3"
+                      style={{ borderColor: borderStyle }}
                     >
                       <div className="flex items-center gap-3">
-                        <span className="block h-[5px] w-[5px] rounded-full bg-brushly-gold/60" />
-                        <span className={`font-body text-[13px] ${itemColor}`}>
+                        <span className="block h-[5px] w-[5px] rounded-full" style={{ backgroundColor: `${palette.accent}99` }} />
+                        <span className="font-body text-[13px]" style={{ color: itemColor }}>
                           {item.label}
                         </span>
                       </div>
@@ -460,7 +463,8 @@ export default function ServicesPinned() {
                 {/* Learn more link */}
                 <a
                   href={`/services#${service.id}`}
-                  className="mt-5 inline-flex items-center gap-2 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-gold"
+                  className="mt-5 inline-flex items-center gap-2 font-body text-[11px] uppercase tracking-[0.2em]"
+                  style={{ color: palette.accent }}
                 >
                   Learn More
                   <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
@@ -482,7 +486,7 @@ export default function ServicesPinned() {
         {/* Background color transition */}
         <div
           className="absolute inset-0 transition-colors duration-700"
-          style={{ backgroundColor: isDark ? '#1A1A1A' : '#F5F0EB' }}
+          style={{ backgroundColor: isDark ? '#1A1A1A' : palette.bg }}
         />
 
         {/* Change 1: Grain texture overlay for depth */}
@@ -524,16 +528,16 @@ export default function ServicesPinned() {
                       className={`service-sidebar-item service-nav-${i} flex items-baseline gap-3 text-left pl-4 py-3 transition-all duration-500`}
                       style={{
                         color: activeIndex === i
-                          ? '#C8A96E'
+                          ? palette.accent
                           : isDark
                             ? 'rgba(245,240,235,0.35)'
-                            : 'rgba(26,26,26,0.35)',
+                            : palette.textLabel,
                       }}
                     >
                       <span
                         className="font-body text-[10px] tracking-wider transition-colors duration-500"
                         style={{
-                          color: activeIndex === i ? '#C8A96E' : isDark ? 'rgba(245,240,235,0.2)' : 'rgba(26,26,26,0.2)',
+                          color: activeIndex === i ? palette.accent : isDark ? 'rgba(245,240,235,0.2)' : `${palette.text}33`,
                         }}
                       >
                         0{i + 1}
@@ -678,7 +682,7 @@ export default function ServicesPinned() {
                               className="font-body text-[14px] transition-colors duration-300"
                               style={{
                                 color: hoveredItem === itemIdx && activeIndex === i
-                                  ? '#C8A96E'
+                                  ? palette.accent
                                   : textColor,
                               }}
                             >
@@ -695,7 +699,7 @@ export default function ServicesPinned() {
                           >
                             <path
                               d="M4 12L12 4M12 4H5M12 4V11"
-                              stroke={hoveredItem === itemIdx && activeIndex === i ? '#C8A96E' : (isDark ? 'rgba(245,240,235,0.3)' : 'rgba(26,26,26,0.3)')}
+                              stroke={hoveredItem === itemIdx && activeIndex === i ? palette.accent : (isDark ? 'rgba(245,240,235,0.3)' : 'rgba(26,26,26,0.3)')}
                               strokeWidth="1.5"
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -708,7 +712,8 @@ export default function ServicesPinned() {
                     <MagneticButton strength={0.2}>
                       <a
                         href={`/services#${service.id}`}
-                        className={`learn-more-${i} mt-8 inline-flex items-center gap-3 font-body text-[12px] uppercase tracking-[0.2em] text-brushly-gold transition-colors hover:text-brushly-gold-light`}
+                        className={`learn-more-${i} mt-8 inline-flex items-center gap-3 font-body text-[12px] uppercase tracking-[0.2em] transition-colors`}
+                        style={{ color: palette.accent }}
                       >
                         Learn More
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -851,7 +856,7 @@ export default function ServicesPinned() {
 
         {/* Mobile counter */}
         <div className="absolute bottom-6 right-6 z-20 md:hidden">
-          <span className="font-display text-[32px] font-light text-brushly-gold">
+          <span className="font-display text-[32px] font-light" style={{ color: palette.accent }}>
             0{activeIndex + 1}
           </span>
           <span className="font-body text-[12px] text-brushly-cream/30">/04</span>

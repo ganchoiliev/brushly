@@ -7,6 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import LineReveal from '@/components/animations/LineReveal'
 import PaintTexture from '@/components/ui/PaintTexture'
+import { useTheme } from '@/lib/ThemeContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -21,6 +22,7 @@ export default function StatsCounter() {
   const sectionRef = useRef<HTMLElement>(null)
   const counterRefs = useRef<(HTMLSpanElement | null)[]>([])
   const reduced = useReducedMotion()
+  const { palette } = useTheme()
 
   useEffect(() => {
     if (reduced) {
@@ -121,19 +123,19 @@ export default function StatsCounter() {
         style={{
           width: '900px',
           height: '500px',
-          background: 'radial-gradient(ellipse, rgba(200,169,110,0.05) 0%, transparent 70%)',
+          background: `radial-gradient(ellipse, ${palette.accent}0D 0%, transparent 70%)`,
         }}
       />
 
       {/* Top gold line */}
       <div
         className="stats-top-line absolute top-0 left-0 right-0 h-px origin-left"
-        style={{ background: 'linear-gradient(to right, transparent, rgba(200,169,110,0.3) 20%, rgba(200,169,110,0.3) 80%, transparent)' }}
+        style={{ background: `linear-gradient(to right, transparent, ${palette.accent}4D 20%, ${palette.accent}4D 80%, transparent)`, transition: 'background 0.8s ease' }}
       />
       {/* Bottom gold line */}
       <div
         className="stats-bottom-line absolute bottom-0 left-0 right-0 h-px origin-left"
-        style={{ background: 'linear-gradient(to right, transparent, rgba(200,169,110,0.3) 20%, rgba(200,169,110,0.3) 80%, transparent)' }}
+        style={{ background: `linear-gradient(to right, transparent, ${palette.accent}4D 20%, ${palette.accent}4D 80%, transparent)`, transition: 'background 0.8s ease' }}
       />
 
       <Container>
@@ -142,8 +144,8 @@ export default function StatsCounter() {
             <div key={stat.label} className="stat-item relative text-center">
               <span
                 ref={(el) => { counterRefs.current[i] = el }}
-                className="font-display font-light text-brushly-gold"
-                style={{ fontSize: 'clamp(48px, 8vw, 80px)' }}
+                className="font-display font-light"
+                style={{ color: palette.accent, transition: 'color 0.8s ease', fontSize: 'clamp(48px, 8vw, 80px)' }}
               >
                 {stat.value !== null ? `0${stat.suffix}` : stat.text}
               </span>
@@ -160,7 +162,7 @@ export default function StatsCounter() {
               {i < stats.length - 1 && (
                 <div
                   className="stats-divider absolute right-0 top-[10%] bottom-[10%] hidden w-px origin-top md:block"
-                  style={{ background: 'linear-gradient(to bottom, transparent, rgba(200,169,110,0.15) 30%, rgba(200,169,110,0.15) 70%, transparent)' }}
+                  style={{ background: `linear-gradient(to bottom, transparent, ${palette.accent}26 30%, ${palette.accent}26 70%, transparent)`, transition: 'background 0.8s ease' }}
                 />
               )}
             </div>

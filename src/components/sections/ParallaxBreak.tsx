@@ -6,8 +6,10 @@ import LineReveal from '@/components/animations/LineReveal'
 import ImageReveal from '@/components/animations/ImageReveal'
 import ScrollReveal from '@/components/animations/ScrollReveal'
 import BeforeAfterSlider from '@/components/ui/BeforeAfterSlider'
+import { useTheme } from '@/lib/ThemeContext'
 
 export default function ParallaxBreak() {
+  const { palette } = useTheme()
   return (
     <section className="relative flex flex-col items-center justify-center overflow-hidden py-20 md:py-28">
       {/* Background parallax image */}
@@ -38,7 +40,7 @@ export default function ParallaxBreak() {
         <div className="mx-auto mt-8 max-w-[200px]">
           <LineReveal />
         </div>
-        <p className="mt-6 text-[14px] font-body uppercase tracking-[0.2em] text-brushly-gold">
+        <p className="mt-6 text-[14px] font-body uppercase tracking-[0.2em]" style={{ color: palette.accent, transition: 'color 0.8s ease' }}>
           — Brushly UK
         </p>
       </div>

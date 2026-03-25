@@ -1,6 +1,9 @@
 'use client'
 
+import { useTheme } from '@/lib/ThemeContext'
+
 export default function BrandMarquee() {
+  const { palette } = useTheme()
   const brands = [
     'Farrow & Ball',
     'Little Greene',
@@ -16,7 +19,7 @@ export default function BrandMarquee() {
 
   return (
     <section className="group bg-brushly-charcoal py-12 overflow-hidden">
-      <p className="text-center text-[11px] font-body uppercase tracking-[0.25em] text-brushly-gold/60 mb-6">
+      <p className="text-center text-[11px] font-body uppercase tracking-[0.25em] mb-6" style={{ color: `${palette.accent}99`, transition: 'color 0.8s ease' }}>
         Trusted partners
       </p>
       <div className="relative">

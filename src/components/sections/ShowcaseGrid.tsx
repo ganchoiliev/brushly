@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 import TextReveal from '@/components/animations/TextReveal'
 import ImageReveal from '@/components/animations/ImageReveal'
 import ScrollReveal from '@/components/animations/ScrollReveal'
+import { useTheme } from '@/lib/ThemeContext'
 
 const projects = [
   {
@@ -72,6 +73,7 @@ const cornerBrackets = [
 ]
 
 export default function ShowcaseGrid() {
+  const { palette } = useTheme()
   return (
     <section className="bg-brushly-black overflow-hidden">
       {/* Header */}
@@ -94,7 +96,8 @@ export default function ShowcaseGrid() {
             <ScrollReveal delay={0.3}>
               <a
                 href="/gallery"
-                className="text-[13px] font-body font-medium uppercase tracking-[0.15em] text-brushly-gold transition-colors hover:text-brushly-gold-light"
+                className="text-[13px] font-body font-medium uppercase tracking-[0.15em] transition-colors"
+                style={{ color: palette.accent, transition: 'color 0.8s ease' }}
               >
                 View All Work &rarr;
               </a>
@@ -154,7 +157,7 @@ export default function ShowcaseGrid() {
 
                 {/* Text overlay — slides up on hover */}
                 <div className="absolute bottom-0 left-0 right-0 z-20 translate-y-0 opacity-100 p-6 transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:p-8">
-                  <span className="text-[11px] font-body uppercase tracking-[0.2em] text-brushly-gold">
+                  <span className="text-[11px] font-body uppercase tracking-[0.2em]" style={{ color: palette.accent }}>
                     {project.category}
                   </span>
                   <h3 className="mt-1 font-display text-xl font-light text-brushly-cream md:text-2xl">

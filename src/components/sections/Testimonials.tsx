@@ -6,6 +6,7 @@ import gsap from 'gsap'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
 import ParallaxImage from '@/components/animations/ParallaxImage'
+import { useTheme } from '@/lib/ThemeContext'
 
 const testimonials = [
   {
@@ -31,6 +32,7 @@ const testimonials = [
 export default function Testimonials() {
   const [current, setCurrent] = useState(0)
   const reduced = useReducedMotion()
+  const { palette } = useTheme()
   const contentRef = useRef<HTMLDivElement>(null)
   const isAnimating = useRef(false)
   const touchStart = useRef<{ x: number; time: number } | null>(null)
@@ -145,7 +147,7 @@ export default function Testimonials() {
           <Badge>Testimonials</Badge>
 
           {/* Decorative quotation mark */}
-          <span className="mt-8 block font-display text-brushly-gold/20" style={{ fontSize: '120px', lineHeight: '0.8' }}>
+          <span className="mt-8 block font-display" style={{ fontSize: '120px', lineHeight: '0.8', color: `${palette.accent}33`, transition: 'color 0.8s ease' }}>
             &ldquo;
           </span>
 
@@ -154,7 +156,8 @@ export default function Testimonials() {
             <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-10 hidden items-center justify-between md:flex">
               <button
                 onClick={prev}
-                className="pointer-events-auto -ml-16 flex h-10 w-10 items-center justify-center rounded-full border border-brushly-gold/20 text-brushly-gold transition-colors hover:border-brushly-gold/60 hover:bg-brushly-gold/10"
+                className="pointer-events-auto -ml-16 flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
+                style={{ borderColor: `${palette.accent}33`, color: palette.accent }}
                 aria-label="Previous testimonial"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -163,7 +166,8 @@ export default function Testimonials() {
               </button>
               <button
                 onClick={next}
-                className="pointer-events-auto -mr-16 flex h-10 w-10 items-center justify-center rounded-full border border-brushly-gold/20 text-brushly-gold transition-colors hover:border-brushly-gold/60 hover:bg-brushly-gold/10"
+                className="pointer-events-auto -mr-16 flex h-10 w-10 items-center justify-center rounded-full border transition-colors"
+                style={{ borderColor: `${palette.accent}33`, color: palette.accent }}
                 aria-label="Next testimonial"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -190,7 +194,7 @@ export default function Testimonials() {
                 <p className="text-[15px] font-body font-medium text-brushly-cream">
                   {testimonials[current].author}
                 </p>
-                <p className="mt-1 text-[13px] font-body uppercase tracking-[0.15em] text-brushly-gold">
+                <p className="mt-1 text-[13px] font-body uppercase tracking-[0.15em]" style={{ color: palette.accent, transition: 'color 0.8s ease' }}>
                   {testimonials[current].location}
                 </p>
               </div>
@@ -209,9 +213,10 @@ export default function Testimonials() {
                 <span
                   className={`block h-2 rounded-full transition-all duration-500 ${
                     i === current
-                      ? 'w-8 bg-brushly-gold'
+                      ? 'w-8'
                       : 'w-2 bg-brushly-cream/30'
                   }`}
+                  style={i === current ? { backgroundColor: palette.accent, transition: 'background-color 0.8s ease, width 0.5s' } : undefined}
                 />
               </button>
             ))}

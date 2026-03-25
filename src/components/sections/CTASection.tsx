@@ -9,12 +9,14 @@ import Button from '@/components/ui/Button'
 import PaintTexture from '@/components/ui/PaintTexture'
 import BeforeAfterSlider from '@/components/ui/BeforeAfterSlider'
 import TextReveal from '@/components/animations/TextReveal'
+import { useTheme } from '@/lib/ThemeContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
 export default function CTASection() {
   const sectionRef = useRef<HTMLElement>(null)
   const reduced = useReducedMotion()
+  const { palette } = useTheme()
 
   useEffect(() => {
     if (reduced) return
@@ -63,7 +65,8 @@ export default function CTASection() {
           width: '800px',
           height: '800px',
           background:
-            'radial-gradient(circle, rgba(200, 169, 110, 0.08) 0%, transparent 70%)',
+            `radial-gradient(circle, ${palette.accent}14 0%, transparent 70%)`,
+          transition: 'background 0.8s ease',
         }}
       />
 

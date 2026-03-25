@@ -12,6 +12,7 @@ interface LineRevealProps {
   direction?: 'left' | 'center' | 'right'
   delay?: number
   duration?: number
+  color?: string
 }
 
 export default function LineReveal({
@@ -19,6 +20,7 @@ export default function LineReveal({
   direction = 'left',
   delay = 0,
   duration = 1.2,
+  color,
 }: LineRevealProps) {
   const ref = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
@@ -55,8 +57,8 @@ export default function LineReveal({
   return (
     <div
       ref={ref}
-      className={`h-px w-full bg-brushly-gold/30 ${className || ''}`}
-      style={{ transformOrigin }}
+      className={`h-px w-full ${color ? '' : 'bg-brushly-gold/30'} ${className || ''}`}
+      style={{ transformOrigin, ...(color ? { backgroundColor: color } : {}) }}
     />
   )
 }

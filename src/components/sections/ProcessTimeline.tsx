@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { blurDataURL } from '@/lib/shimmer'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { useTheme } from '@/lib/ThemeContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -51,6 +52,7 @@ export default function ProcessTimeline() {
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
   const [isMobile, setIsMobile] = useState(true)
   const reduced = useReducedMotion()
+  const { palette } = useTheme()
 
   useEffect(() => {
     setIsMobile(window.innerWidth < 768)
@@ -208,29 +210,29 @@ export default function ProcessTimeline() {
   // Mobile layout
   if (isMobile) {
     return (
-      <section className="bg-brushly-cream">
+      <section style={{ backgroundColor: palette.bg, transition: 'background-color 0.8s ease' }}>
         <div className="px-6 pt-20 pb-4">
-          <span className="font-body text-[11px] uppercase tracking-[0.3em] text-brushly-black/30">
+          <span className="font-body text-[11px] uppercase tracking-[0.3em]" style={{ color: palette.textLabel, transition: 'color 0.8s ease' }}>
             How We Work
           </span>
-          <h2 className="mt-3 font-display text-4xl font-light text-brushly-black">
+          <h2 className="mt-3 font-display text-4xl font-light" style={{ color: palette.text, transition: 'color 0.8s ease' }}>
             Our Process
           </h2>
         </div>
         {steps.map((step, i) => (
           <div key={step.number} className="relative px-6 py-16">
             <div className="overflow-hidden">
-              <span className="block font-display text-[72px] font-light leading-none" style={{ WebkitTextStroke: '1px rgba(200,169,110,0.3)', color: 'transparent' }}>
+              <span className="block font-display text-[72px] font-light leading-none" style={{ WebkitTextStroke: `1px ${palette.accent}4D`, color: 'transparent' }}>
                 {step.number}
               </span>
             </div>
-            <span className="mt-2 block font-body text-[11px] uppercase tracking-[0.2em] text-brushly-gold-dark">
+            <span className="mt-2 block font-body text-[11px] uppercase tracking-[0.2em]" style={{ color: palette.accent }}>
               {step.subtitle}
             </span>
-            <h3 className="mt-2 font-display text-3xl font-light text-brushly-black">
+            <h3 className="mt-2 font-display text-3xl font-light" style={{ color: palette.text }}>
               {step.title}
             </h3>
-            <p className="mt-4 font-body text-[14px] leading-relaxed text-brushly-black/50">
+            <p className="mt-4 font-body text-[14px] leading-relaxed" style={{ color: palette.textMuted }}>
               {step.description}
             </p>
             <div className="mt-6 aspect-[3/4] overflow-hidden">
@@ -247,13 +249,13 @@ export default function ProcessTimeline() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               {step.details.map((detail) => (
                 <div key={detail} className="flex items-center gap-2">
-                  <span className="block h-[5px] w-[5px] rounded-full bg-brushly-gold" />
-                  <span className="font-body text-[12px] text-brushly-black/45">{detail}</span>
+                  <span className="block h-[5px] w-[5px] rounded-full" style={{ backgroundColor: palette.accent }} />
+                  <span className="font-body text-[12px]" style={{ color: palette.textMuted }}>{detail}</span>
                 </div>
               ))}
             </div>
             {i < steps.length - 1 && (
-              <div className="mx-auto mt-16 h-[1px] w-16 bg-brushly-gold/20" />
+              <div className="mx-auto mt-16 h-[1px] w-16" style={{ backgroundColor: `${palette.accent}33` }} />
             )}
           </div>
         ))}
@@ -263,12 +265,12 @@ export default function ProcessTimeline() {
 
   // Desktop flowing layout
   return (
-    <section ref={sectionRef} className="relative bg-brushly-cream overflow-hidden">
+    <section ref={sectionRef} className="relative overflow-hidden" style={{ backgroundColor: palette.bg, transition: 'background-color 0.8s ease' }}>
       {/* Section header */}
       <div className="relative px-12 pt-32 pb-8 lg:px-20">
-        <div className="process-top-line mx-auto mb-8 h-px w-24 origin-center" style={{ backgroundColor: 'rgba(200,169,110,0.4)' }} />
+        <div className="process-top-line mx-auto mb-8 h-px w-24 origin-center" style={{ backgroundColor: `${palette.accent}66`, transition: 'background-color 0.8s ease' }} />
         <div className="text-center">
-          <span className="process-label block font-body text-[11px] uppercase tracking-[0.3em] text-brushly-black/60">
+          <span className="process-label block font-body text-[11px] uppercase tracking-[0.3em]" style={{ color: palette.textMuted, transition: 'color 0.8s ease' }}>
             How We Work
           </span>
         </div>
@@ -277,7 +279,7 @@ export default function ProcessTimeline() {
             className="process-ghost block font-display font-light leading-none"
             style={{
               fontSize: 'clamp(60px, 10vw, 120px)',
-              WebkitTextStroke: '2px rgba(200,169,110,0.6)',
+              WebkitTextStroke: `2px ${palette.accent}99`,
               color: 'transparent',
             }}
           >
@@ -292,7 +294,7 @@ export default function ProcessTimeline() {
           <line
             ref={lineRef}
             x1="1" y1="0" x2="1" y2="1000"
-            stroke="rgba(200,169,110,0.25)"
+            stroke={`${palette.accent}40`}
             strokeWidth="1.5"
           />
         </svg>
@@ -313,8 +315,8 @@ export default function ProcessTimeline() {
                 ref={el => { nodeRefs.current[i] = el }}
                 className="absolute left-1/2 top-1/2 z-30 hidden -translate-x-1/2 -translate-y-1/2 md:block"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-brushly-gold/30 bg-brushly-cream">
-                  <div className="h-3 w-3 rounded-full bg-brushly-gold" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border" style={{ borderColor: `${palette.accent}4D`, backgroundColor: palette.bg, transition: 'background-color 0.8s ease, border-color 0.8s ease' }}>
+                  <div className="h-3 w-3 rounded-full" style={{ backgroundColor: palette.accent, transition: 'background-color 0.8s ease' }} />
                 </div>
               </div>
 
@@ -327,25 +329,25 @@ export default function ProcessTimeline() {
                       className="step-number block font-display font-light leading-none"
                       style={{
                         fontSize: 'clamp(64px, 8vw, 110px)',
-                        WebkitTextStroke: '1.5px rgba(200,169,110,0.25)',
+                        WebkitTextStroke: `1.5px ${palette.accent}40`,
                         color: 'transparent',
                       }}
                     >
                       {step.number}
                     </span>
                   </div>
-                  <span className="step-subtitle mt-3 block font-body text-[11px] uppercase tracking-[0.2em] text-brushly-gold-dark">
+                  <span className="step-subtitle mt-3 block font-body text-[11px] uppercase tracking-[0.2em]" style={{ color: palette.accent, transition: 'color 0.8s ease' }}>
                     {step.subtitle}
                   </span>
                   <div className="overflow-hidden">
                     <h3
-                      className="step-title mt-2 font-display font-light text-brushly-black"
-                      style={{ fontSize: 'clamp(32px, 4vw, 56px)' }}
+                      className="step-title mt-2 font-display font-light"
+                      style={{ fontSize: 'clamp(32px, 4vw, 56px)', color: palette.text, transition: 'color 0.8s ease' }}
                     >
                       {step.title}
                     </h3>
                   </div>
-                  <p className={`mt-5 font-body text-[15px] leading-relaxed text-brushly-black/55 ${isEven ? 'ml-auto max-w-md' : 'max-w-md'}`}>
+                  <p className={`mt-5 font-body text-[15px] leading-relaxed ${isEven ? 'ml-auto max-w-md' : 'max-w-md'}`} style={{ color: palette.textMuted, transition: 'color 0.8s ease' }}>
                     {step.description.split(' ').map((word, wi) => (
                       <span key={wi} className="inline-block overflow-hidden" style={{ marginRight: '0.3em' }}>
                         <span className="desc-word inline-block">{word}</span>
@@ -355,9 +357,9 @@ export default function ProcessTimeline() {
                   <div className={`mt-6 grid grid-cols-2 gap-x-6 gap-y-2 ${isEven ? 'ml-auto max-w-md' : 'max-w-md'}`}>
                     {step.details.map((detail) => (
                       <div key={detail} className={`detail-item flex items-center gap-2 ${isEven ? 'justify-end' : ''}`}>
-                        {isEven && <span className="font-body text-[13px] text-brushly-black/45">{detail}</span>}
-                        <span className="block h-[5px] w-[5px] flex-shrink-0 rounded-full bg-brushly-gold" />
-                        {!isEven && <span className="font-body text-[13px] text-brushly-black/45">{detail}</span>}
+                        {isEven && <span className="font-body text-[13px]" style={{ color: palette.textMuted }}>{detail}</span>}
+                        <span className="block h-[5px] w-[5px] flex-shrink-0 rounded-full" style={{ backgroundColor: palette.accent }} />
+                        {!isEven && <span className="font-body text-[13px]" style={{ color: palette.textMuted }}>{detail}</span>}
                       </div>
                     ))}
                   </div>
@@ -390,7 +392,7 @@ export default function ProcessTimeline() {
                       <div key={ci} className={`absolute ${corner.pos} z-10`}
                         style={{ transform: `rotate(${corner.rotate}deg)` }}>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                          <path d="M0 10V0H10" stroke="rgba(200,169,110,0.25)" strokeWidth="1" />
+                          <path d="M0 10V0H10" stroke={`${palette.accent}40`} strokeWidth="1" />
                         </svg>
                       </div>
                     ))}
