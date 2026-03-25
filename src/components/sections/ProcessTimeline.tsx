@@ -16,7 +16,7 @@ const steps = [
     subtitle: 'Understanding your vision',
     description: 'We visit your property, discuss your vision, assess every surface, and provide a detailed, transparent quote. No hidden costs, no pressure — just honest advice on how to achieve the finish you want.',
     details: ['On-site property assessment', 'Colour & finish guidance', 'Transparent fixed-price quote', 'Timeline planning'],
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80',
+    image: '/img/consultation.webp',
   },
   {
     number: '02',
@@ -24,7 +24,7 @@ const steps = [
     subtitle: 'The foundation of perfection',
     description: 'We spend as much time preparing surfaces as painting them. Filling, sanding, priming, masking, protecting your furniture and floors. This invisible work is what separates a good finish from a flawless one.',
     details: ['Surface filling & sanding', 'Professional masking', 'Furniture & floor protection', 'Primer application'],
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&q=80',
+    image: '/img/preparation.webp',
   },
   {
     number: '03',
@@ -32,7 +32,7 @@ const steps = [
     subtitle: 'Precision in every stroke',
     description: 'Premium materials applied by skilled craftsmen. Multiple coats for depth and durability, cut lines so clean they look taped, and consistent coverage that transforms your space completely.',
     details: ['Premium paint application', 'Multiple coat system', 'Clean cutting-in', 'Consistent coverage'],
-    image: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80',
+    image: '/img/execution.webp',
   },
   {
     number: '04',
@@ -40,7 +40,7 @@ const steps = [
     subtitle: 'Nothing leaves imperfect',
     description: 'A thorough walkthrough with you under natural and artificial light. We check every edge, every corner, every surface. We don\'t consider a project complete until you are completely satisfied with every detail.',
     details: ['Full walkthrough with client', 'Natural & artificial light check', 'Touch-up & refinement', 'Complete clean-up'],
-    image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=1200&q=80',
+    image: '/img/inspection.webp',
   },
 ]
 
@@ -233,12 +233,12 @@ export default function ProcessTimeline() {
             <p className="mt-4 font-body text-[14px] leading-relaxed text-brushly-black/50">
               {step.description}
             </p>
-            <div className="mt-6 aspect-[4/3] overflow-hidden">
+            <div className="mt-6 aspect-[3/4] overflow-hidden">
               <Image
                 src={step.image}
                 alt={step.title}
                 width={800}
-                height={600}
+                height={1067}
                 className="h-full w-full object-cover"
                 placeholder="blur"
                 blurDataURL={blurDataURL}
@@ -365,7 +365,7 @@ export default function ProcessTimeline() {
 
                 {/* Image side */}
                 <div className="w-[50%]">
-                  <div className="step-image relative overflow-hidden" style={{ aspectRatio: '4/3', willChange: 'clip-path' }}>
+                  <div className="step-image relative overflow-hidden" style={{ aspectRatio: '3/4', willChange: 'clip-path' }}>
                     <div className="step-image-inner absolute inset-[-20px]">
                       <Image
                         src={step.image}

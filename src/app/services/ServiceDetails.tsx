@@ -27,7 +27,7 @@ const services = [
       'Consistent, even coverage with a minimum of two coats on every surface',
       'Room-to-room colour coordination for a cohesive feel throughout your home',
     ],
-    image: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=800&q=80',
+    image: '/img/interior.webp',
   },
   {
     id: 'exterior',
@@ -45,7 +45,7 @@ const services = [
       'Full fascia, soffit, bargeboard, and guttering preparation and finishing',
       'Scaffolding assessment and arrangement for safe, efficient access to all elevations',
     ],
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
+    image: '/img/exterior.webp',
   },
   {
     id: 'wallpapering',
@@ -63,7 +63,7 @@ const services = [
       'Plumb-line accuracy and meticulous seam finishing for invisible joins',
       'Advice on wallpaper selection, room suitability, and complementary colour schemes',
     ],
-    image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80',
+    image: '/img/wallpapering.webp',
   },
   {
     id: 'specialist',
@@ -81,7 +81,7 @@ const services = [
       'Specialist surface preparation and priming tailored to each decorative technique',
       'Expert colour consultation to ensure your chosen finish complements your interior scheme',
     ],
-    image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=800&q=80',
+    image: '/img/finishes.webp',
   },
 ]
 

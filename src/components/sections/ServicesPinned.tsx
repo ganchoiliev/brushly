@@ -22,7 +22,8 @@ const services = [
       { label: 'Ceiling & Woodwork', focusX: 50, focusY: 20 },
       { label: 'Colour Consultation', focusX: 70, focusY: 60 },
     ],
-    image: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?w=1200&q=80',
+    image: '/img/interior.webp',
+    fit: 'cover' as const,
   },
   {
     id: 'exterior',
@@ -34,7 +35,9 @@ const services = [
       { label: 'Weather-Resistant Coatings', focusX: 50, focusY: 50 },
       { label: 'Full Exterior Refresh', focusX: 50, focusY: 30 },
     ],
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&q=80',
+    image: '/img/exterior.webp',
+    fit: 'cover' as const,
+    defaultPosition: '50% 40%',
   },
   {
     id: 'wallpapering',
@@ -46,7 +49,8 @@ const services = [
       { label: 'Feature Walls', focusX: 70, focusY: 50 },
       { label: 'Wallpaper Removal', focusX: 50, focusY: 70 },
     ],
-    image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=1200&q=80',
+    image: '/img/wallpapering.webp',
+    fit: 'cover' as const,
   },
   {
     id: 'specialist',
@@ -58,7 +62,8 @@ const services = [
       { label: 'Colour Washing', focusX: 50, focusY: 60 },
       { label: 'Metallic Effects', focusX: 70, focusY: 30 },
     ],
-    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80',
+    image: '/img/finishes.webp',
+    fit: 'cover' as const,
   },
 ]
 
@@ -582,29 +587,35 @@ export default function ServicesPinned() {
                     pointerEvents: activeIndex === i ? 'auto' : 'none',
                   }}
                 >
-                  {/* Ghost title — split per line, asymmetric indent */}
-                  {service.title.split('\n').map((line, li) => (
-                    <div key={li} className="overflow-hidden"
-                      style={{ marginLeft: li === 1 ? 'clamp(30px, 5vw, 80px)' : '0' }}>
-                      <span
-                        className={`ghost-line-${i} block font-display font-light leading-[0.85]`}
-                        style={{
-                          fontSize: 'clamp(60px, 11vw, 150px)',
-                          color: textSubtle,
-                          WebkitTextStroke: isDark
-                            ? '1px rgba(245,240,235,0.04)'
-                            : '1px rgba(26,26,26,0.03)',
-                          transition: 'color 0.7s ease',
-                          willChange: 'clip-path',
-                        }}
-                      >
-                        {line}
-                      </span>
-                    </div>
-                  ))}
+                  {/* Ghost title — second word at bottom of panel */}
+                  <div
+                    className="absolute overflow-hidden"
+                    style={{
+                      pointerEvents: 'none',
+                      right: '1.5rem',
+                      bottom: '2rem',
+                      padding: '0.15em 0.05em',
+                      textAlign: 'right',
+                    }}
+                  >
+                    <span
+                      className={`ghost-line-${i} block font-display font-light leading-[0.85]`}
+                      style={{
+                        fontSize: 'clamp(50px, 9vw, 130px)',
+                        color: textSubtle,
+                        WebkitTextStroke: isDark
+                          ? '1px rgba(245,240,235,0.06)'
+                          : '1px rgba(26,26,26,0.04)',
+                        transition: 'color 0.7s ease, -webkit-text-stroke 0.7s ease',
+                        willChange: 'clip-path',
+                      }}
+                    >
+                      {service.title.split('\n')[1]}
+                    </span>
+                  </div>
 
                   {/* Change 3: Content overlay with more breathing room */}
-                  <div className="mt-[-20px] relative z-10 max-w-md md:mt-[-30px]">
+                  <div className="relative z-10 max-w-md">
                     {/* Gold accent line */}
                     <div className={`accent-line-${i} mb-8 h-px w-12 origin-left`} style={{ backgroundColor: 'rgba(200,169,110,0.5)' }} />
 
@@ -618,8 +629,26 @@ export default function ServicesPinned() {
                       ))}
                     </p>
 
+                    {/* Ghost title first word — between description and items */}
+                    <div className="overflow-hidden my-6" style={{ padding: '0.15em 0.05em', margin: '1.5rem -0.05em' }}>
+                      <span
+                        className={`ghost-line-${i} block font-display font-light leading-[0.85]`}
+                        style={{
+                          fontSize: 'clamp(50px, 9vw, 130px)',
+                          color: textSubtle,
+                          WebkitTextStroke: isDark
+                            ? '1px rgba(245,240,235,0.06)'
+                            : '1px rgba(26,26,26,0.04)',
+                          transition: 'color 0.7s ease, -webkit-text-stroke 0.7s ease',
+                          willChange: 'clip-path',
+                        }}
+                      >
+                        {service.title.split('\n')[0]}
+                      </span>
+                    </div>
+
                     {/* Change 6: Sub-service list with hover background wash */}
-                    <div className="mt-10 flex flex-col">
+                    <div className="flex flex-col">
                       {service.items.map((item, itemIdx) => (
                         <a
                           key={item.label}
@@ -696,7 +725,7 @@ export default function ServicesPinned() {
             <div className="image-panel-wrapper relative hidden w-1/2 overflow-hidden md:block" style={{ willChange: 'clip-path' }}>
               <div
                 ref={imageContainerRef}
-                className="absolute inset-[-30px]"
+                className="absolute inset-[-15px]"
                 style={{ willChange: 'transform' }}
               >
                 {services.map((service, i) => (
@@ -714,12 +743,12 @@ export default function ServicesPinned() {
                       src={service.image}
                       alt={service.title.replace('\n', ' ')}
                       fill
-                      className="object-cover transition-all duration-700"
+                      className={`${service.fit === 'cover' ? 'object-cover' : 'object-cover'} transition-all duration-700`}
                       style={{
                         objectPosition: hoveredItem !== null && activeIndex === i
                           ? `${services[i].items[hoveredItem]?.focusX || 50}% ${services[i].items[hoveredItem]?.focusY || 50}%`
-                          : '50% 50%',
-                        transform: hoveredItem !== null && activeIndex === i ? 'scale(1.15)' : 'scale(1.05)',
+                          : (service.defaultPosition || '50% 50%'),
+                        transform: hoveredItem !== null && activeIndex === i ? 'scale(1.06)' : 'scale(1.0)',
                       }}
                       sizes="50vw"
                       priority={i === 0}
