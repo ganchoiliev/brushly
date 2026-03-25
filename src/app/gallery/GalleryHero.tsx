@@ -34,7 +34,7 @@ export default function GalleryHero() {
         className="absolute inset-0"
         style={{
           backgroundImage:
-            'url(https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1920&q=80)',
+            'url(/img/details-bg.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

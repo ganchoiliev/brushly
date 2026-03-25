@@ -11,24 +11,24 @@ gsap.registerPlugin(ScrollTrigger)
 
 const values = [
   {
-    title: 'Meticulous Preparation',
+    title: 'Preparation is the project.',
     description:
-      'We spend as much time preparing surfaces as we do painting them. Proper preparation is the foundation of every flawless finish.',
+      'Most decorators rush to the roller. We don\u2019t touch a brush until every surface is properly cleaned, filled, sanded, and primed. Corners, edges, and transitions get the same focus as feature walls. This is where the finish is actually made, and it\u2019s where shortcuts show up six months later.',
   },
   {
-    title: 'Premium Materials',
+    title: 'Materials with purpose, not just prestige.',
     description:
-      'Only the finest paints, primers, and materials. We partner with Farrow & Ball, Little Greene, Benjamin Moore, and other leading brands.',
+      'We partner with Farrow & Ball, Little Greene, and Benjamin Moore because each serves a specific function. Little Greene for superior oil-based woodwork finishes. Farrow & Ball for unmatched colour depth on walls. Benjamin Moore for hardwearing, high-traffic applications. We match the product to the surface and the use case, not to the brand name.',
   },
   {
-    title: 'Clean & Respectful',
+    title: 'Your home, respected.',
     description:
-      'Your home is treated with the utmost care. Dust sheets, protection, and thorough clean-up are standard on every project.',
+      'Full dust sheeting, floor and furniture protection, and end-of-day cleanup are non-negotiable on every job. We work quietly, cleanly, and on schedule. When we leave a room, you should only notice the finish, not that we were there.',
   },
   {
-    title: 'Transparent Pricing',
+    title: 'Honest pricing, no revisions.',
     description:
-      'Detailed quotes with no hidden costs. We believe in honest communication and delivering exactly what we promise.',
+      'You receive a detailed, line-item quote before any work begins. No vague estimates. No surprise extras. If the scope changes, we discuss it openly before any additional cost is committed.',
   },
 ]
 
@@ -59,7 +59,7 @@ export default function ValuesSection() {
     <section ref={ref} className="bg-brushly-black py-28 md:py-40">
       <Container>
         <div className="mx-auto max-w-3xl text-center">
-          <Badge>Our Values</Badge>
+          <Badge>Our Standards</Badge>
           <h2
             className="mt-4 font-display font-light text-brushly-cream"
             style={{ fontSize: 'clamp(32px, 5vw, 64px)' }}

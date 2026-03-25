@@ -35,7 +35,7 @@ export default function ServicesHero() {
         className="absolute inset-0"
         style={{
           backgroundImage:
-            'url(https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=1920&q=80)',
+            'url(/img/services-hero.webp)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}

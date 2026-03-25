@@ -26,25 +26,25 @@ export default function BeforeAfterSection() {
         <div className="mt-16 grid gap-8 md:grid-cols-2">
           <ScrollReveal delay={0.1}>
             <BeforeAfterSlider
-              beforeSrc="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80"
-              afterSrc="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80"
+              beforeSrc="/img/before.webp"
+              afterSrc="/img/after.webp"
               beforeAlt="Living room before renovation"
               afterAlt="Living room after Brushly transformation"
             />
             <p className="mt-4 text-center text-[13px] font-body uppercase tracking-[0.15em] text-brushly-black/40">
-              Living Room — Epsom, Surrey
+              Living Room — Virginia Water, Surrey
             </p>
           </ScrollReveal>
 
           <ScrollReveal delay={0.2}>
             <BeforeAfterSlider
-              beforeSrc="https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&q=80"
-              afterSrc="https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=800&q=80"
-              beforeAlt="Kitchen before renovation"
-              afterAlt="Kitchen after Brushly transformation"
+              beforeSrc="/img/cta-before.webp"
+              afterSrc="/img/cta-after.webp"
+              beforeAlt="Lounge before renovation"
+              afterAlt="Lounge after Brushly transformation"
             />
             <p className="mt-4 text-center text-[13px] font-body uppercase tracking-[0.15em] text-brushly-black/40">
-              Kitchen — Reigate, Surrey
+              Lounge — Reigate, Surrey
             </p>
           </ScrollReveal>
         </div>

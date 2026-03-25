@@ -40,8 +40,8 @@ export default function StorySection() {
           {/* Image with parallax */}
           <div className="overflow-hidden" style={{ aspectRatio: '4/5' }}>
             <ParallaxImage
-              src="https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?w=800&q=80"
-              alt="Brushly craftsmanship"
+              src="/img/about-story.webp"
+              alt="Brushly decorator painting a period property"
               speed={0.15}
               className="h-full w-full"
             />
@@ -56,16 +56,29 @@ export default function StorySection() {
               <span className="italic">perfection</span>
             </h2>
             <p className="mt-8 text-[15px] font-body leading-relaxed text-brushly-black/60">
-              Brushly was founded on a simple belief: that painting and
-              decorating should be an art form, not just a trade. Every surface
-              we touch receives the same obsessive attention to detail — from
-              thorough preparation through to the final coat.
+              Brushly started with a conviction that most people settle for
+              &ldquo;good enough&rdquo; when it comes to their walls. We
+              don&apos;t.
             </p>
             <p className="mt-4 text-[15px] font-body leading-relaxed text-brushly-black/60">
-              Operating across Surrey, Epsom, and Reigate, we&apos;ve built our
-              reputation on delivering premium results that speak for themselves.
-              We use only the finest materials and proven techniques to ensure
-              every project exceeds expectations.
+              We are a specialist painting and decorating studio operating across
+              Surrey, from Epsom and Reigate to the surrounding villages and
+              estates. Every project we take on is treated as a craft commission,
+              not a job sheet. That means slower timelines, deeper preparation,
+              and a standard of finish that holds up years after the dust sheets
+              come down.
+            </p>
+            <p className="mt-4 text-[15px] font-body leading-relaxed text-brushly-black/60">
+              We work exclusively with premium paint systems from Farrow &amp;
+              Ball, Little Greene, and Benjamin Moore, selected not just for
+              their colour depth but for their durability and application
+              qualities. The right product on the right surface, applied with the
+              right technique, is the difference between a paint job and a
+              lasting finish.
+            </p>
+            <p className="mt-4 text-[15px] font-body leading-relaxed text-brushly-black/60">
+              Our clients tend to find us through word of mouth. We prefer it
+              that way. The work speaks. The results stay.
             </p>
           </div>
         </div>
