@@ -27,10 +27,10 @@ export default function CustomCursor() {
 
     const xTo = prefersReduced
       ? (v: number) => { if (cursorRef.current) cursorRef.current.style.left = `${v}px` }
-      : gsap.quickTo(cursorRef.current, 'x', { duration: 0.5, ease: 'power3.out' })
+      : gsap.quickTo(cursorRef.current, 'x', { duration: 0.15, ease: 'power3.out' })
     const yTo = prefersReduced
       ? (v: number) => { if (cursorRef.current) cursorRef.current.style.top = `${v}px` }
-      : gsap.quickTo(cursorRef.current, 'y', { duration: 0.5, ease: 'power3.out' })
+      : gsap.quickTo(cursorRef.current, 'y', { duration: 0.15, ease: 'power3.out' })
 
     const onMouseMove = (e: MouseEvent) => {
       if (!visible) setVisible(true)
