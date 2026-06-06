@@ -25,9 +25,8 @@ const footerLinks = {
 }
 
 const socialLinks = [
-  { label: 'Instagram', href: '#' },
-  { label: 'Facebook', href: '#' },
-  { label: 'Pinterest', href: '#' },
+  { label: 'Instagram', href: 'https://www.instagram.com/brushly.uk/' },
+  { label: 'Facebook', href: 'https://www.facebook.com/Brushlyuk/' },
 ]
 
 export default function Footer() {
@@ -141,6 +140,8 @@ export default function Footer() {
                     <MagneticButton key={link.label} strength={0.2}>
                       <a
                         href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-[13px] font-body text-brushly-cream/50 transition-colors hover:text-brushly-gold"
                       >
                         {link.label}
