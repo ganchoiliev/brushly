@@ -3,6 +3,7 @@ import AboutHero from './AboutHero'
 import StorySection from './StorySection'
 import ValuesSection from './ValuesSection'
 import StatsCounter from '@/components/sections/StatsCounter'
+import CredentialsStrip from '@/components/sections/CredentialsStrip'
 import CTASection from '@/components/sections/CTASection'
 
 export const metadata: Metadata = {
@@ -18,6 +19,7 @@ export default function AboutPage() {
       <StatsCounter />
       <StorySection />
       <ValuesSection />
+      <CredentialsStrip />
       <CTASection />
     </>
   )

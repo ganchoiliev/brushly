@@ -9,6 +9,7 @@ import ShowcaseGrid from '@/components/sections/ShowcaseGrid'
 import BrandMarquee from '@/components/sections/BrandMarquee'
 import Testimonials from '@/components/sections/Testimonials'
 import CTASection from '@/components/sections/CTASection'
+import CredentialsStrip from '@/components/sections/CredentialsStrip'
 import ParallaxBreak from '@/components/sections/ParallaxBreak'
 
 export default function HomePageClient() {
@@ -22,6 +23,7 @@ export default function HomePageClient() {
       <ParallaxBreak />
       <BrandMarquee />
       <Testimonials />
+      <CredentialsStrip />
       <CTASection />
     </ThemeProvider>
   )

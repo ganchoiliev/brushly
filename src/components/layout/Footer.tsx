@@ -88,6 +88,11 @@ export default function Footer() {
                   hello@brushly.uk
                 </a>
               </div>
+              <p className="mt-6 text-[12px] font-body leading-relaxed text-brushly-cream/50">
+                Brushly Ltd &middot; Registered in England &amp; Wales, Company
+                No. 17056861 &middot; Registered office: 18 Howard Road, Reigate,
+                RH2 7JE &middot; Fully insured — £2m public liability.
+              </p>
             </ScrollReveal>
 
             {/* Services */}
