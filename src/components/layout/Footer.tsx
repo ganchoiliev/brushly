@@ -161,6 +161,19 @@ export default function Footer() {
               Surrey &middot; Epsom &middot; Reigate
             </p>
           </div>
+
+          {/* Studio Credit */}
+          <p className="mt-6 text-center text-[12px] font-body text-brushly-cream/30">
+            Web design &amp; development by{' '}
+            <a
+              href="https://gosmartr.co.uk/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brushly-cream/50 transition-colors hover:text-brushly-gold"
+            >
+              GoSmartR
+            </a>
+          </p>
         </Container>
       </div>
     </footer>
