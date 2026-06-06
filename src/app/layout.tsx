@@ -8,6 +8,8 @@ import CustomCursor from '@/components/animations/CustomCursor'
 import GrainOverlay from '@/components/animations/GrainOverlay'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import Script from 'next/script'
+import { ADS_ID } from '@/lib/gtag'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -47,6 +49,21 @@ export default function RootLayout({
       className={`${cormorantGaramond.variable} ${dmSans.variable} antialiased`}
     >
       <body className="min-h-screen bg-brushly-charcoal text-brushly-cream font-body">
+        {/* Google tag (gtag.js) — Google Ads + Consent Mode v2. Loaded once
+            site-wide via next/script; the dataLayer queue guarantees consent
+            defaults are registered before the config call. */}
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${ADS_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',region:['GB','AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE','IS','LI','NO']});
+gtag('set','url_passthrough', true);
+gtag('js', new Date());
+gtag('config', '${ADS_ID}');`}
+        </Script>
         <SmoothScroll>
           <PageLoader />
           <Header />

@@ -8,6 +8,7 @@ import TextReveal from '@/components/animations/TextReveal'
 import ScrollReveal from '@/components/animations/ScrollReveal'
 import LineReveal from '@/components/animations/LineReveal'
 import MagneticButton from '@/components/animations/MagneticButton'
+import { trackEvent, trackConversion, CONV_LABELS } from '@/lib/gtag'
 
 const footerLinks = {
   services: [
@@ -77,6 +78,10 @@ export default function Footer() {
               <div className="mt-6 flex flex-col gap-2 text-[14px] font-body text-brushly-cream/50">
                 <a
                   href="tel:+441737479161"
+                  onClick={() => {
+                    trackEvent('phone_click')
+                    trackConversion(CONV_LABELS.phone)
+                  }}
                   className="transition-colors hover:text-brushly-gold"
                 >
                   01737 479 161

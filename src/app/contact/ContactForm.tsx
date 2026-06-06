@@ -6,6 +6,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
+import { trackEvent, trackConversion, CONV_LABELS } from '@/lib/gtag'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -66,6 +67,9 @@ export default function ContactForm() {
 
       if (res.ok) {
         setSubmitted(true)
+        // Fire conversion only after the API confirms success.
+        trackEvent('quote_form_submit')
+        trackConversion(CONV_LABELS.form)
       } else {
         const result = await res.json()
         setError(result.error || 'Something went wrong. Please try again.')
@@ -161,6 +165,10 @@ export default function ContactForm() {
                 <Badge>Phone</Badge>
                 <a
                   href="tel:+441737479161"
+                  onClick={() => {
+                    trackEvent('phone_click')
+                    trackConversion(CONV_LABELS.phone)
+                  }}
                   className="mt-3 block font-display text-2xl font-light text-brushly-cream transition-colors hover:text-brushly-gold"
                 >
                   01737 479 161
