@@ -188,7 +188,7 @@ export default function ContactForm() {
               <div>
                 <Badge>Hours</Badge>
                 <p className="mt-3 text-[15px] font-body text-brushly-cream/70">
-                  Monday &ndash; Friday: 8:00 &ndash; 18:00
+                  Monday &ndash; Friday: 8:00 &ndash; 17:00
                   <br />
                   Saturday: By appointment
                   <br />
