@@ -27,6 +27,7 @@ const footerLinks = {
 const socialLinks = [
   { label: 'Instagram', href: 'https://www.instagram.com/brushly.uk/' },
   { label: 'Facebook', href: 'https://www.facebook.com/Brushlyuk/' },
+  { label: 'TikTok', href: 'https://www.tiktok.com/@brushlyuk' },
 ]
 
 export default function Footer() {
