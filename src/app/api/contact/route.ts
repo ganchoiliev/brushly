@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     await resend.emails.send({
-      from: 'Brushly Website <noreply@brushly.uk>',
+      from: 'Brushly Website <hello@brushly.uk>',
       to: 'hello@brushly.uk',
       replyTo: email,
       subject: `New Quote Request — ${service}`,
