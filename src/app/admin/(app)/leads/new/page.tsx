@@ -1,12 +1,16 @@
+import type { Metadata } from 'next'
 import PageHeader from '@/components/admin/PageHeader'
+import QuickAddLeadForm from '@/components/admin/leads/QuickAddLeadForm'
+
+export const metadata: Metadata = {
+  title: 'Add lead',
+}
 
 export default function NewLeadPage() {
   return (
     <>
       <PageHeader title="Add lead" />
-      <p className="px-4 py-6 font-body text-[15px] text-admin-muted md:px-8">
-        The quick-add form lands here next.
-      </p>
+      <QuickAddLeadForm />
     </>
   )
 }

@@ -32,6 +32,14 @@
   --color-status-red: #F87171;
 }
 
+/* Admin: hide scrollbars on horizontal filter rows */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 /* Base Styles */
 
 html {
