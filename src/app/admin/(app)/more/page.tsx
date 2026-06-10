@@ -13,12 +13,12 @@ export default function MorePage() {
     <>
       <PageHeader title="More" />
       <div className="px-4 py-6 md:px-8">
-        <div className="overflow-hidden rounded-sm border border-white/8 bg-admin-card">
+        <div className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
           {LINKS.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
-              className="flex h-14 items-center gap-3 border-b border-white/8 px-4 font-body text-[15px] text-brushly-cream transition-colors last:border-b-0 hover:bg-admin-raised"
+              className="flex h-14 items-center gap-3 border-b border-admin-hairline px-4 font-body text-[15px] text-brushly-cream transition-colors last:border-b-0 hover:bg-admin-raised"
             >
               <Icon className="h-5 w-5 text-admin-muted" strokeWidth={1.8} />
               {label}
@@ -26,7 +26,7 @@ export default function MorePage() {
             </Link>
           ))}
         </div>
-        <div className="mt-6 overflow-hidden rounded-sm border border-white/8 bg-admin-card px-1">
+        <div className="mt-6 overflow-hidden rounded-sm border border-admin-hairline bg-admin-card px-1">
           <SignOutButton />
         </div>
       </div>

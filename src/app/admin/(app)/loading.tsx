@@ -3,7 +3,7 @@
 export default function AdminLoading() {
   return (
     <div aria-busy="true">
-      <div className="sticky top-0 z-30 border-b border-white/8 bg-brushly-charcoal/95">
+      <div className="sticky top-0 z-30 border-b border-admin-hairline bg-admin-canvas/95">
         <div className="flex h-16 items-center px-4 md:px-8">
           <div className="h-7 w-36 animate-pulse rounded-sm bg-admin-raised" />
         </div>

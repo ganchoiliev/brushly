@@ -87,9 +87,9 @@ export default async function LeadsPage({
             }
           />
         ) : (
-          <ul className="mt-4 overflow-hidden rounded-sm border border-white/8 bg-admin-card">
+          <ul className="mt-4 overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
             {leads.map((lead) => (
-              <li key={lead.id} className="border-b border-white/8 last:border-b-0">
+              <li key={lead.id} className="border-b border-admin-hairline last:border-b-0">
                 <Link
                   href={`/admin/leads/${lead.id}`}
                   className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-admin-raised"

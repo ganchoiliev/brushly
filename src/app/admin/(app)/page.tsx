@@ -176,16 +176,16 @@ export default async function DashboardPage() {
             Needs attention
           </h2>
           {needsAttention.length === 0 ? (
-            <div className="flex items-center gap-3 rounded-sm border border-white/8 bg-admin-card px-4 py-5">
+            <div className="flex items-center gap-3 rounded-sm border border-admin-hairline bg-admin-card px-4 py-5">
               <Sun className="h-5 w-5 shrink-0 text-brushly-gold" />
               <p className="font-body text-[14px] text-brushly-cream/80">
                 All caught up — nothing waiting on you.
               </p>
             </div>
           ) : (
-            <ul className="overflow-hidden rounded-sm border border-white/8 bg-admin-card">
+            <ul className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
               {needsAttention.slice(0, 8).map((item, i) => (
-                <li key={i} className="border-b border-white/8 last:border-b-0">
+                <li key={i} className="border-b border-admin-hairline last:border-b-0">
                   <Link
                     href={item.href}
                     className="flex min-h-14 items-center gap-3 px-4 py-2.5 transition-colors hover:bg-admin-raised"
@@ -231,9 +231,9 @@ export default async function DashboardPage() {
             <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
               Recent activity
             </h2>
-            <ul className="overflow-hidden rounded-sm border border-white/8 bg-admin-card">
+            <ul className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
               {activity.map((item, i) => (
-                <li key={i} className="border-b border-white/8 last:border-b-0">
+                <li key={i} className="border-b border-admin-hairline last:border-b-0">
                   <Link
                     href={item.href}
                     className="flex min-h-12 items-center gap-3 px-4 py-2 transition-colors hover:bg-admin-raised"
@@ -272,7 +272,7 @@ function Stat({
   return (
     <Link
       href={href}
-      className="rounded-sm border border-white/8 bg-admin-card p-4 transition-colors hover:bg-admin-raised"
+      className="rounded-sm border border-admin-hairline bg-admin-card p-4 transition-colors hover:bg-admin-raised"
     >
       <p className="font-body text-[11px] uppercase tracking-wider text-admin-muted">
         {label}

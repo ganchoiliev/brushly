@@ -24,7 +24,7 @@ export default async function SettingsPage() {
       <PageHeader title="Settings" />
       <div className="px-4 pt-5 md:max-w-lg md:px-8">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <p className="font-body text-[11px] uppercase tracking-wider text-admin-muted">
               Next quote
             </p>
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
               {quoteRef(settings.quote_counter + 1)}
             </p>
           </div>
-          <div className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <p className="font-body text-[11px] uppercase tracking-wider text-admin-muted">
               Next invoice
             </p>

@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start", "--", "-p", "3411"],
       "port": 3411
+    },
+    {
+      "name": "brushly-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3412"],
+      "port": 3412
     }
   ]
 }

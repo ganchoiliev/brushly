@@ -30,7 +30,7 @@ export default function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-sm border border-white/8 bg-admin-card p-6"
+      className="rounded-sm border border-admin-hairline bg-admin-card p-6"
     >
       <label className="block">
         <span className="font-body text-[13px] font-medium text-brushly-cream/70">

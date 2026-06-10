@@ -37,7 +37,7 @@ export default function LeadDetailsForm({ lead }: { lead: Lead }) {
 
   if (!editing) {
     return (
-      <div className="rounded-sm border border-white/8 bg-admin-card p-4">
+      <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
         <div className="flex items-start justify-between gap-3">
           <dl className="min-w-0 space-y-2 font-body text-[14px]">
             <Row label="Phone" value={lead.phone} />

@@ -43,7 +43,7 @@ export default async function LeadDetailPage({
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-white/8 bg-brushly-charcoal/95 backdrop-blur-lg">
+      <header className="sticky top-0 z-30 border-b border-admin-hairline bg-admin-canvas/95 backdrop-blur-lg">
         <div className="flex h-16 items-center gap-3 px-4 md:px-8">
           <Link
             href="/admin/leads"
@@ -71,7 +71,7 @@ export default async function LeadDetailPage({
         <LeadDetailsForm lead={lead} />
 
         {lead.message && (
-          <section className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
               Their message
             </h2>
@@ -82,15 +82,15 @@ export default async function LeadDetailPage({
         )}
 
         {quotes && quotes.length > 0 && (
-          <section className="rounded-sm border border-white/8 bg-admin-card">
-            <h2 className="border-b border-white/8 px-4 py-3 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+          <section className="rounded-sm border border-admin-hairline bg-admin-card">
+            <h2 className="border-b border-admin-hairline px-4 py-3 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
               Quotes for this lead
             </h2>
             {quotes.map((q) => (
               <Link
                 key={q.id}
                 href={`/admin/quotes/${q.id}`}
-                className="flex h-14 items-center gap-3 border-b border-white/8 px-4 font-body text-[14px] last:border-b-0 hover:bg-admin-raised"
+                className="flex h-14 items-center gap-3 border-b border-admin-hairline px-4 font-body text-[14px] last:border-b-0 hover:bg-admin-raised"
               >
                 <FileText className="h-4 w-4 shrink-0 text-admin-muted" />
                 <span className="truncate text-brushly-cream">{q.title}</span>

@@ -56,7 +56,7 @@ export default function ContactActions({
 
 function Disabled({ label, icon }: { label: string; icon: React.ReactNode }) {
   return (
-    <span className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-sm border border-white/8 font-body text-[12px] text-admin-muted/50">
+    <span className="flex h-14 flex-col items-center justify-center gap-0.5 rounded-sm border border-admin-hairline font-body text-[12px] text-admin-muted/50">
       {icon}
       {label}
     </span>

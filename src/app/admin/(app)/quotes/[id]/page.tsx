@@ -52,7 +52,7 @@ export default async function QuoteDetailPage({
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-white/8 bg-brushly-charcoal/95 backdrop-blur-lg">
+      <header className="sticky top-0 z-30 border-b border-admin-hairline bg-admin-canvas/95 backdrop-blur-lg">
         <div className="flex h-16 items-center gap-3 px-4 md:px-8">
           <Link
             href="/admin/quotes"
@@ -115,7 +115,7 @@ export default async function QuoteDetailPage({
         {client && (
           <Link
             href={`/admin/clients/${client.id}`}
-            className="block rounded-sm border border-white/8 bg-admin-card p-4 transition-colors hover:bg-admin-raised"
+            className="block rounded-sm border border-admin-hairline bg-admin-card p-4 transition-colors hover:bg-admin-raised"
           >
             <p className="font-body text-[12px] uppercase tracking-wider text-admin-muted">
               For
@@ -131,11 +131,11 @@ export default async function QuoteDetailPage({
           </Link>
         )}
 
-        <section className="overflow-hidden rounded-sm border border-white/8 bg-admin-card">
+        <section className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
           {items.map((item) => (
             <div
               key={item.id}
-              className="flex items-start justify-between gap-3 border-b border-white/8 px-4 py-3 last:border-b-0"
+              className="flex items-start justify-between gap-3 border-b border-admin-hairline px-4 py-3 last:border-b-0"
             >
               <div className="min-w-0">
                 <p className="font-body text-[14px] leading-snug text-brushly-cream">
@@ -161,7 +161,7 @@ export default async function QuoteDetailPage({
                 <span className="tabular-nums">{formatGBP(quote.vat_pence)}</span>
               </div>
             )}
-            <div className="flex justify-between border-t border-white/8 pt-2 text-[16px] font-semibold text-brushly-gold">
+            <div className="flex justify-between border-t border-admin-hairline pt-2 text-[16px] font-semibold text-brushly-gold">
               <span>Total</span>
               <span className="tabular-nums">{formatGBP(quote.total_pence)}</span>
             </div>
@@ -169,7 +169,7 @@ export default async function QuoteDetailPage({
         </section>
 
         {quote.notes && (
-          <section className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
               Notes
             </h2>
@@ -179,7 +179,7 @@ export default async function QuoteDetailPage({
           </section>
         )}
         {quote.terms && (
-          <section className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
               Terms
             </h2>

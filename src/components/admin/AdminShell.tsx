@@ -49,7 +49,7 @@ export default function AdminShell({
   return (
     <div className="min-h-dvh">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-white/8 bg-admin-card md:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-admin-hairline bg-admin-card md:flex">
         <Link href="/admin" className="flex items-center gap-3 px-6 py-6">
           <span className="font-display text-3xl font-medium leading-none text-brushly-gold">
             B
@@ -84,7 +84,7 @@ export default function AdminShell({
             )
           })}
         </nav>
-        <div className="border-t border-white/8 p-4">
+        <div className="border-t border-admin-hairline p-4">
           <SignOutButton />
         </div>
       </aside>
@@ -94,7 +94,7 @@ export default function AdminShell({
 
       {/* Mobile bottom tab bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-white/8 bg-admin-card/95 backdrop-blur-lg md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-admin-hairline bg-admin-card/95 backdrop-blur-lg md:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="grid h-16 grid-cols-6">

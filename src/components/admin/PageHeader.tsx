@@ -1,22 +1,26 @@
 import Link from 'next/link'
+import { Display } from '@/components/admin/Type'
 
-/* Sticky top bar: page title (display face) + at most ONE primary action —
-   the gold button (§1.9). */
+/* Sticky top bar: page title (display face, gold terminal period) + at most
+   ONE primary action — the gold button (§1.9). Detail screens that render a
+   document number instead of a word pass period={false}. */
 export default function PageHeader({
   title,
   action,
+  period = true,
   children,
 }: {
   title: string
   action?: { href: string; label: string }
+  period?: boolean
   children?: React.ReactNode
 }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/8 bg-brushly-charcoal/95 backdrop-blur-lg">
+    <header className="sticky top-0 z-30 border-b border-admin-hairline bg-admin-canvas/95 backdrop-blur-lg">
       <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-8">
-        <h1 className="truncate font-display text-2xl font-light md:text-3xl">
+        <Display period={period} className="truncate">
           {title}
-        </h1>
+        </Display>
         {action && (
           <Link
             href={action.href}

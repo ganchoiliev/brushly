@@ -11,7 +11,7 @@ export default function ClientEditCard({ client }: { client: Client }) {
   if (editing) {
     return (
       <div className="rounded-sm border border-brushly-gold/30 bg-admin-card">
-        <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-admin-hairline px-4 py-3">
           <span className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
             Edit client
           </span>
@@ -38,7 +38,7 @@ export default function ClientEditCard({ client }: { client: Client }) {
     .join(', ')
 
   return (
-    <div className="rounded-sm border border-white/8 bg-admin-card p-4">
+    <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
       <div className="flex items-start justify-between gap-3">
         <dl className="min-w-0 space-y-2 font-body text-[14px]">
           <Row label="Phone" value={client.phone} />

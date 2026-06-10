@@ -298,7 +298,7 @@ export default function QuoteBuilder({
             }
           />
         ) : client.kind === 'existing' ? (
-          <div className="flex h-13 items-center justify-between rounded-sm border border-white/8 bg-admin-card px-4">
+          <div className="flex h-13 items-center justify-between rounded-sm border border-admin-hairline bg-admin-card px-4">
             <span className="truncate font-body text-[15px] font-medium text-brushly-cream">
               {client.name}
             </span>
@@ -313,7 +313,7 @@ export default function QuoteBuilder({
             )}
           </div>
         ) : (
-          <div className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <div className="flex items-center justify-between">
               <span className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
                 New client
@@ -394,7 +394,7 @@ export default function QuoteBuilder({
         </h2>
         <div className="space-y-3">
           {items.map((it, i) => (
-            <div key={it.key} className="rounded-sm border border-white/8 bg-admin-card p-3">
+            <div key={it.key} className="rounded-sm border border-admin-hairline bg-admin-card p-3">
               <div className="flex items-start gap-2">
                 <textarea
                   placeholder="What's being done"
@@ -482,7 +482,7 @@ export default function QuoteBuilder({
       </section>
 
       {/* Totals */}
-      <section className="rounded-sm border border-white/8 bg-admin-card p-4 font-body text-[14px]">
+      <section className="rounded-sm border border-admin-hairline bg-admin-card p-4 font-body text-[14px]">
         <div className="flex justify-between text-brushly-cream/70">
           <span>Subtotal</span>
           <span className="tabular-nums">{formatGBP(subtotal)}</span>
@@ -493,7 +493,7 @@ export default function QuoteBuilder({
             <span className="tabular-nums">{formatGBP(vat)}</span>
           </div>
         )}
-        <div className="mt-2 flex justify-between border-t border-white/8 pt-2 text-[16px] font-semibold text-brushly-gold">
+        <div className="mt-2 flex justify-between border-t border-admin-hairline pt-2 text-[16px] font-semibold text-brushly-gold">
           <span>Total</span>
           <span className="tabular-nums">{formatGBP(total)}</span>
         </div>
@@ -586,7 +586,7 @@ function ClientPicker({
   }, [term])
 
   return (
-    <div className="rounded-sm border border-white/8 bg-admin-card p-3">
+    <div className="rounded-sm border border-admin-hairline bg-admin-card p-3">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-muted" />
         <input

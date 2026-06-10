@@ -21,9 +21,16 @@
   /* Marquee Animation */
   --animate-marquee: marquee 30s linear infinite;
 
-  /* Admin surfaces — layered charcoal (admin app only) */
+  /* Admin tokens — layered charcoal (admin app only).
+     Contrast audit 2026-06-10, WCAG 2.1 relative luminance:
+       text #F5F0EB on canvas 16.13:1, card 15.05:1, raised 13.37:1
+       muted #9A9A93 on canvas 6.45:1, card 6.02:1, raised 5.35:1
+     Every body-text pair ≥4.5:1 — do not darken muted below this. */
+  --color-admin-canvas: #151515;
   --color-admin-card: #1C1C1C;
   --color-admin-raised: #262626;
+  --color-admin-hairline: rgb(255 255 255 / 8%);
+  --color-admin-text: #F5F0EB;
   --color-admin-muted: #9A9A93;
 
   /* Admin status colors — badges/borders only */

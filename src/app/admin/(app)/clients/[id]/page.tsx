@@ -46,7 +46,7 @@ export default async function ClientDetailPage({
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-white/8 bg-brushly-charcoal/95 backdrop-blur-lg">
+      <header className="sticky top-0 z-30 border-b border-admin-hairline bg-admin-canvas/95 backdrop-blur-lg">
         <div className="flex h-16 items-center gap-3 px-4 md:px-8">
           <Link
             href="/admin/clients"
@@ -65,7 +65,7 @@ export default async function ClientDetailPage({
         <ContactActions phone={client.phone} email={client.email} />
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <p className="font-body text-[12px] uppercase tracking-wider text-admin-muted">
               Paid so far
             </p>
@@ -73,7 +73,7 @@ export default async function ClientDetailPage({
               {formatGBP(lifetime)}
             </p>
           </div>
-          <div className="rounded-sm border border-white/8 bg-admin-card p-4">
+          <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
             <p className="font-body text-[12px] uppercase tracking-wider text-admin-muted">
               Waiting on
             </p>
@@ -94,15 +94,15 @@ export default async function ClientDetailPage({
         </Link>
 
         {(quotes ?? []).length > 0 && (
-          <section className="overflow-hidden rounded-sm border border-white/8 bg-admin-card">
-            <h2 className="border-b border-white/8 px-4 py-3 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+          <section className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
+            <h2 className="border-b border-admin-hairline px-4 py-3 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
               Quotes
             </h2>
             {quotes!.map((q) => (
               <Link
                 key={q.id}
                 href={`/admin/quotes/${q.id}`}
-                className="flex min-h-14 items-center gap-3 border-b border-white/8 px-4 py-2 font-body text-[14px] last:border-b-0 hover:bg-admin-raised"
+                className="flex min-h-14 items-center gap-3 border-b border-admin-hairline px-4 py-2 font-body text-[14px] last:border-b-0 hover:bg-admin-raised"
               >
                 <FileText className="h-4 w-4 shrink-0 text-admin-muted" />
                 <div className="min-w-0 flex-1">
@@ -118,15 +118,15 @@ export default async function ClientDetailPage({
         )}
 
         {(invoices ?? []).length > 0 && (
-          <section className="overflow-hidden rounded-sm border border-white/8 bg-admin-card">
-            <h2 className="border-b border-white/8 px-4 py-3 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+          <section className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
+            <h2 className="border-b border-admin-hairline px-4 py-3 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
               Invoices
             </h2>
             {invoices!.map((inv) => (
               <Link
                 key={inv.id}
                 href={`/admin/invoices/${inv.id}`}
-                className="flex min-h-14 items-center gap-3 border-b border-white/8 px-4 py-2 font-body text-[14px] last:border-b-0 hover:bg-admin-raised"
+                className="flex min-h-14 items-center gap-3 border-b border-admin-hairline px-4 py-2 font-body text-[14px] last:border-b-0 hover:bg-admin-raised"
               >
                 <Receipt className="h-4 w-4 shrink-0 text-admin-muted" />
                 <div className="min-w-0 flex-1">
