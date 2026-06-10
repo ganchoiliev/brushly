@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Trash2, ChevronUp, ChevronDown, Search, UserPlus, X } from 'lucide-react'
 import { createQuote, updateQuote } from '@/lib/admin/actions/quotes'
+import { createInvoice } from '@/lib/admin/actions/invoices'
 import { searchClients } from '@/lib/admin/actions/clients'
 import { formatGBP, parseGBPToPence, addDays, todayLondon } from '@/lib/admin/format'
 import type { ItemUnit } from '@/lib/supabase/types'
@@ -39,6 +40,10 @@ type ItemDraft = {
 }
 
 export type QuoteBuilderProps = {
+  /* 'invoice' reuses the whole builder for standalone invoices: due date
+     instead of valid-until, no terms field (invoices print the settings
+     terms), createInvoice on save. */
+  kind?: 'quote' | 'invoice'
   settings: { vat_registered: boolean; default_terms: string | null }
   lead?: { id: string; name: string; phone: string | null; email: string | null; service: string | null } | null
   candidateClients?: ClientHit[]
@@ -68,6 +73,7 @@ const inputClass =
   'w-full rounded-sm border border-white/10 bg-admin-raised px-3 font-body text-[16px] text-brushly-cream outline-none transition-colors focus:border-brushly-gold'
 
 export default function QuoteBuilder({
+  kind = 'quote',
   settings,
   lead,
   candidateClients = [],
@@ -76,6 +82,7 @@ export default function QuoteBuilder({
 }: QuoteBuilderProps) {
   const router = useRouter()
   const editing = !!quote
+  const isInvoice = kind === 'invoice'
   const vatRate = quote ? quote.vat_rate : settings.vat_registered ? 20 : 0
 
   const [client, setClient] = useState<ClientChoice>(
@@ -102,7 +109,7 @@ export default function QuoteBuilder({
       : [newItem()]
   )
   const [validUntil, setValidUntil] = useState(
-    quote ? (quote.valid_until ?? '') : addDays(todayLondon(), 30)
+    quote ? (quote.valid_until ?? '') : addDays(todayLondon(), isInvoice ? 14 : 30)
   )
   const [notes, setNotes] = useState(quote?.notes ?? '')
   const [terms, setTerms] = useState(
@@ -140,7 +147,7 @@ export default function QuoteBuilder({
       return
     }
     if (!title.trim()) {
-      toast.error('Give the quote a title')
+      toast.error(`Give the ${isInvoice ? 'invoice' : 'quote'} a title`)
       return
     }
     const cleanItems = []
@@ -173,40 +180,57 @@ export default function QuoteBuilder({
     }
 
     setPending(true)
-    const shared = {
-      title: title.trim(),
-      valid_until: validUntil || null,
-      vat_rate: vatRate,
-      items: cleanItems,
-      notes: notes || null,
-      terms: terms || null,
-    }
-    const result = editing
-      ? await updateQuote({ id: quote!.id, ...shared })
-      : await createQuote({
-          ...shared,
-          lead_id: lead?.id ?? null,
-          client:
-            client.kind === 'existing'
-              ? { mode: 'existing' as const, id: client.id }
-              : {
-                  mode: 'new' as const,
-                  name: client.name,
-                  phone: client.phone || null,
-                  email: client.email || null,
-                  address_line1: client.address_line1 || null,
-                  town: client.town || null,
-                  postcode: client.postcode || null,
-                },
+    const clientPayload =
+      client.kind === 'existing'
+        ? { mode: 'existing' as const, id: client.id }
+        : {
+            mode: 'new' as const,
+            name: client.name,
+            phone: client.phone || null,
+            email: client.email || null,
+            address_line1: client.address_line1 || null,
+            town: client.town || null,
+            postcode: client.postcode || null,
+          }
+    const result = isInvoice
+      ? await createInvoice({
+          client: clientPayload,
+          title: title.trim(),
+          due_date: validUntil || null,
+          vat_rate: vatRate,
+          items: cleanItems,
+          notes: notes || null,
         })
+      : editing
+        ? await updateQuote({
+            id: quote!.id,
+            title: title.trim(),
+            valid_until: validUntil || null,
+            vat_rate: vatRate,
+            items: cleanItems,
+            notes: notes || null,
+            terms: terms || null,
+          })
+        : await createQuote({
+            title: title.trim(),
+            valid_until: validUntil || null,
+            vat_rate: vatRate,
+            items: cleanItems,
+            notes: notes || null,
+            terms: terms || null,
+            lead_id: lead?.id ?? null,
+            client: clientPayload,
+          })
     if (!result.ok) {
       toast.error(result.error)
       setPending(false)
       return
     }
-    toast.success(editing ? 'Quote saved' : 'Quote created')
+    toast.success(
+      isInvoice ? 'Invoice created' : editing ? 'Quote saved' : 'Quote created'
+    )
     const id = editing ? quote!.id : (result as { data: { id: string } }).data.id
-    router.replace(`/admin/quotes/${id}`)
+    router.replace(`/admin/${isInvoice ? 'invoices' : 'quotes'}/${id}`)
     router.refresh()
   }
 
@@ -475,10 +499,10 @@ export default function QuoteBuilder({
         </div>
       </section>
 
-      {/* Valid until */}
+      {/* Valid until / due date */}
       <section>
         <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
-          Valid until
+          {isInvoice ? 'Due date' : 'Valid until'}
         </h2>
         <input
           type="date"
@@ -500,24 +524,32 @@ export default function QuoteBuilder({
           className={`${inputClass} py-3`}
         />
       </section>
-      <section>
-        <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
-          Terms (printed on the quote)
-        </h2>
-        <textarea
-          value={terms}
-          onChange={(e) => setTerms(e.target.value)}
-          rows={3}
-          className={`${inputClass} py-3`}
-        />
-      </section>
+      {!isInvoice && (
+        <section>
+          <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+            Terms (printed on the quote)
+          </h2>
+          <textarea
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            rows={3}
+            className={`${inputClass} py-3`}
+          />
+        </section>
+      )}
 
       <button
         onClick={save}
         disabled={pending}
         className="h-14 w-full rounded-sm bg-brushly-gold font-body text-[16px] font-semibold text-brushly-black transition-colors hover:bg-brushly-gold-light disabled:opacity-60"
       >
-        {pending ? 'Saving…' : editing ? 'Save changes' : 'Save quote'}
+        {pending
+          ? 'Saving…'
+          : isInvoice
+            ? 'Save invoice'
+            : editing
+              ? 'Save changes'
+              : 'Save quote'}
       </button>
     </div>
   )

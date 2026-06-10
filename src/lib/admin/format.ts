@@ -50,6 +50,16 @@ export function addDays(isoDate: string, days: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+/* Overdue is computed, never stored: a sent invoice past its due date
+   shows as overdue everywhere (§5.5). */
+export function effectiveInvoiceStatus(
+  status: string,
+  dueDate: string | null
+): string {
+  if (status === 'sent' && dueDate && dueDate < todayLondon()) return 'overdue'
+  return status
+}
+
 export function quoteRef(n: number): string {
   return `QU-${String(n).padStart(4, '0')}`
 }
