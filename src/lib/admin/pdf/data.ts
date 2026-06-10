@@ -40,6 +40,7 @@ export async function buildQuotePdfInput(supabase: DB, id: string) {
   const input: PdfInput = {
     docType: 'QUOTE',
     reference: quoteRef(quote.quote_number),
+    draft: quote.status === 'draft',
     title: quote.title,
     issueDate: quote.issue_date,
     secondaryDate: quote.valid_until
@@ -92,6 +93,7 @@ export async function buildInvoicePdfInput(supabase: DB, id: string) {
   const input: PdfInput = {
     docType: 'INVOICE',
     reference: invoiceRef(invoice.invoice_number),
+    draft: invoice.status === 'draft',
     title: invoice.title,
     issueDate: invoice.issue_date,
     secondaryDate: invoice.due_date ? { label: 'Due', value: invoice.due_date } : null,

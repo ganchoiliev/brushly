@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 node_modules
+
+# PDF proof harness output (scripts/pdf-proof.ts)
+.pdf-proof/

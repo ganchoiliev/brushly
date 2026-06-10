@@ -9,28 +9,54 @@ import {
   renderToBuffer,
 } from '@react-pdf/renderer'
 
-/* A4 quote/invoice. White for print, charcoal header band, gold rules —
-   hand-set, not templated. Cormorant for the wordmark and document title,
-   Helvetica for everything tabular. */
+/* A4 quote/invoice (§3.1). White paper — these get printed — with a
+   charcoal header band and gold accents. Cormorant for the wordmark and
+   display numerals, DM Sans for everything else. Spacing sits on an
+   8pt grid; hairline rules only, no zebra fills. */
 
 const GOLD = '#C8A96E'
 const CHARCOAL = '#151515'
+const CREAM = '#F5F0EB'
 const INK = '#1A1A1A'
 const MUTED = '#6B6B66'
 const RULE = '#E5E0D8'
+const CARD = '#FAF8F4'
+
+const FONT_DIR = path.join(process.cwd(), 'src/lib/admin/pdf/fonts')
 
 Font.register({
   family: 'Cormorant',
   fonts: [
-    {
-      src: path.join(process.cwd(), 'src/lib/admin/pdf/fonts/CormorantGaramond-Medium.ttf'),
-      fontWeight: 500,
-    },
-    {
-      src: path.join(process.cwd(), 'src/lib/admin/pdf/fonts/CormorantGaramond-SemiBold.ttf'),
-      fontWeight: 600,
-    },
+    { src: path.join(FONT_DIR, 'CormorantGaramond-Medium.ttf'), fontWeight: 500 },
+    { src: path.join(FONT_DIR, 'CormorantGaramond-SemiBold.ttf'), fontWeight: 600 },
   ],
+})
+Font.register({
+  family: 'DMSans',
+  fonts: [
+    { src: path.join(FONT_DIR, 'DMSans-Regular.ttf'), fontWeight: 400 },
+    { src: path.join(FONT_DIR, 'DMSans-Medium.ttf'), fontWeight: 500 },
+    { src: path.join(FONT_DIR, 'DMSans-Bold.ttf'), fontWeight: 700 },
+  ],
+})
+
+/* No mid-word hyphenation ("sys-tem" is not print-designer standard).
+   Tokens up to 40 chars fit every column at 9pt and wrap at spaces,
+   hyphen-free. Only genuinely unbroken monsters (references, long
+   emails) get chunked so they wrap inside their column; textkit draws
+   a hyphen at those breaks, and a chunk never ends on a separator so
+   a double hyphen can't occur. */
+Font.registerHyphenationCallback((word) => {
+  if (word.length <= 40) return [word]
+  const parts: string[] = []
+  let i = 0
+  while (i < word.length) {
+    let end = Math.min(i + 38, word.length)
+    if (end < word.length && /[-./@_]/.test(word[end - 1])) end -= 1
+    parts.push(word.slice(i, end))
+    i = end
+  }
+  return parts
 })
 
 const gbp = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
@@ -45,6 +71,20 @@ const dateGB = (iso: string | null) =>
       })
     : ''
 
+/* "2" not "2.00"; "1.5" stays "1.5" (§3.1). */
+const qtyLabel = (qty: number) => String(qty)
+
+/* "204455" → "20-44-55"; passes through anything already formatted. */
+const sortCode = (raw: string | null) => {
+  if (!raw) return '—'
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length !== 6) return raw
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 6)}`
+}
+
+const dash = (value: string | null | undefined) =>
+  value && value.trim() !== '' ? value : '—'
+
 const UNIT_LABEL: Record<string, string> = {
   job: 'job',
   day: 'day',
@@ -56,6 +96,8 @@ const UNIT_LABEL: Record<string, string> = {
 export type PdfInput = {
   docType: 'QUOTE' | 'INVOICE'
   reference: string
+  /* Drafts carry a diagonal watermark; sent/accepted/paid render clean. */
+  draft: boolean
   title: string | null
   issueDate: string | null
   secondaryDate: { label: string; value: string } | null // valid until / due date
@@ -89,172 +131,293 @@ export type PdfInput = {
   payment: { bankName: string | null; sortCode: string | null; accountNo: string | null } | null
 }
 
+const BAND_H = 96
+
 const styles = StyleSheet.create({
   page: {
     backgroundColor: '#FFFFFF',
-    fontFamily: 'Helvetica',
-    fontSize: 9.5,
+    fontFamily: 'DMSans',
+    fontWeight: 400,
+    fontSize: 9,
     color: INK,
-    paddingBottom: 110,
+    paddingTop: BAND_H + 24,
+    paddingBottom: 136,
   },
+
+  /* Header band — absolute + fixed so it tops every page. */
   band: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: BAND_H,
     backgroundColor: CHARCOAL,
     paddingHorizontal: 48,
-    paddingVertical: 30,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   wordmarkRow: { flexDirection: 'row', alignItems: 'baseline' },
-  wordmarkB: { fontFamily: 'Cormorant', fontWeight: 600, fontSize: 30, color: GOLD },
+  wordmarkB: { fontFamily: 'Cormorant', fontWeight: 600, fontSize: 32, color: GOLD },
   wordmark: {
     fontFamily: 'Cormorant',
     fontWeight: 500,
-    fontSize: 17,
-    color: '#F5F0EB',
+    fontSize: 16,
+    color: CREAM,
     letterSpacing: 5,
     marginLeft: 10,
   },
   docMeta: { alignItems: 'flex-end' },
+  docTypeRow: { flexDirection: 'row', alignItems: 'baseline' },
   docType: {
     fontFamily: 'Cormorant',
     fontWeight: 500,
-    fontSize: 21,
-    color: '#F5F0EB',
+    fontSize: 19,
+    color: CREAM,
     letterSpacing: 3,
   },
-  docRef: { fontSize: 10, color: GOLD, marginTop: 4, letterSpacing: 1 },
+  docRef: {
+    fontFamily: 'Cormorant',
+    fontWeight: 500,
+    fontSize: 19,
+    color: GOLD,
+    letterSpacing: 1,
+  },
+  bandDate: { fontSize: 8, color: '#A8A299', marginTop: 3, lineHeight: 1.2 },
+  docDot: { fontFamily: 'DMSans', fontSize: 14, color: '#A8A299', marginHorizontal: 7 },
+
   body: { paddingHorizontal: 48 },
-  blocks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 28 },
+
+  /* Parties */
+  blocks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   blockLabel: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: MUTED,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
+    fontWeight: 500,
     marginBottom: 6,
   },
-  blockLine: { fontSize: 9.5, lineHeight: 1.5 },
+  blockLine: { fontSize: 9, lineHeight: 1.6 },
+  blockMuted: { fontSize: 9, lineHeight: 1.6, color: MUTED },
+
   title: {
     fontFamily: 'Cormorant',
     fontWeight: 600,
-    fontSize: 16,
-    marginTop: 26,
+    fontSize: 17,
+    marginTop: 24,
     color: INK,
   },
-  dates: { flexDirection: 'row', marginTop: 6, marginBottom: 18 },
-  dateItem: { fontSize: 9, color: MUTED, marginRight: 18 },
+
+  /* Items table — generous rows, hairline rules only. */
   tableHeader: {
     flexDirection: 'row',
-    borderBottomWidth: 1.2,
+    borderBottomWidth: 1,
     borderBottomColor: GOLD,
     paddingBottom: 6,
-    marginTop: 8,
+    paddingTop: 8,
+    backgroundColor: '#FFFFFF',
   },
-  th: { fontSize: 7.5, color: MUTED, letterSpacing: 1.2, textTransform: 'uppercase' },
+  th: {
+    fontSize: 7,
+    color: MUTED,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    fontWeight: 500,
+    lineHeight: 1.2,
+  },
+  /* react-pdf resolves the lineHeight multiplier against the style's OWN
+     fontSize — an inherited size silently falls back to the 18pt default
+     and doubles the line box. Every cell sets both, explicitly. */
   row: {
     flexDirection: 'row',
-    borderBottomWidth: 0.6,
+    borderBottomWidth: 0.5,
     borderBottomColor: RULE,
     paddingVertical: 8,
   },
-  colDesc: { flex: 1, paddingRight: 12 },
-  colQty: { width: 70, textAlign: 'right' },
-  colPrice: { width: 80, textAlign: 'right' },
-  colTotal: { width: 85, textAlign: 'right' },
-  totals: { marginTop: 14, alignItems: 'flex-end' },
-  totalRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 },
-  totalLabel: { fontSize: 9.5, color: MUTED, width: 110, textAlign: 'right' },
-  totalValue: { fontSize: 9.5, width: 95, textAlign: 'right' },
+  colDesc: { flex: 1, paddingRight: 16, fontSize: 9, lineHeight: 1.4 },
+  colQty: { width: 36, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
+  colUnit: {
+    width: 44,
+    textAlign: 'left',
+    paddingLeft: 10,
+    color: MUTED,
+    fontSize: 9,
+    lineHeight: 1.4,
+  },
+  colPrice: { width: 76, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
+  colTotal: { width: 84, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
+
+  /* Totals card — right-aligned (§3.1). */
+  totalsCard: {
+    alignSelf: 'flex-end',
+    width: 248,
+    marginTop: 16,
+    backgroundColor: CARD,
+    borderWidth: 0.5,
+    borderColor: RULE,
+    padding: 16,
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  totalLabel: { fontSize: 9, color: MUTED, lineHeight: 1.3 },
+  totalValue: { fontSize: 9, color: INK, lineHeight: 1.3 },
   grandRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    borderTopWidth: 1.2,
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    borderTopWidth: 1,
     borderTopColor: GOLD,
-    paddingTop: 7,
+    paddingTop: 8,
     marginTop: 3,
   },
-  grandLabel: {
-    fontSize: 11,
-    fontFamily: 'Helvetica-Bold',
-    width: 110,
-    textAlign: 'right',
-    color: INK,
-  },
-  grandValue: {
-    fontSize: 12.5,
-    fontFamily: 'Helvetica-Bold',
-    width: 95,
-    textAlign: 'right',
-    color: GOLD,
-  },
-  noteBlock: { marginTop: 20 },
+  grandLabel: { fontSize: 10, fontWeight: 700, color: INK, letterSpacing: 0.5, lineHeight: 1.3 },
+  grandValue: { fontSize: 14, fontWeight: 700, color: INK, lineHeight: 1.3 },
+
+  noteBlock: { marginTop: 24 },
+
+  /* Footer — fixed, every page. */
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 48,
-    paddingBottom: 26,
+    paddingBottom: 24,
   },
-  footerRule: { borderTopWidth: 0.6, borderTopColor: RULE, paddingTop: 12 },
-  footerText: { fontSize: 8, color: MUTED, lineHeight: 1.55 },
-  footerStrong: { fontSize: 8.5, color: INK, fontFamily: 'Helvetica-Bold' },
+  footerRule: { borderTopWidth: 0.5, borderTopColor: RULE, paddingTop: 10 },
+  footerText: { fontSize: 7.5, color: MUTED, lineHeight: 1.6 },
+  footerStrong: { fontSize: 8, color: INK, fontWeight: 700 },
+  footerCaption: { fontSize: 6.5, color: MUTED, lineHeight: 1.5, marginTop: 6 },
+  pageNum: {
+    position: 'absolute',
+    right: 48,
+    bottom: 10,
+    fontSize: 7,
+    color: MUTED,
+  },
+
+  /* Draft watermark — subtle diagonal, every page. */
+  watermark: {
+    position: 'absolute',
+    top: 340,
+    left: 40,
+    transform: 'rotate(-30deg)',
+    fontFamily: 'Cormorant',
+    fontWeight: 600,
+    fontSize: 130,
+    letterSpacing: 20,
+    color: CHARCOAL,
+    opacity: 0.05,
+  },
 })
 
 function BrushlyPdf({ input }: { input: PdfInput }) {
   const showVat = input.vatRate > 0
+  const items = input.items
+  const lastIndex = items.length - 1
+
+  const totalsCard = (
+    <View style={styles.totalsCard}>
+      <View style={styles.totalRow}>
+        <Text style={styles.totalLabel}>Subtotal</Text>
+        <Text style={styles.totalValue}>{money(input.subtotalPence)}</Text>
+      </View>
+      {showVat && (
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>VAT {input.vatRate}%</Text>
+          <Text style={styles.totalValue}>{money(input.vatPence)}</Text>
+        </View>
+      )}
+      <View style={styles.grandRow}>
+        <Text style={styles.grandLabel}>TOTAL</Text>
+        <Text style={styles.grandValue}>{money(input.totalPence)}</Text>
+      </View>
+    </View>
+  )
+
+  const itemRow = (item: PdfInput['items'][number], i: number) => (
+    <View key={i} style={styles.row} wrap={false}>
+      <Text style={styles.colDesc}>{item.description}</Text>
+      <Text style={styles.colQty}>{qtyLabel(item.qty)}</Text>
+      <Text style={styles.colUnit}>{UNIT_LABEL[item.unit] ?? item.unit}</Text>
+      <Text style={styles.colPrice}>{money(item.unitPricePence)}</Text>
+      <Text style={styles.colTotal}>{money(item.totalPence)}</Text>
+    </View>
+  )
+
   return (
     <Document
       title={`${input.docType === 'QUOTE' ? 'Quote' : 'Invoice'} ${input.reference} — ${input.company.name}`}
       author={input.company.name}
     >
       <Page size="A4" style={styles.page}>
+        {input.draft && (
+          <Text style={styles.watermark} fixed>
+            DRAFT
+          </Text>
+        )}
+
         <View style={styles.band} fixed>
           <View style={styles.wordmarkRow}>
             <Text style={styles.wordmarkB}>B</Text>
             <Text style={styles.wordmark}>BRUSHLY</Text>
           </View>
           <View style={styles.docMeta}>
-            <Text style={styles.docType}>{input.docType}</Text>
-            <Text style={styles.docRef}>{input.reference}</Text>
+            <View style={styles.docTypeRow}>
+              <Text style={styles.docType}>{input.docType}</Text>
+              <Text style={styles.docDot}>·</Text>
+              <Text style={styles.docRef}>{input.reference}</Text>
+            </View>
+            {input.issueDate && (
+              <Text style={styles.bandDate}>Issued {dateGB(input.issueDate)}</Text>
+            )}
+            {input.secondaryDate && (
+              <Text style={styles.bandDate}>
+                {input.secondaryDate.label} {dateGB(input.secondaryDate.value)}
+              </Text>
+            )}
           </View>
         </View>
 
         <View style={styles.body}>
           <View style={styles.blocks}>
-            <View style={{ maxWidth: 220 }}>
+            <View style={{ maxWidth: 230 }}>
               <Text style={styles.blockLabel}>From</Text>
-              <Text style={[styles.blockLine, { fontFamily: 'Helvetica-Bold' }]}>
+              <Text style={[styles.blockLine, { fontWeight: 700 }]}>
                 {input.company.name}
               </Text>
-              <Text style={styles.blockLine}>{input.company.address}</Text>
-              <Text style={styles.blockLine}>{input.company.phone}</Text>
-              <Text style={styles.blockLine}>{input.company.email}</Text>
-              <Text style={[styles.blockLine, { color: MUTED }]}>
-                Company No. {input.company.companyNumber}
+              <Text style={styles.blockLine}>{dash(input.company.address)}</Text>
+              <Text style={styles.blockLine}>{dash(input.company.phone)}</Text>
+              <Text style={styles.blockLine}>{dash(input.company.email)}</Text>
+              <Text style={styles.blockMuted}>
+                Company No. {dash(input.company.companyNumber)}
               </Text>
               {input.company.vatNumber && (
-                <Text style={[styles.blockLine, { color: MUTED }]}>
-                  VAT No. {input.company.vatNumber}
-                </Text>
+                <Text style={styles.blockMuted}>VAT No. {input.company.vatNumber}</Text>
               )}
             </View>
-            <View style={{ maxWidth: 220, alignItems: 'flex-end' }}>
+            <View style={{ maxWidth: 230, alignItems: 'flex-end' }}>
               <Text style={styles.blockLabel}>
                 {input.docType === 'QUOTE' ? 'Prepared for' : 'Billed to'}
               </Text>
-              <Text
-                style={[styles.blockLine, { fontFamily: 'Helvetica-Bold', textAlign: 'right' }]}
-              >
+              <Text style={[styles.blockLine, { fontWeight: 700, textAlign: 'right' }]}>
                 {input.client.name}
               </Text>
-              {input.client.addressLines.map((line, i) => (
-                <Text key={i} style={[styles.blockLine, { textAlign: 'right' }]}>
-                  {line}
-                </Text>
-              ))}
+              {input.client.addressLines.length > 0 ? (
+                input.client.addressLines.map((line, i) => (
+                  <Text key={i} style={[styles.blockLine, { textAlign: 'right' }]}>
+                    {line}
+                  </Text>
+                ))
+              ) : (
+                <Text style={[styles.blockLine, { textAlign: 'right' }]}>—</Text>
+              )}
               {input.client.email && (
-                <Text style={[styles.blockLine, { textAlign: 'right', color: MUTED }]}>
+                <Text style={[styles.blockMuted, { textAlign: 'right' }]}>
                   {input.client.email}
                 </Text>
               )}
@@ -262,55 +425,30 @@ function BrushlyPdf({ input }: { input: PdfInput }) {
           </View>
 
           {input.title && <Text style={styles.title}>{input.title}</Text>}
-          <View style={styles.dates}>
-            {input.issueDate && (
-              <Text style={styles.dateItem}>Issued {dateGB(input.issueDate)}</Text>
-            )}
-            {input.secondaryDate && (
-              <Text style={styles.dateItem}>
-                {input.secondaryDate.label} {dateGB(input.secondaryDate.value)}
-              </Text>
-            )}
-          </View>
 
-          <View style={styles.tableHeader}>
+          <View style={styles.tableHeader} fixed>
             <Text style={[styles.th, styles.colDesc]}>Description</Text>
             <Text style={[styles.th, styles.colQty]}>Qty</Text>
+            <Text style={[styles.th, styles.colUnit]}>Unit</Text>
             <Text style={[styles.th, styles.colPrice]}>Unit price</Text>
             <Text style={[styles.th, styles.colTotal]}>Total</Text>
           </View>
-          {input.items.map((item, i) => (
-            <View key={i} style={styles.row} wrap={false}>
-              <Text style={styles.colDesc}>{item.description}</Text>
-              <Text style={styles.colQty}>
-                {item.qty} {UNIT_LABEL[item.unit] ?? item.unit}
-              </Text>
-              <Text style={styles.colPrice}>{money(item.unitPricePence)}</Text>
-              <Text style={styles.colTotal}>{money(item.totalPence)}</Text>
+          {items.slice(0, lastIndex).map((item, i) => itemRow(item, i))}
+          {/* The last row and the totals card travel together, so totals
+              never orphan on a page without context (§3.2). */}
+          {lastIndex >= 0 && (
+            <View wrap={false}>
+              {itemRow(items[lastIndex], lastIndex)}
+              {totalsCard}
             </View>
-          ))}
-
-          <View style={styles.totals}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Subtotal</Text>
-              <Text style={styles.totalValue}>{money(input.subtotalPence)}</Text>
-            </View>
-            {showVat && (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>VAT {input.vatRate}%</Text>
-                <Text style={styles.totalValue}>{money(input.vatPence)}</Text>
-              </View>
-            )}
-            <View style={styles.grandRow}>
-              <Text style={styles.grandLabel}>Total</Text>
-              <Text style={styles.grandValue}>{money(input.totalPence)}</Text>
-            </View>
-          </View>
+          )}
 
           {input.notes && (
-            <View style={styles.noteBlock}>
+            <View style={styles.noteBlock} wrap={false}>
               <Text style={styles.blockLabel}>Notes</Text>
-              <Text style={styles.blockLine}>{input.notes}</Text>
+              <Text style={[styles.blockLine, { maxWidth: 380 }]}>
+                {input.notes}
+              </Text>
             </View>
           )}
         </View>
@@ -318,27 +456,39 @@ function BrushlyPdf({ input }: { input: PdfInput }) {
         <View style={styles.footer} fixed>
           <View style={styles.footerRule}>
             {input.docType === 'INVOICE' && input.payment?.accountNo && (
-              <Text style={[styles.footerText, { marginBottom: 6 }]}>
-                <Text style={styles.footerStrong}>Payment by bank transfer  </Text>
+              <Text style={[styles.footerText, { marginBottom: 4 }]}>
+                <Text style={styles.footerStrong}>Payment by bank transfer{'   '}</Text>
                 {input.payment.bankName ? `${input.payment.bankName} · ` : ''}
-                Sort code {input.payment.sortCode} · Account {input.payment.accountNo} ·
-                Reference {input.reference}
+                Sort code {sortCode(input.payment.sortCode)} · Account{' '}
+                {dash(input.payment.accountNo)} · Reference: {input.reference}
               </Text>
             )}
-            {input.docType === 'QUOTE' && input.secondaryDate && (
-              <Text style={[styles.footerText, { marginBottom: 6 }]}>
-                This quote is valid until {dateGB(input.secondaryDate.value)}.
+            {input.docType === 'QUOTE' && (
+              <Text style={[styles.footerText, { marginBottom: 4 }]}>
+                {input.secondaryDate
+                  ? `This quote is valid until ${dateGB(input.secondaryDate.value)}. `
+                  : ''}
+                <Text style={styles.footerStrong}>
+                  Reply to this email or call us to accept.
+                </Text>
               </Text>
             )}
             {input.terms && (
-              <Text style={[styles.footerText, { marginBottom: 6 }]}>{input.terms}</Text>
+              <Text style={styles.footerText}>{input.terms}</Text>
             )}
-            <Text style={styles.footerText}>
+            <Text style={styles.footerCaption}>
               {input.company.name} · Registered in England &amp; Wales · Company No.{' '}
               {input.company.companyNumber} · Registered office: {input.company.address}
             </Text>
           </View>
         </View>
+        <Text
+          style={styles.pageNum}
+          fixed
+          render={({ pageNumber, totalPages }) =>
+            totalPages > 1 ? `Page ${pageNumber} of ${totalPages}` : ''
+          }
+        />
       </Page>
     </Document>
   )
