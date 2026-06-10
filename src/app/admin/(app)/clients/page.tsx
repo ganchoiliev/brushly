@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   title: 'Clients',
 }
 
+/* "Sarah Mitchell" → "SM"; single names give one letter. */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  const first = parts[0]?.[0] ?? ''
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? '') : ''
+  return (first + last).toUpperCase() || '?'
+}
+
 export default async function ClientsPage({
   searchParams,
 }: {
@@ -45,6 +53,9 @@ export default async function ClientsPage({
                 ? 'Nothing matches that search.'
                 : "No clients yet — they're created automatically when you turn a lead into a quote."
             }
+            action={
+              q ? undefined : { href: '/admin/clients/new', label: '+ Add a client' }
+            }
           />
         ) : (
           <ul className="mt-4 overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
@@ -52,8 +63,14 @@ export default async function ClientsPage({
               <li key={client.id} className="border-b border-admin-hairline last:border-b-0">
                 <Link
                   href={`/admin/clients/${client.id}`}
-                  className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-admin-raised"
+                  className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-admin-raised active:bg-admin-raised"
                 >
+                  <span
+                    aria-hidden
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-admin-raised font-body text-[12px] font-semibold uppercase tracking-wide text-brushly-cream/80"
+                  >
+                    {initials(client.name)}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-body text-[15px] font-medium text-brushly-cream">
                       {client.name}

@@ -39,6 +39,14 @@ export default function QuoteActions({
     }
   }
 
+  function openSend() {
+    if (!clientEmail) {
+      toast.error(`${clientName} has no email — add one on their client page first.`)
+      return
+    }
+    setDialog('send')
+  }
+
   async function confirmDecision(decision: 'accepted' | 'declined') {
     setPending(true)
     const result = await markQuoteDecision({ id: quoteId, decision })
@@ -75,18 +83,26 @@ export default function QuoteActions({
 
       {!decided && (
         <button
-          onClick={() => {
-            if (!clientEmail) {
-              toast.error(`${clientName} has no email — add one on their client page first.`)
-              return
-            }
-            setDialog('send')
-          }}
+          onClick={openSend}
           className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-brushly-gold font-body text-[16px] font-semibold text-brushly-black transition-colors hover:bg-brushly-gold-light"
         >
           <Send className="h-5 w-5" />
           {status === 'sent' ? 'Send again' : 'Send to client'}
         </button>
+      )}
+
+      {/* Mobile: the primary action rides in a sticky bar above the tab
+          bar (§2.3), so it never scrolls out of reach. */}
+      {!decided && (
+        <div className="fixed inset-x-0 bottom-16 z-30 border-t border-admin-hairline bg-admin-canvas/95 px-4 py-3 backdrop-blur-lg md:hidden">
+          <button
+            onClick={openSend}
+            className="flex h-13 w-full items-center justify-center gap-2 rounded-sm bg-brushly-gold font-body text-[15px] font-semibold text-brushly-black transition-colors active:bg-brushly-gold-light"
+          >
+            <Send className="h-5 w-5" />
+            {status === 'sent' ? 'Send again' : 'Send to client'}
+          </button>
+        </div>
       )}
 
       {!decided && (

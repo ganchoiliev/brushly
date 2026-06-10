@@ -91,7 +91,7 @@ export default async function QuotesPage({
               <li key={q.id} className="border-b border-admin-hairline last:border-b-0">
                 <Link
                   href={`/admin/quotes/${q.id}`}
-                  className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-admin-raised"
+                  className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-admin-raised active:bg-admin-raised"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-body text-[15px] font-medium text-brushly-cream">
@@ -102,10 +102,12 @@ export default async function QuotesPage({
                       {timeAgo(q.created_at)}
                     </p>
                   </div>
-                  <span className="shrink-0 font-body text-[15px] font-semibold tabular-nums text-brushly-cream">
-                    {formatGBP(q.total_pence)}
-                  </span>
-                  <StatusBadge map={QUOTE_STATUS} status={q.status} />
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-body text-[15px] font-semibold tabular-nums text-brushly-cream">
+                      {formatGBP(q.total_pence)}
+                    </span>
+                    <StatusBadge map={QUOTE_STATUS} status={q.status} />
+                  </div>
                 </Link>
               </li>
             ))}

@@ -66,7 +66,7 @@ export default async function InvoiceDetailPage({
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="min-w-0 truncate font-display text-2xl font-light tabular-nums">
+          <h1 className="min-w-0 truncate font-body text-[15px] font-medium tabular-nums text-brushly-cream/80">
             {invoiceRef(invoice.invoice_number)}
           </h1>
           <span className="ml-auto shrink-0">
@@ -75,65 +75,115 @@ export default async function InvoiceDetailPage({
         </div>
       </header>
 
-      <div className="space-y-5 px-4 py-5 md:max-w-2xl md:px-8">
-        <div>
-          {invoice.title && (
-            <h2 className="font-display text-xl font-light text-brushly-cream">
-              {invoice.title}
-            </h2>
-          )}
-          <p className="mt-1 font-body text-[13px] text-admin-muted">
-            Issued {formatDate(invoice.issue_date)}
-            {invoice.due_date && <> · due {formatDate(invoice.due_date)}</>}
-            {invoice.paid_at && (
-              <>
-                {' '}
-                · paid {timeAgo(invoice.paid_at)}
-                {invoice.payment_method && (
-                  <> by {PAYMENT_LABEL[invoice.payment_method]}</>
+      <div className="px-4 py-5 pb-28 md:px-8 md:pb-5">
+        <div className="mx-auto max-w-5xl lg:grid lg:grid-cols-[1fr_300px] lg:items-start lg:gap-8">
+          <div className="space-y-5">
+            {/* Document-style header (§2.3). */}
+            <section className="rounded-sm border border-admin-hairline bg-admin-card p-5">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                <h2 className="font-display text-4xl font-light tabular-nums text-brushly-cream">
+                  {invoiceRef(invoice.invoice_number)}
+                </h2>
+                <StatusBadge map={INVOICE_STATUS} status={effective} />
+              </div>
+              {invoice.title && (
+                <p className="mt-2 font-body text-[15px] font-medium text-brushly-cream">
+                  {invoice.title}
+                </p>
+              )}
+              <p className="mt-1 font-body text-[13px] text-admin-muted">
+                Issued {formatDate(invoice.issue_date)}
+                {invoice.due_date && <> · due {formatDate(invoice.due_date)}</>}
+                {invoice.paid_at && (
+                  <>
+                    {' '}
+                    · paid {timeAgo(invoice.paid_at)}
+                    {invoice.payment_method && (
+                      <> by {PAYMENT_LABEL[invoice.payment_method]}</>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </p>
-          {invoice.quotes && (
-            <Link
-              href={`/admin/quotes/${invoice.quotes.id}`}
-              className="mt-1 inline-flex items-center gap-1 font-body text-[13px] text-brushly-gold"
-            >
-              <FileText className="h-3.5 w-3.5" />
-              From quote {quoteRef(invoice.quotes.quote_number)}
-            </Link>
-          )}
+              </p>
+              {invoice.quotes && (
+                <Link
+                  href={`/admin/quotes/${invoice.quotes.id}`}
+                  className="mt-1 inline-flex items-center gap-1 font-body text-[13px] text-brushly-gold"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  From quote {quoteRef(invoice.quotes.quote_number)}
+                </Link>
+              )}
+              {client && (
+                <Link
+                  href={`/admin/clients/${client.id}`}
+                  className="mt-4 block rounded-sm border border-admin-hairline bg-admin-canvas/40 p-3 transition-colors hover:bg-admin-raised"
+                >
+                  <p className="font-body text-[11px] uppercase tracking-wider text-admin-muted">
+                    Billed to
+                  </p>
+                  <p className="mt-0.5 font-body text-[14px] font-medium text-brushly-cream">
+                    {client.name}
+                  </p>
+                  <p className="mt-0.5 font-body text-[13px] text-admin-muted">
+                    {[client.address_line1, client.town, client.postcode]
+                      .filter(Boolean)
+                      .join(', ') || client.phone || client.email || ''}
+                  </p>
+                </Link>
+              )}
+            </section>
+
+            <aside className="lg:hidden">
+              <InvoiceActions
+                invoiceId={invoice.id}
+                status={effective}
+                reference={invoiceRef(invoice.invoice_number)}
+                clientEmail={client?.email ?? null}
+                clientName={client?.name ?? 'This client'}
+              />
+            </aside>
+
+            <InvoiceBody invoice={invoice} items={items} />
+          </div>
+
+          <aside className="hidden lg:sticky lg:top-20 lg:block">
+            <InvoiceActions
+              invoiceId={invoice.id}
+              status={effective}
+              reference={invoiceRef(invoice.invoice_number)}
+              clientEmail={client?.email ?? null}
+              clientName={client?.name ?? 'This client'}
+            />
+          </aside>
         </div>
+      </div>
+    </>
+  )
+}
 
-        <InvoiceActions
-          invoiceId={invoice.id}
-          status={effective}
-          reference={invoiceRef(invoice.invoice_number)}
-          clientEmail={client?.email ?? null}
-          clientName={client?.name ?? 'This client'}
-        />
-
-        {client && (
-          <Link
-            href={`/admin/clients/${client.id}`}
-            className="block rounded-sm border border-admin-hairline bg-admin-card p-4 transition-colors hover:bg-admin-raised"
-          >
-            <p className="font-body text-[12px] uppercase tracking-wider text-admin-muted">
-              Billed to
-            </p>
-            <p className="mt-1 font-body text-[15px] font-medium text-brushly-cream">
-              {client.name}
-            </p>
-            <p className="mt-0.5 font-body text-[13px] text-admin-muted">
-              {[client.address_line1, client.town, client.postcode]
-                .filter(Boolean)
-                .join(', ') || client.phone || client.email || ''}
-            </p>
-          </Link>
-        )}
-
-        <section className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
+function InvoiceBody({
+  invoice,
+  items,
+}: {
+  invoice: {
+    subtotal_pence: number
+    vat_rate: number
+    vat_pence: number
+    total_pence: number
+    notes: string | null
+  }
+  items: {
+    id: string
+    description: string
+    qty: number
+    unit: string
+    unit_price_pence: number
+    total_pence: number
+  }[]
+}) {
+  return (
+    <>
+      <section className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
           {items.map((item) => (
             <div
               key={item.id}
@@ -171,17 +221,16 @@ export default async function InvoiceDetailPage({
           </div>
         </section>
 
-        {invoice.notes && (
-          <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
-            <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
-              Notes
-            </h2>
-            <p className="mt-2 whitespace-pre-wrap font-body text-[14px] leading-relaxed text-brushly-cream">
-              {invoice.notes}
-            </p>
-          </section>
-        )}
-      </div>
+      {invoice.notes && (
+        <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
+          <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+            Notes
+          </h2>
+          <p className="mt-2 whitespace-pre-wrap font-body text-[14px] leading-relaxed text-brushly-cream">
+            {invoice.notes}
+          </p>
+        </section>
+      )}
     </>
   )
 }

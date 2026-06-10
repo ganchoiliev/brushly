@@ -92,7 +92,7 @@ export default async function LeadsPage({
               <li key={lead.id} className="border-b border-admin-hairline last:border-b-0">
                 <Link
                   href={`/admin/leads/${lead.id}`}
-                  className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-admin-raised"
+                  className="flex min-h-16 items-center gap-3 px-4 py-3 transition-colors hover:bg-admin-raised active:bg-admin-raised"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-body text-[15px] font-medium text-brushly-cream">
@@ -104,10 +104,12 @@ export default async function LeadsPage({
                         .join(' · ') || lead.phone || '—'}
                     </p>
                   </div>
-                  <span className="shrink-0 font-body text-[12px] tabular-nums text-admin-muted">
-                    {timeAgo(lead.created_at)}
-                  </span>
-                  <StatusBadge map={LEAD_STATUS} status={lead.status} />
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <StatusBadge map={LEAD_STATUS} status={lead.status} />
+                    <span className="font-body text-[12px] tabular-nums text-admin-muted">
+                      {timeAgo(lead.created_at)}
+                    </span>
+                  </div>
                 </Link>
               </li>
             ))}

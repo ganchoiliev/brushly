@@ -44,8 +44,9 @@ export default function StatusBadge({
   const def = map[status] ?? { label: status, tone: 'neutral' as const }
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 font-body text-[11px] font-medium uppercase tracking-wider ${STYLES[def.tone]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-body text-[11px] font-medium uppercase tracking-wider ${STYLES[def.tone]}`}
     >
+      <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
       {def.label}
     </span>
   )

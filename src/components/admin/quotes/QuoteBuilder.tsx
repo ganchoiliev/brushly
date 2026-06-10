@@ -141,6 +141,19 @@ export default function QuoteBuilder({
   const vat = Math.round((subtotal * vatRate) / 100)
   const total = subtotal + vat
 
+  /* Explicit save state (§2.3): compare against what was loaded. The first
+     render's snapshot is the clean baseline — edits diverge from it. */
+  const snapshot = JSON.stringify({
+    client: client === null ? null : client.kind === 'existing' ? client.id : client,
+    title,
+    validUntil,
+    notes,
+    terms,
+    items: items.map((it) => [it.description, it.qty, it.unit, it.price]),
+  })
+  const [cleanSnapshot] = useState(snapshot)
+  const dirty = snapshot !== cleanSnapshot
+
   async function save() {
     if (!client) {
       toast.error('Choose who the quote is for')
@@ -481,24 +494,6 @@ export default function QuoteBuilder({
         </button>
       </section>
 
-      {/* Totals */}
-      <section className="rounded-sm border border-admin-hairline bg-admin-card p-4 font-body text-[14px]">
-        <div className="flex justify-between text-brushly-cream/70">
-          <span>Subtotal</span>
-          <span className="tabular-nums">{formatGBP(subtotal)}</span>
-        </div>
-        {vatRate > 0 && (
-          <div className="mt-1 flex justify-between text-brushly-cream/70">
-            <span>VAT {vatRate}%</span>
-            <span className="tabular-nums">{formatGBP(vat)}</span>
-          </div>
-        )}
-        <div className="mt-2 flex justify-between border-t border-admin-hairline pt-2 text-[16px] font-semibold text-brushly-gold">
-          <span>Total</span>
-          <span className="tabular-nums">{formatGBP(total)}</span>
-        </div>
-      </section>
-
       {/* Valid until / due date */}
       <section>
         <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
@@ -538,19 +533,50 @@ export default function QuoteBuilder({
         </section>
       )}
 
-      <button
-        onClick={save}
-        disabled={pending}
-        className="h-14 w-full rounded-sm bg-brushly-gold font-body text-[16px] font-semibold text-brushly-black transition-colors hover:bg-brushly-gold-light disabled:opacity-60"
-      >
-        {pending
-          ? 'Saving…'
-          : isInvoice
-            ? 'Save invoice'
-            : editing
-              ? 'Save changes'
-              : 'Save quote'}
-      </button>
+      {/* The money screen's anchor (§2.3): running totals + save, sticky so
+          they never leave view while editing. bottom-20 clears the mobile
+          tab bar; on md+ there is no tab bar. */}
+      <div className="sticky bottom-20 z-20 rounded-sm border border-admin-hairline bg-admin-card/95 p-4 shadow-lg shadow-black/40 backdrop-blur-lg md:bottom-4">
+        <div className="space-y-1 font-body text-[13px]">
+          <div className="flex justify-between text-brushly-cream/70">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{formatGBP(subtotal)}</span>
+          </div>
+          {vatRate > 0 && (
+            <div className="flex justify-between text-brushly-cream/70">
+              <span>VAT {vatRate}%</span>
+              <span className="tabular-nums">{formatGBP(vat)}</span>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-admin-hairline pt-1.5 text-[16px] font-semibold text-brushly-gold">
+            <span>Total</span>
+            <span className="tabular-nums">{formatGBP(total)}</span>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <span
+            aria-live="polite"
+            className={`font-body text-[12px] ${
+              dirty ? 'text-status-amber' : 'text-status-green'
+            }`}
+          >
+            {dirty ? 'Unsaved changes' : editing ? 'Saved ✓' : ''}
+          </span>
+          <button
+            onClick={save}
+            disabled={pending}
+            className="ml-auto h-13 shrink-0 rounded-sm bg-brushly-gold px-6 font-body text-[15px] font-semibold text-brushly-black transition-colors hover:bg-brushly-gold-light disabled:opacity-60"
+          >
+            {pending
+              ? 'Saving…'
+              : isInvoice
+                ? 'Save invoice'
+                : editing
+                  ? 'Save changes'
+                  : 'Save quote'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

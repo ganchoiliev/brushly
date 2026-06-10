@@ -61,7 +61,7 @@ export default async function QuoteDetailPage({
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <h1 className="min-w-0 truncate font-display text-2xl font-light tabular-nums">
+          <h1 className="min-w-0 truncate font-body text-[15px] font-medium tabular-nums text-brushly-cream/80">
             {quoteRef(quote.quote_number)}
           </h1>
           <span className="ml-auto flex shrink-0 items-center gap-2">
@@ -79,59 +79,136 @@ export default async function QuoteDetailPage({
         </div>
       </header>
 
-      <div className="space-y-5 px-4 py-5 md:max-w-2xl md:px-8">
-        <div>
-          <h2 className="font-display text-xl font-light text-brushly-cream">
-            {quote.title}
-          </h2>
-          <p className="mt-1 font-body text-[13px] text-admin-muted">
-            Issued {formatDate(quote.issue_date)}
-            {quote.valid_until && <> · valid until {formatDate(quote.valid_until)}</>}
-            {quote.sent_at && <> · sent {timeAgo(quote.sent_at)}</>}
-            {quote.decided_at && <> · decided {timeAgo(quote.decided_at)}</>}
-          </p>
+      <div className="px-4 py-5 pb-28 md:px-8 md:pb-5">
+        <div className="mx-auto max-w-5xl lg:grid lg:grid-cols-[1fr_300px] lg:items-start lg:gap-8">
+          <div className="space-y-5">
+            {/* Document-style header (§2.3): number set large in the
+                display face, status beside it, client block below. */}
+            <section className="rounded-sm border border-admin-hairline bg-admin-card p-5">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+                <h2 className="font-display text-4xl font-light tabular-nums text-brushly-cream">
+                  {quoteRef(quote.quote_number)}
+                </h2>
+                <StatusBadge map={QUOTE_STATUS} status={quote.status} />
+              </div>
+              <p className="mt-2 font-body text-[15px] font-medium text-brushly-cream">
+                {quote.title}
+              </p>
+              <p className="mt-1 font-body text-[13px] text-admin-muted">
+                Issued {formatDate(quote.issue_date)}
+                {quote.valid_until && <> · valid until {formatDate(quote.valid_until)}</>}
+                {quote.sent_at && <> · sent {timeAgo(quote.sent_at)}</>}
+                {quote.decided_at && <> · decided {timeAgo(quote.decided_at)}</>}
+              </p>
+              {client && (
+                <Link
+                  href={`/admin/clients/${client.id}`}
+                  className="mt-4 block rounded-sm border border-admin-hairline bg-admin-canvas/40 p-3 transition-colors hover:bg-admin-raised"
+                >
+                  <p className="font-body text-[11px] uppercase tracking-wider text-admin-muted">
+                    For
+                  </p>
+                  <p className="mt-0.5 font-body text-[14px] font-medium text-brushly-cream">
+                    {client.name}
+                  </p>
+                  <p className="mt-0.5 font-body text-[13px] text-admin-muted">
+                    {[client.address_line1, client.town, client.postcode]
+                      .filter(Boolean)
+                      .join(', ') || client.phone || client.email || ''}
+                  </p>
+                </Link>
+              )}
+            </section>
+
+            {/* Actions: in flow on mobile, top-right column on desktop.
+                For accepted quotes the invoice CTA also rides the mobile
+                sticky bar below. */}
+            <aside className="space-y-2 lg:hidden">
+              {quote.status === 'accepted' && existingInvoice && (
+                <ViewInvoiceLink invoice={existingInvoice} />
+              )}
+              {quote.status === 'accepted' && !existingInvoice && (
+                <div className="hidden md:block">
+                  <CreateInvoiceButton quoteId={quote.id} />
+                </div>
+              )}
+              <QuoteActions
+                quoteId={quote.id}
+                status={quote.status}
+                reference={quoteRef(quote.quote_number)}
+                clientEmail={client?.email ?? null}
+                clientName={client?.name ?? 'This client'}
+              />
+            </aside>
+            {quote.status === 'accepted' && !existingInvoice && (
+              <div className="fixed inset-x-0 bottom-16 z-30 border-t border-admin-hairline bg-admin-canvas/95 px-4 py-3 backdrop-blur-lg md:hidden">
+                <CreateInvoiceButton quoteId={quote.id} />
+              </div>
+            )}
+
+            <QuoteBody quote={quote} items={items} />
+          </div>
+
+          <aside className="hidden space-y-2 lg:sticky lg:top-20 lg:block">
+            {quote.status === 'accepted' &&
+              (existingInvoice ? (
+                <ViewInvoiceLink invoice={existingInvoice} />
+              ) : (
+                <CreateInvoiceButton quoteId={quote.id} />
+              ))}
+            <QuoteActions
+              quoteId={quote.id}
+              status={quote.status}
+              reference={quoteRef(quote.quote_number)}
+              clientEmail={client?.email ?? null}
+              clientName={client?.name ?? 'This client'}
+            />
+          </aside>
         </div>
+      </div>
+    </>
+  )
+}
 
-        {quote.status === 'accepted' &&
-          (existingInvoice ? (
-            <Link
-              href={`/admin/invoices/${existingInvoice.id}`}
-              className="flex h-14 items-center justify-center gap-2 rounded-sm border border-brushly-gold/50 font-body text-[15px] font-semibold text-brushly-gold transition-colors hover:bg-brushly-gold/10"
-            >
-              View invoice {invoiceRef(existingInvoice.invoice_number)}
-            </Link>
-          ) : (
-            <CreateInvoiceButton quoteId={quote.id} />
-          ))}
+function ViewInvoiceLink({
+  invoice,
+}: {
+  invoice: { id: string; invoice_number: number }
+}) {
+  return (
+    <Link
+      href={`/admin/invoices/${invoice.id}`}
+      className="flex h-14 items-center justify-center gap-2 rounded-sm border border-brushly-gold/50 font-body text-[15px] font-semibold text-brushly-gold transition-colors hover:bg-brushly-gold/10"
+    >
+      View invoice {invoiceRef(invoice.invoice_number)}
+    </Link>
+  )
+}
 
-        <QuoteActions
-          quoteId={quote.id}
-          status={quote.status}
-          reference={quoteRef(quote.quote_number)}
-          clientEmail={client?.email ?? null}
-          clientName={client?.name ?? 'This client'}
-        />
-
-        {client && (
-          <Link
-            href={`/admin/clients/${client.id}`}
-            className="block rounded-sm border border-admin-hairline bg-admin-card p-4 transition-colors hover:bg-admin-raised"
-          >
-            <p className="font-body text-[12px] uppercase tracking-wider text-admin-muted">
-              For
-            </p>
-            <p className="mt-1 font-body text-[15px] font-medium text-brushly-cream">
-              {client.name}
-            </p>
-            <p className="mt-0.5 font-body text-[13px] text-admin-muted">
-              {[client.address_line1, client.town, client.postcode]
-                .filter(Boolean)
-                .join(', ') || client.phone || client.email || ''}
-            </p>
-          </Link>
-        )}
-
-        <section className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
+function QuoteBody({
+  quote,
+  items,
+}: {
+  quote: {
+    subtotal_pence: number
+    vat_rate: number
+    vat_pence: number
+    total_pence: number
+    notes: string | null
+    terms: string | null
+  }
+  items: {
+    id: string
+    description: string
+    qty: number
+    unit: string
+    unit_price_pence: number
+    total_pence: number
+  }[]
+}) {
+  return (
+    <>
+      <section className="overflow-hidden rounded-sm border border-admin-hairline bg-admin-card">
           {items.map((item) => (
             <div
               key={item.id}
@@ -168,27 +245,26 @@ export default async function QuoteDetailPage({
           </div>
         </section>
 
-        {quote.notes && (
-          <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
-            <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
-              Notes
-            </h2>
-            <p className="mt-2 whitespace-pre-wrap font-body text-[14px] leading-relaxed text-brushly-cream">
-              {quote.notes}
-            </p>
-          </section>
-        )}
-        {quote.terms && (
-          <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
-            <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
-              Terms
-            </h2>
-            <p className="mt-2 whitespace-pre-wrap font-body text-[14px] leading-relaxed text-brushly-cream/80">
-              {quote.terms}
-            </p>
-          </section>
-        )}
-      </div>
+      {quote.notes && (
+        <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
+          <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+            Notes
+          </h2>
+          <p className="mt-2 whitespace-pre-wrap font-body text-[14px] leading-relaxed text-brushly-cream">
+            {quote.notes}
+          </p>
+        </section>
+      )}
+      {quote.terms && (
+        <section className="rounded-sm border border-admin-hairline bg-admin-card p-4">
+          <h2 className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+            Terms
+          </h2>
+          <p className="mt-2 whitespace-pre-wrap font-body text-[14px] leading-relaxed text-brushly-cream/80">
+            {quote.terms}
+          </p>
+        </section>
+      )}
     </>
   )
 }

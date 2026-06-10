@@ -28,6 +28,14 @@ export default function InvoiceActions({
   const pdfUrl = `/admin/api/invoices/${invoiceId}/pdf`
   const closed = status === 'paid' || status === 'void'
 
+  function openSend() {
+    if (!clientEmail) {
+      toast.error(`${clientName} has no email — add one on their client page first.`)
+      return
+    }
+    setDialog('send')
+  }
+
   async function confirmSend() {
     setPending(true)
     const result = await sendInvoice(invoiceId)
@@ -91,13 +99,7 @@ export default function InvoiceActions({
       {!closed && (
         <>
           <button
-            onClick={() => {
-              if (!clientEmail) {
-                toast.error(`${clientName} has no email — add one on their client page first.`)
-                return
-              }
-              setDialog('send')
-            }}
+            onClick={openSend}
             className="flex h-14 w-full items-center justify-center gap-2 rounded-sm bg-brushly-gold font-body text-[16px] font-semibold text-brushly-black transition-colors hover:bg-brushly-gold-light"
           >
             <Send className="h-5 w-5" />
@@ -117,6 +119,37 @@ export default function InvoiceActions({
             <Ban className="h-4 w-4" />
             Void this invoice
           </button>
+
+          {/* Mobile: primary actions ride a sticky bar above the tab bar
+              (§2.3). Draft → send; sent/overdue → chase or settle. */}
+          <div className="fixed inset-x-0 bottom-16 z-30 border-t border-admin-hairline bg-admin-canvas/95 px-4 py-3 backdrop-blur-lg md:hidden">
+            {status === 'draft' ? (
+              <button
+                onClick={openSend}
+                className="flex h-13 w-full items-center justify-center gap-2 rounded-sm bg-brushly-gold font-body text-[15px] font-semibold text-brushly-black transition-colors active:bg-brushly-gold-light"
+              >
+                <Send className="h-5 w-5" />
+                Send to client
+              </button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={openSend}
+                  className="flex h-13 items-center justify-center gap-2 rounded-sm bg-brushly-gold font-body text-[14px] font-semibold text-brushly-black transition-colors active:bg-brushly-gold-light"
+                >
+                  <Send className="h-4 w-4" />
+                  Send again
+                </button>
+                <button
+                  onClick={() => setDialog('paid')}
+                  className="flex h-13 items-center justify-center gap-2 rounded-sm border border-status-green/40 font-body text-[14px] font-semibold text-status-green transition-colors active:bg-status-green/10"
+                >
+                  <Banknote className="h-4 w-4" />
+                  Mark as paid
+                </button>
+              </div>
+            )}
+          </div>
         </>
       )}
 
