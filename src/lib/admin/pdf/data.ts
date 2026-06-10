@@ -3,22 +3,9 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/supabase/types'
 import { quoteRef, invoiceRef } from '@/lib/admin/format'
-import type { PdfInput } from '@/lib/admin/pdf/BrushlyDocument'
+import { clientAddressLines, type PdfInput } from '@/lib/admin/pdf/constants'
 
 type DB = SupabaseClient<Database>
-
-function clientAddressLines(client: {
-  address_line1: string | null
-  address_line2: string | null
-  town: string | null
-  postcode: string | null
-}): string[] {
-  return [
-    client.address_line1,
-    client.address_line2,
-    [client.town, client.postcode].filter(Boolean).join(' '),
-  ].filter((line): line is string => !!line && line.trim() !== '')
-}
 
 async function getSettings(supabase: DB) {
   const { data } = await supabase.from('settings').select('*').eq('id', 1).maybeSingle()

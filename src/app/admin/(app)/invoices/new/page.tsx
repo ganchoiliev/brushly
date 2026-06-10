@@ -16,9 +16,11 @@ export default async function NewInvoicePage({
   const { client: clientId } = await searchParams
   const { supabase } = await requireUser()
 
+  /* Full settings row: the builder's live preview mirrors the PDF and
+     needs company/VAT/bank fields (v1.2 §3). */
   const { data: settings } = await supabase
     .from('settings')
-    .select('vat_registered, default_terms')
+    .select('*')
     .eq('id', 1)
     .maybeSingle()
 
@@ -26,7 +28,7 @@ export default async function NewInvoicePage({
   if (clientId && /^[0-9a-f-]{36}$/.test(clientId)) {
     const { data } = await supabase
       .from('clients')
-      .select('id, name')
+      .select('id, name, phone, email, address_line1, address_line2, town, postcode')
       .eq('id', clientId)
       .maybeSingle()
     if (!data) notFound()
@@ -36,11 +38,7 @@ export default async function NewInvoicePage({
   return (
     <>
       <PageHeader title="New invoice" />
-      <QuoteBuilder
-        kind="invoice"
-        settings={settings ?? { vat_registered: false, default_terms: null }}
-        initialClient={initialClient}
-      />
+      <QuoteBuilder kind="invoice" settings={settings} initialClient={initialClient} />
     </>
   )
 }

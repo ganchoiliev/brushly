@@ -16,11 +16,16 @@ export default async function NewQuotePage({
   const { lead: leadId, client: clientId } = await searchParams
   const { supabase } = await requireUser()
 
+  /* Full settings row: the builder's live preview mirrors the PDF and
+     needs company/VAT/bank fields (v1.2 §3). */
   const { data: settings } = await supabase
     .from('settings')
-    .select('vat_registered, default_terms')
+    .select('*')
     .eq('id', 1)
     .maybeSingle()
+
+  const clientColumns =
+    'id, name, phone, email, address_line1, address_line2, town, postcode'
 
   let lead = null
   let candidateClients: {
@@ -28,7 +33,10 @@ export default async function NewQuotePage({
     name: string
     phone: string | null
     email: string | null
+    address_line1: string | null
+    address_line2: string | null
     town: string | null
+    postcode: string | null
   }[] = []
   if (leadId && /^[0-9a-f-]{36}$/.test(leadId)) {
     const { data } = await supabase
@@ -45,7 +53,7 @@ export default async function NewQuotePage({
     if (matchers.length) {
       const { data: matches } = await supabase
         .from('clients')
-        .select('id, name, phone, email, town')
+        .select(clientColumns)
         .or(matchers.join(','))
         .limit(5)
       candidateClients = matches ?? []
@@ -56,7 +64,7 @@ export default async function NewQuotePage({
   if (clientId && /^[0-9a-f-]{36}$/.test(clientId)) {
     const { data } = await supabase
       .from('clients')
-      .select('id, name')
+      .select(clientColumns)
       .eq('id', clientId)
       .maybeSingle()
     if (!data) notFound()
@@ -67,7 +75,7 @@ export default async function NewQuotePage({
     <>
       <PageHeader title="New quote" />
       <QuoteBuilder
-        settings={settings ?? { vat_registered: false, default_terms: null }}
+        settings={settings}
         lead={lead}
         candidateClients={candidateClients}
         initialClient={initialClient}

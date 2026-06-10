@@ -104,10 +104,24 @@ export async function updateClientRecord(input: unknown): Promise<ActionResult> 
 }
 
 /* Client picker search — server action so the anon key never does table
-   reads from the browser (§1.6). */
+   reads from the browser (§1.6). Returns full address detail so the
+   builder's live preview can render the client block honestly (v1.2 §3). */
 export async function searchClients(
   term: string
-): Promise<ActionResult<{ id: string; name: string; phone: string | null; email: string | null; town: string | null }[]>> {
+): Promise<
+  ActionResult<
+    {
+      id: string
+      name: string
+      phone: string | null
+      email: string | null
+      address_line1: string | null
+      address_line2: string | null
+      town: string | null
+      postcode: string | null
+    }[]
+  >
+> {
   let supabase
   try {
     ;({ supabase } = await requireAdmin())
@@ -118,7 +132,7 @@ export async function searchClients(
   const cleaned = term.replace(/[%_,]/g, ' ').trim()
   let query = supabase
     .from('clients')
-    .select('id, name, phone, email, town')
+    .select('id, name, phone, email, address_line1, address_line2, town, postcode')
     .order('created_at', { ascending: false })
     .limit(8)
   if (cleaned) {

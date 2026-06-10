@@ -9,18 +9,37 @@ import {
   renderToBuffer,
 } from '@react-pdf/renderer'
 
+import {
+  PDF_COLORS,
+  PAGE,
+  COLS,
+  TOTALS_CARD_W,
+  UNIT_LABEL,
+  money,
+  dateGB,
+  qtyLabel,
+  sortCode,
+  dash,
+  type PdfInput,
+} from '@/lib/admin/pdf/constants'
+
 /* A4 quote/invoice (§3.1). White paper — these get printed — with a
    charcoal header band and gold accents. Cormorant for the wordmark and
    display numerals, DM Sans for everything else. Spacing sits on an
-   8pt grid; hairline rules only, no zebra fills. */
+   8pt grid; hairline rules only, no zebra fills.
 
-const GOLD = '#C8A96E'
-const CHARCOAL = '#151515'
-const CREAM = '#F5F0EB'
-const INK = '#1A1A1A'
-const MUTED = '#6B6B66'
-const RULE = '#E5E0D8'
-const CARD = '#FAF8F4'
+   Layout constants and format helpers live in ./constants — shared with
+   the builder's live preview so the two can never drift (v1.2 §3). */
+
+export type { PdfInput }
+
+const GOLD = PDF_COLORS.gold
+const CHARCOAL = PDF_COLORS.charcoal
+const CREAM = PDF_COLORS.cream
+const INK = PDF_COLORS.ink
+const MUTED = PDF_COLORS.muted
+const RULE = PDF_COLORS.rule
+const CARD = PDF_COLORS.card
 
 const FONT_DIR = path.join(process.cwd(), 'src/lib/admin/pdf/fonts')
 
@@ -59,79 +78,7 @@ Font.registerHyphenationCallback((word) => {
   return parts
 })
 
-const gbp = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
-const money = (pence: number) => gbp.format(pence / 100)
-const dateGB = (iso: string | null) =>
-  iso
-    ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'Europe/London',
-      })
-    : ''
-
-/* "2" not "2.00"; "1.5" stays "1.5" (§3.1). */
-const qtyLabel = (qty: number) => String(qty)
-
-/* "204455" → "20-44-55"; passes through anything already formatted. */
-const sortCode = (raw: string | null) => {
-  if (!raw) return '—'
-  const digits = raw.replace(/\D/g, '')
-  if (digits.length !== 6) return raw
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 6)}`
-}
-
-const dash = (value: string | null | undefined) =>
-  value && value.trim() !== '' ? value : '—'
-
-const UNIT_LABEL: Record<string, string> = {
-  job: 'job',
-  day: 'day',
-  room: 'room',
-  m2: 'm²',
-  item: 'item',
-}
-
-export type PdfInput = {
-  docType: 'QUOTE' | 'INVOICE'
-  reference: string
-  /* Drafts carry a diagonal watermark; sent/accepted/paid render clean. */
-  draft: boolean
-  title: string | null
-  issueDate: string | null
-  secondaryDate: { label: string; value: string } | null // valid until / due date
-  company: {
-    name: string
-    companyNumber: string
-    address: string
-    phone: string
-    email: string
-    vatNumber: string | null
-  }
-  client: {
-    name: string
-    addressLines: string[]
-    email: string | null
-    phone: string | null
-  }
-  items: {
-    description: string
-    qty: number
-    unit: string
-    unitPricePence: number
-    totalPence: number
-  }[]
-  subtotalPence: number
-  vatRate: number
-  vatPence: number
-  totalPence: number
-  notes: string | null
-  terms: string | null
-  payment: { bankName: string | null; sortCode: string | null; accountNo: string | null } | null
-}
-
-const BAND_H = 96
+const BAND_H = PAGE.bandH
 
 const styles = StyleSheet.create({
   page: {
@@ -140,8 +87,8 @@ const styles = StyleSheet.create({
     fontWeight: 400,
     fontSize: 9,
     color: INK,
-    paddingTop: BAND_H + 24,
-    paddingBottom: 136,
+    paddingTop: BAND_H + PAGE.padTop,
+    paddingBottom: PAGE.padBottom,
   },
 
   /* Header band — absolute + fixed so it tops every page. */
@@ -152,7 +99,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: BAND_H,
     backgroundColor: CHARCOAL,
-    paddingHorizontal: 48,
+    paddingHorizontal: PAGE.padX,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -183,10 +130,15 @@ const styles = StyleSheet.create({
     color: GOLD,
     letterSpacing: 1,
   },
-  bandDate: { fontSize: 8, color: '#A8A299', marginTop: 3, lineHeight: 1.2 },
-  docDot: { fontFamily: 'DMSans', fontSize: 14, color: '#A8A299', marginHorizontal: 7 },
+  bandDate: { fontSize: 8, color: PDF_COLORS.bandDate, marginTop: 3, lineHeight: 1.2 },
+  docDot: {
+    fontFamily: 'DMSans',
+    fontSize: 14,
+    color: PDF_COLORS.bandDate,
+    marginHorizontal: 7,
+  },
 
-  body: { paddingHorizontal: 48 },
+  body: { paddingHorizontal: PAGE.padX },
 
   /* Parties */
   blocks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
@@ -235,23 +187,23 @@ const styles = StyleSheet.create({
     borderBottomColor: RULE,
     paddingVertical: 8,
   },
-  colDesc: { flex: 1, paddingRight: 16, fontSize: 9, lineHeight: 1.4 },
-  colQty: { width: 36, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
+  colDesc: { flex: 1, paddingRight: COLS.descPadRight, fontSize: 9, lineHeight: 1.4 },
+  colQty: { width: COLS.qty, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
   colUnit: {
-    width: 44,
+    width: COLS.unit,
     textAlign: 'left',
     paddingLeft: 10,
     color: MUTED,
     fontSize: 9,
     lineHeight: 1.4,
   },
-  colPrice: { width: 76, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
-  colTotal: { width: 84, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
+  colPrice: { width: COLS.price, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
+  colTotal: { width: COLS.total, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
 
   /* Totals card — right-aligned (§3.1). */
   totalsCard: {
     alignSelf: 'flex-end',
-    width: 248,
+    width: TOTALS_CARD_W,
     marginTop: 16,
     backgroundColor: CARD,
     borderWidth: 0.5,
@@ -285,7 +237,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 48,
+    paddingHorizontal: PAGE.padX,
     paddingBottom: 24,
   },
   footerRule: { borderTopWidth: 0.5, borderTopColor: RULE, paddingTop: 10 },

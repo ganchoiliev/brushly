@@ -22,14 +22,14 @@ export default async function EditQuotePage({
   const [{ data: quote }, { data: settings }] = await Promise.all([
     supabase
       .from('quotes')
-      .select('*, clients(id, name), quote_items(*)')
+      .select(
+        '*, clients(id, name, phone, email, address_line1, address_line2, town, postcode), quote_items(*)'
+      )
       .eq('id', id)
       .maybeSingle(),
-    supabase
-      .from('settings')
-      .select('vat_registered, default_terms')
-      .eq('id', 1)
-      .maybeSingle(),
+    /* Full settings row: the builder's live preview mirrors the PDF and
+       needs company/VAT/bank fields (v1.2 §3). */
+    supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
   ])
   if (!quote || !quote.clients) notFound()
   // Only draft/sent quotes can be edited; decided or expired ones are locked.
@@ -50,7 +50,12 @@ export default async function EditQuotePage({
     <>
       <PageHeader title={`Edit ${quoteRef(quote.quote_number)}`} />
       <QuoteBuilder
-        settings={settings ?? { vat_registered: false, default_terms: null }}
+        settings={settings}
+        docMeta={{
+          reference: quoteRef(quote.quote_number),
+          issueDate: quote.issue_date,
+          status: quote.status,
+        }}
         quote={{
           id: quote.id,
           title: quote.title,
@@ -58,7 +63,7 @@ export default async function EditQuotePage({
           vat_rate: Number(quote.vat_rate),
           notes: quote.notes,
           terms: quote.terms,
-          client: { id: quote.clients.id, name: quote.clients.name },
+          client: quote.clients,
           items,
         }}
       />

@@ -17,11 +17,13 @@ import {
 } from 'lucide-react'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
+import DocumentPreview from '@/components/admin/quotes/DocumentPreview'
 import { createQuote, updateQuote } from '@/lib/admin/actions/quotes'
 import { createInvoice } from '@/lib/admin/actions/invoices'
 import { searchClients } from '@/lib/admin/actions/clients'
 import { formatGBP, formatPounds, parseGBPToPence, addDays, todayLondon } from '@/lib/admin/format'
-import type { ItemUnit } from '@/lib/supabase/types'
+import { clientAddressLines, type PdfInput } from '@/lib/admin/pdf/constants'
+import type { ItemUnit, Settings } from '@/lib/supabase/types'
 
 const UNITS: { value: ItemUnit; label: string }[] = [
   { value: 'job', label: 'Job' },
@@ -31,16 +33,21 @@ const UNITS: { value: ItemUnit; label: string }[] = [
   { value: 'item', label: 'Item' },
 ]
 
-type ClientHit = {
-  id: string
-  name: string
+/* Address/contact details ride along with picked clients so the live
+   preview can show the document's client block honestly (§3). */
+type ClientDetail = {
   phone: string | null
   email: string | null
+  address_line1: string | null
+  address_line2: string | null
   town: string | null
+  postcode: string | null
 }
 
+type ClientHit = { id: string; name: string } & ClientDetail
+
 type ClientChoice =
-  | { kind: 'existing'; id: string; name: string }
+  | { kind: 'existing'; id: string; name: string; detail: ClientDetail | null }
   | { kind: 'new'; name: string; phone: string; email: string; address_line1: string; town: string; postcode: string }
   | null
 
@@ -57,10 +64,15 @@ export type QuoteBuilderProps = {
      instead of valid-until, no terms field (invoices print the settings
      terms), createInvoice on save. */
   kind?: 'quote' | 'invoice'
-  settings: { vat_registered: boolean; default_terms: string | null }
+  /* The full settings row: the live preview needs company, VAT and bank
+     details to mirror the PDF. Null only if the row is unreadable. */
+  settings: Settings | null
   lead?: { id: string; name: string; phone: string | null; email: string | null; service: string | null } | null
   candidateClients?: ClientHit[]
-  initialClient?: { id: string; name: string } | null
+  initialClient?: ({ id: string; name: string } & Partial<ClientDetail>) | null
+  /* Known on edit: lets the preview show the real reference, issue date
+     and draft state instead of placeholders. */
+  docMeta?: { reference: string; issueDate: string | null; status: string } | null
   quote?: {
     id: string
     title: string
@@ -68,9 +80,20 @@ export type QuoteBuilderProps = {
     vat_rate: number
     notes: string | null
     terms: string | null
-    client: { id: string; name: string }
+    client: { id: string; name: string } & Partial<ClientDetail>
     items: { description: string; qty: number; unit: ItemUnit; unit_price_pence: number }[]
   } | null
+}
+
+function toDetail(c: Partial<ClientDetail>): ClientDetail {
+  return {
+    phone: c.phone ?? null,
+    email: c.email ?? null,
+    address_line1: c.address_line1 ?? null,
+    address_line2: c.address_line2 ?? null,
+    town: c.town ?? null,
+    postcode: c.postcode ?? null,
+  }
 }
 
 let keyCounter = 1
@@ -103,19 +126,32 @@ export default function QuoteBuilder({
   lead,
   candidateClients = [],
   initialClient,
+  docMeta,
   quote,
 }: QuoteBuilderProps) {
   const router = useRouter()
   const reducedMotion = useReducedMotion()
   const editing = !!quote
   const isInvoice = kind === 'invoice'
-  const vatRate = quote ? quote.vat_rate : settings.vat_registered ? 20 : 0
+  const vatRegistered = settings?.vat_registered ?? false
+  const defaultTerms = settings?.default_terms ?? null
+  const vatRate = quote ? quote.vat_rate : vatRegistered ? 20 : 0
 
   const [client, setClient] = useState<ClientChoice>(
     quote
-      ? { kind: 'existing', id: quote.client.id, name: quote.client.name }
+      ? {
+          kind: 'existing',
+          id: quote.client.id,
+          name: quote.client.name,
+          detail: toDetail(quote.client),
+        }
       : initialClient
-        ? { kind: 'existing', id: initialClient.id, name: initialClient.name }
+        ? {
+            kind: 'existing',
+            id: initialClient.id,
+            name: initialClient.name,
+            detail: toDetail(initialClient),
+          }
         : null
   )
   // Lead conversion with possible duplicates: make him choose, once.
@@ -139,7 +175,7 @@ export default function QuoteBuilder({
   )
   const [notes, setNotes] = useState(quote?.notes ?? '')
   const [terms, setTerms] = useState(
-    quote ? (quote.terms ?? '') : (settings.default_terms ?? '')
+    quote ? (quote.terms ?? '') : (defaultTerms ?? '')
   )
   const [pending, setPending] = useState(false)
   /* The freshly added card focuses its description (§2); removal of a card
@@ -190,6 +226,78 @@ export default function QuoteBuilder({
   const subtotal = lineTotals.reduce((sum: number, t) => sum + (t ?? 0), 0)
   const vat = Math.round((subtotal * vatRate) / 100)
   const total = subtotal + vat
+
+  /* Live preview input (§3): the same shape the PDF renders from, built
+     from the form on every keystroke with the same totals the form shows.
+     Reference/issue date come from docMeta on edit; placeholders before
+     the first save (the document doesn't have a number yet). */
+  const previewInput: PdfInput = {
+    docType: isInvoice ? 'INVOICE' : 'QUOTE',
+    reference: docMeta?.reference ?? (isInvoice ? 'INV-····' : 'QU-····'),
+    draft: docMeta ? docMeta.status === 'draft' : true,
+    title: title.trim() || null,
+    issueDate: docMeta?.issueDate ?? todayLondon(),
+    secondaryDate: validUntil
+      ? { label: isInvoice ? 'Due' : 'Valid until', value: validUntil }
+      : null,
+    company: {
+      name: settings?.company_name ?? '',
+      companyNumber: settings?.company_number ?? '',
+      address: settings?.address ?? '',
+      phone: settings?.phone ?? '',
+      email: settings?.email ?? '',
+      vatNumber: vatRegistered ? (settings?.vat_number ?? null) : null,
+    },
+    client:
+      client === null
+        ? { name: '—', addressLines: [], email: null, phone: null }
+        : client.kind === 'existing'
+          ? {
+              name: client.name,
+              addressLines: client.detail ? clientAddressLines(client.detail) : [],
+              email: client.detail?.email ?? null,
+              phone: client.detail?.phone ?? null,
+            }
+          : {
+              name: client.name.trim() || '—',
+              addressLines: clientAddressLines({
+                address_line1: client.address_line1 || null,
+                address_line2: null,
+                town: client.town || null,
+                postcode: client.postcode || null,
+              }),
+              email: client.email || null,
+              phone: client.phone || null,
+            },
+    items: items
+      .map((it, i) => ({ it, lt: lineTotals[i] }))
+      .filter(({ it }) => it.description.trim() !== '' || it.price.trim() !== '')
+      .map(({ it, lt }) => {
+        const qty = parseFloat(it.qty)
+        return {
+          description: it.description,
+          qty: Number.isFinite(qty) && qty > 0 ? qty : 0,
+          unit: it.unit,
+          unitPricePence: parseGBPToPence(it.price) ?? 0,
+          totalPence: lt ?? 0,
+        }
+      }),
+    subtotalPence: subtotal,
+    vatRate,
+    vatPence: vat,
+    totalPence: total,
+    notes: notes.trim() || null,
+    /* Mirrors pdf/data.ts: a blank quote terms falls back to the settings
+       default; invoices always print the settings terms. */
+    terms: isInvoice ? defaultTerms : terms.trim() || defaultTerms,
+    payment: isInvoice
+      ? {
+          bankName: settings?.bank_name ?? null,
+          sortCode: settings?.bank_sort_code ?? null,
+          accountNo: settings?.bank_account_no ?? null,
+        }
+      : null,
+  }
 
   /* Explicit save state (§2.3): compare against what was loaded. The first
      render's snapshot is the clean baseline — edits diverge from it. */
@@ -298,7 +406,10 @@ export default function QuoteBuilder({
   }
 
   return (
-    <div className="space-y-5 px-4 py-5 md:max-w-2xl md:px-8">
+    /* ≥1280px: two panes — form left (~560px), live document preview
+       right (§3). Below that: the form alone, exactly as on mobile. */
+    <div className="xl:flex xl:items-start xl:gap-8 xl:px-8 xl:py-5">
+      <div className="space-y-5 px-4 py-5 md:max-w-2xl md:px-8 xl:w-[560px] xl:shrink-0 xl:px-0 xl:py-0">
       {/* Who it's for */}
       <section>
         <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
@@ -314,7 +425,7 @@ export default function QuoteBuilder({
                 <button
                   key={c.id}
                   onClick={() => {
-                    setClient({ kind: 'existing', id: c.id, name: c.name })
+                    setClient({ kind: 'existing', id: c.id, name: c.name, detail: toDetail(c) })
                     setShowCandidates(false)
                   }}
                   className="flex h-13 w-full items-center justify-between rounded-sm border border-white/10 px-4 font-body text-[14px] text-brushly-cream transition-colors hover:border-brushly-gold"
@@ -347,7 +458,9 @@ export default function QuoteBuilder({
           </div>
         ) : client === null ? (
           <ClientPicker
-            onPick={(c) => setClient({ kind: 'existing', id: c.id, name: c.name })}
+            onPick={(c) =>
+              setClient({ kind: 'existing', id: c.id, name: c.name, detail: toDetail(c) })
+            }
             onNew={() =>
               setClient({
                 kind: 'new',
@@ -497,6 +610,25 @@ export default function QuoteBuilder({
           <Plus className="h-4 w-4" />
           Add line
         </button>
+
+        {/* Totals — a normal right-aligned block after the lines (§3);
+            nothing floats, nothing overlaps. */}
+        <div className="ml-auto mt-4 w-full max-w-64 space-y-1 font-body text-[13px]">
+          <div className="flex justify-between text-brushly-cream/70">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{formatGBP(subtotal)}</span>
+          </div>
+          {vatRate > 0 && (
+            <div className="flex justify-between text-brushly-cream/70">
+              <span>VAT {vatRate}%</span>
+              <span className="tabular-nums">{formatGBP(vat)}</span>
+            </div>
+          )}
+          <div className="flex justify-between border-t border-admin-hairline pt-1.5 text-[16px] font-semibold text-brushly-gold">
+            <span>Total</span>
+            <span className="tabular-nums">{formatGBP(total)}</span>
+          </div>
+        </div>
       </section>
 
       {/* Valid until / due date */}
@@ -538,49 +670,30 @@ export default function QuoteBuilder({
         </section>
       )}
 
-      {/* Totals + save. Unstuck (v1.2 §1): the floating bar overlapped the
-          meta sections beneath it — nothing may ever overlap interactive
-          content. §3 restructures this block properly. */}
-      <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
-        <div className="space-y-1 font-body text-[13px]">
-          <div className="flex justify-between text-brushly-cream/70">
-            <span>Subtotal</span>
-            <span className="tabular-nums">{formatGBP(subtotal)}</span>
-          </div>
-          {vatRate > 0 && (
-            <div className="flex justify-between text-brushly-cream/70">
-              <span>VAT {vatRate}%</span>
-              <span className="tabular-nums">{formatGBP(vat)}</span>
-            </div>
-          )}
-          <div className="flex justify-between border-t border-admin-hairline pt-1.5 text-[16px] font-semibold text-brushly-gold">
-            <span>Total</span>
-            <span className="tabular-nums">{formatGBP(total)}</span>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center gap-3">
-          <span
-            aria-live="polite"
-            className={`font-body text-[12px] ${
-              dirty ? 'text-status-amber' : 'text-status-green'
-            }`}
-          >
-            {dirty ? 'Unsaved changes' : editing ? 'Saved ✓' : ''}
-          </span>
-          <button
-            onClick={save}
-            disabled={pending}
-            className="ml-auto h-13 shrink-0 rounded-sm bg-brushly-gold px-6 font-body text-[15px] font-semibold text-brushly-black transition-colors hover:bg-brushly-gold-light disabled:opacity-60"
-          >
-            {pending
-              ? 'Saving…'
-              : isInvoice
-                ? 'Save invoice'
-                : editing
-                  ? 'Save changes'
-                  : 'Save quote'}
-          </button>
-        </div>
+      {/* Save sits at the form's end (§3), full width, with the quiet
+          save state beside it — never floating. */}
+      <div className="flex items-center gap-3">
+        <span
+          aria-live="polite"
+          className={`shrink-0 font-body text-[12px] ${
+            dirty ? 'text-status-amber' : 'text-status-green'
+          }`}
+        >
+          {dirty ? 'Unsaved changes' : editing ? 'Saved ✓' : ''}
+        </span>
+        <button
+          onClick={save}
+          disabled={pending}
+          className="h-13 flex-1 rounded-sm bg-brushly-gold px-6 font-body text-[15px] font-semibold text-brushly-black transition-colors hover:bg-brushly-gold-light disabled:opacity-60"
+        >
+          {pending
+            ? 'Saving…'
+            : isInvoice
+              ? 'Save invoice'
+              : editing
+                ? 'Save changes'
+                : 'Save quote'}
+        </button>
       </div>
 
       {/* Confirm only when the line has content (§2) — empty lines just go. */}
@@ -598,6 +711,17 @@ export default function QuoteBuilder({
           setConfirmRemoveKey(null)
         }}
       />
+      </div>
+
+      {/* Live document preview — desktop only (§3). Mobile stays form-only. */}
+      <div className="hidden xl:block xl:min-w-0 xl:flex-1">
+        <DocumentPreview
+          input={previewInput}
+          pdfHref={
+            editing && !isInvoice ? `/admin/api/quotes/${quote!.id}/pdf` : null
+          }
+        />
+      </div>
     </div>
   )
 }
