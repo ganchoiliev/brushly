@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Eye, Download, Send, Banknote, Landmark, Ban } from 'lucide-react'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
+import MotionDialogContent from '@/components/admin/MotionDialogContent'
 import { sendInvoice } from '@/lib/admin/actions/send'
 import { markInvoicePaid, voidInvoice } from '@/lib/admin/actions/invoices'
 
@@ -176,8 +177,7 @@ export default function InvoiceActions({
       {/* Mark paid: two big labelled choices, no dropdowns (§1.9). */}
       <Dialog.Root open={dialog === 'paid'} onOpenChange={(open) => !open && setDialog(null)}>
         <Dialog.Portal>
-          <Dialog.Overlay className="admin-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="admin-dialog fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-sm border border-white/10 bg-admin-card p-5 shadow-2xl shadow-black/50">
+          <MotionDialogContent>
             <Dialog.Title className="font-display text-xl font-light text-brushly-cream">
               How did they pay?
             </Dialog.Title>
@@ -207,7 +207,7 @@ export default function InvoiceActions({
                 </button>
               </Dialog.Close>
             </div>
-          </Dialog.Content>
+          </MotionDialogContent>
         </Dialog.Portal>
       </Dialog.Root>
     </section>

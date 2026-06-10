@@ -1,6 +1,7 @@
 'use client'
 
 import * as Dialog from '@radix-ui/react-dialog'
+import MotionDialogContent from '@/components/admin/MotionDialogContent'
 
 /* §1.9: anything irreversible gets a clear, plain-English confirmation. */
 export default function ConfirmDialog({
@@ -25,8 +26,7 @@ export default function ConfirmDialog({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="admin-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-        <Dialog.Content className="admin-dialog fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-sm border border-white/10 bg-admin-card p-5 shadow-2xl shadow-black/50">
+        <MotionDialogContent>
           <Dialog.Title className="font-display text-xl font-light text-brushly-cream">
             {title}
           </Dialog.Title>
@@ -51,7 +51,7 @@ export default function ConfirmDialog({
               </button>
             </Dialog.Close>
           </div>
-        </Dialog.Content>
+        </MotionDialogContent>
       </Dialog.Portal>
     </Dialog.Root>
   )

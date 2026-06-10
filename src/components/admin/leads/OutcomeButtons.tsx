@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import * as Dialog from '@radix-ui/react-dialog'
 import { PhoneMissed, Clock, X, Check, CalendarDays } from 'lucide-react'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
+import MotionDialogContent from '@/components/admin/MotionDialogContent'
 import { setFollowUp, clearFollowUp } from '@/lib/admin/actions/followups'
 import { updateLeadStatus } from '@/lib/admin/actions/leads'
 import { addDays, londonTime, todayLondon } from '@/lib/admin/format'
@@ -118,8 +119,7 @@ export default function OutcomeButtons({
       {/* Call back: big labelled chips, never dropdowns (§1.9). */}
       <Dialog.Root open={dialog === 'callback'} onOpenChange={(open) => !open && setDialog(null)}>
         <Dialog.Portal>
-          <Dialog.Overlay className="admin-overlay fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" />
-          <Dialog.Content className="admin-dialog fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-sm border border-white/10 bg-admin-card p-5 shadow-2xl shadow-black/50">
+          <MotionDialogContent>
             <Dialog.Title className="font-display text-xl font-light text-brushly-cream">
               When should we remind you?
             </Dialog.Title>
@@ -171,7 +171,7 @@ export default function OutcomeButtons({
                 </button>
               </Dialog.Close>
             </div>
-          </Dialog.Content>
+          </MotionDialogContent>
         </Dialog.Portal>
       </Dialog.Root>
 

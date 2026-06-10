@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Trash2, ChevronUp, ChevronDown, Search, UserPlus, X } from 'lucide-react'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import { createQuote, updateQuote } from '@/lib/admin/actions/quotes'
 import { createInvoice } from '@/lib/admin/actions/invoices'
 import { searchClients } from '@/lib/admin/actions/clients'
@@ -81,6 +83,7 @@ export default function QuoteBuilder({
   quote,
 }: QuoteBuilderProps) {
   const router = useRouter()
+  const reducedMotion = useReducedMotion()
   const editing = !!quote
   const isInvoice = kind === 'invoice'
   const vatRate = quote ? quote.vat_rate : settings.vat_registered ? 20 : 0
@@ -406,8 +409,19 @@ export default function QuoteBuilder({
           Work &amp; prices
         </h2>
         <div className="space-y-3">
+          {/* Layout animations on add/remove/reorder (§2.3) — 200ms,
+              skipped under reduced motion. */}
+          <AnimatePresence initial={false}>
           {items.map((it, i) => (
-            <div key={it.key} className="rounded-sm border border-admin-hairline bg-admin-card p-3">
+            <motion.div
+              key={it.key}
+              layout={!reducedMotion}
+              initial={reducedMotion ? false : { opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={reducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="rounded-sm border border-admin-hairline bg-admin-card p-3"
+            >
               <div className="flex items-start gap-2">
                 <textarea
                   placeholder="What's being done"
@@ -482,8 +496,9 @@ export default function QuoteBuilder({
                   Line total {formatGBP(lineTotals[i]!)}
                 </p>
               )}
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
         </div>
         <button
           onClick={() => setItems((prev) => [...prev, newItem()])}

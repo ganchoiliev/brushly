@@ -108,9 +108,14 @@ export async function markQuoteDecision(input: unknown): Promise<ActionResult> {
     return { ok: false, error: 'This quote was already answered — refresh to see where it stands.' }
   }
 
+  /* A decided quote needs no call-back reminder — clear it (§4). */
   const { error } = await supabase
     .from('quotes')
-    .update({ status: decision, decided_at: new Date().toISOString() })
+    .update({
+      status: decision,
+      decided_at: new Date().toISOString(),
+      follow_up_at: null,
+    })
     .eq('id', id)
   if (error) {
     console.error('markQuoteDecision failed:', error)
@@ -118,12 +123,14 @@ export async function markQuoteDecision(input: unknown): Promise<ActionResult> {
   }
 
   // Lead follows the quote: accepted -> won, declined -> lost (§5.4).
+  // Its reminder clears with it.
   if (quote.lead_id) {
     const { error: leadError } = await supabase
       .from('leads')
       .update({
         status: decision === 'accepted' ? 'won' : 'lost',
         status_changed_at: new Date().toISOString(),
+        follow_up_at: null,
       })
       .eq('id', quote.lead_id)
     if (leadError) console.error('markQuoteDecision lead sync failed:', leadError)

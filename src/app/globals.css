@@ -39,37 +39,8 @@
   --color-status-red: #F87171;
 }
 
-/* Admin: dialog micro-transitions (zoom+fade in ~180ms, gentle exit) */
-@keyframes admin-dialog-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -48%) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-@keyframes admin-overlay-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-.admin-dialog[data-state='open'] {
-  animation: admin-dialog-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.admin-overlay[data-state='open'] {
-  animation: admin-overlay-in 0.15s ease-out;
-}
-@media (prefers-reduced-motion: reduce) {
-  .admin-dialog[data-state='open'],
-  .admin-overlay[data-state='open'] {
-    animation: none;
-  }
-}
+/* Admin dialogs animate via framer-motion springs (§2.3) — see
+   components/admin/MotionDialogContent.tsx. */
 
 /* Admin: hide scrollbars on horizontal filter rows */
 .scrollbar-none {
