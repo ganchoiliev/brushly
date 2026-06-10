@@ -18,12 +18,14 @@ import {
 import useReducedMotion from '@/hooks/useReducedMotion'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import DocumentPreview from '@/components/admin/quotes/DocumentPreview'
+import PresetPicker from '@/components/admin/quotes/PresetPicker'
 import { createQuote, updateQuote } from '@/lib/admin/actions/quotes'
 import { createInvoice } from '@/lib/admin/actions/invoices'
 import { searchClients } from '@/lib/admin/actions/clients'
+import { createItemPreset } from '@/lib/admin/actions/presets'
 import { formatGBP, formatPounds, parseGBPToPence, addDays, todayLondon } from '@/lib/admin/format'
 import { clientAddressLines, type PdfInput } from '@/lib/admin/pdf/constants'
-import type { ItemUnit, Settings } from '@/lib/supabase/types'
+import type { ItemPreset, ItemUnit, Settings } from '@/lib/supabase/types'
 
 const UNITS: { value: ItemUnit; label: string }[] = [
   { value: 'job', label: 'Job' },
@@ -70,6 +72,9 @@ export type QuoteBuilderProps = {
   lead?: { id: string; name: string; phone: string | null; email: string | null; service: string | null } | null
   candidateClients?: ClientHit[]
   initialClient?: ({ id: string; name: string } & Partial<ClientDetail>) | null
+  /* Saved line items (§5) — fetched by the page, kept in local state so
+     "Save as preset" shows up in "Add from saved" without a refresh. */
+  presets?: ItemPreset[]
   /* Known on edit: lets the preview show the real reference, issue date
      and draft state instead of placeholders. */
   docMeta?: { reference: string; issueDate: string | null; status: string } | null
@@ -126,6 +131,7 @@ export default function QuoteBuilder({
   lead,
   candidateClients = [],
   initialClient,
+  presets = [],
   docMeta,
   quote,
 }: QuoteBuilderProps) {
@@ -182,6 +188,7 @@ export default function QuoteBuilder({
      with content asks first — confirmRemoveKey holds whose dialog is open. */
   const [autofocusKey, setAutofocusKey] = useState<number | null>(null)
   const [confirmRemoveKey, setConfirmRemoveKey] = useState<number | null>(null)
+  const [presetList, setPresetList] = useState<ItemPreset[]>(presets)
 
   function patchItem(key: number, patch: Partial<ItemDraft>) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)))
@@ -215,6 +222,37 @@ export default function QuoteBuilder({
     const it = newItem()
     setItems((prev) => [...prev, it])
     setAutofocusKey(it.key)
+  }
+  /* §5: a preset lands as a normal line — editable like any other. */
+  function insertPreset(preset: ItemPreset) {
+    setItems((prev) => [
+      ...prev,
+      {
+        key: keyCounter++,
+        description: preset.description,
+        qty: '1',
+        unit: preset.unit,
+        price: formatPounds(preset.unit_price_pence),
+      },
+    ])
+  }
+  async function saveAsPreset(it: ItemDraft) {
+    const pence = parseGBPToPence(it.price)
+    if (!it.description.trim() || pence === null) {
+      toast.error('Give the line a description and a price first.')
+      return
+    }
+    const result = await createItemPreset({
+      description: it.description.trim(),
+      unit: it.unit,
+      unit_price_pence: pence,
+    })
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+    if (result.data) setPresetList((prev) => [...prev, result.data!])
+    toast.success('Saved — it\'s under "Add from saved" now.')
   }
 
   const lineTotals = items.map((it) => {
@@ -599,17 +637,21 @@ export default function QuoteBuilder({
                     removeItem(it.key)
                   }
                 }}
+                onSavePreset={() => saveAsPreset(it)}
               />
             ))}
           </AnimatePresence>
         </Reorder.Group>
-        <button
-          onClick={addLine}
-          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 font-body text-[14px] text-brushly-cream/70 transition-colors hover:border-brushly-gold hover:text-brushly-gold"
-        >
-          <Plus className="h-4 w-4" />
-          Add line
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={addLine}
+            className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 font-body text-[14px] text-brushly-cream/70 transition-colors hover:border-brushly-gold hover:text-brushly-gold"
+          >
+            <Plus className="h-4 w-4" />
+            Add line
+          </button>
+          <PresetPicker presets={presetList} onPick={insertPreset} />
+        </div>
 
         {/* Totals — a normal right-aligned block after the lines (§3);
             nothing floats, nothing overlaps. */}
@@ -737,6 +779,7 @@ function LineItemCard({
   onStepQty,
   onMove,
   onRemove,
+  onSavePreset,
 }: {
   item: ItemDraft
   index: number
@@ -748,6 +791,7 @@ function LineItemCard({
   onStepQty: (dir: -1 | 1) => void
   onMove: (dir: -1 | 1) => void
   onRemove: () => void
+  onSavePreset: () => void
 }) {
   const controls = useDragControls()
   const pressTimer = useRef<number | null>(null)
@@ -906,6 +950,9 @@ function LineItemCard({
                   className={menuItemClass}
                 >
                   Move down
+                </DropdownMenu.Item>
+                <DropdownMenu.Item onSelect={onSavePreset} className={menuItemClass}>
+                  Save as preset
                 </DropdownMenu.Item>
               </DropdownMenu.Content>
             </DropdownMenu.Portal>

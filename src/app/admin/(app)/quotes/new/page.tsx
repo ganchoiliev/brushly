@@ -18,11 +18,10 @@ export default async function NewQuotePage({
 
   /* Full settings row: the builder's live preview mirrors the PDF and
      needs company/VAT/bank fields (v1.2 §3). */
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('*')
-    .eq('id', 1)
-    .maybeSingle()
+  const [{ data: settings }, { data: presets }] = await Promise.all([
+    supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
+    supabase.from('item_presets').select('*').order('position').order('created_at'),
+  ])
 
   const clientColumns =
     'id, name, phone, email, address_line1, address_line2, town, postcode'
@@ -79,6 +78,7 @@ export default async function NewQuotePage({
         lead={lead}
         candidateClients={candidateClients}
         initialClient={initialClient}
+        presets={presets ?? []}
       />
     </>
   )

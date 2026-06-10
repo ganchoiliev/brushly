@@ -19,7 +19,7 @@ export default async function EditQuotePage({
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound()
 
   const { supabase } = await requireUser()
-  const [{ data: quote }, { data: settings }] = await Promise.all([
+  const [{ data: quote }, { data: settings }, { data: presets }] = await Promise.all([
     supabase
       .from('quotes')
       .select(
@@ -30,6 +30,7 @@ export default async function EditQuotePage({
     /* Full settings row: the builder's live preview mirrors the PDF and
        needs company/VAT/bank fields (v1.2 §3). */
     supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
+    supabase.from('item_presets').select('*').order('position').order('created_at'),
   ])
   if (!quote || !quote.clients) notFound()
   // Only draft/sent quotes can be edited; decided or expired ones are locked.
@@ -51,6 +52,7 @@ export default async function EditQuotePage({
       <PageHeader title={`Edit ${quoteRef(quote.quote_number)}`} />
       <QuoteBuilder
         settings={settings}
+        presets={presets ?? []}
         docMeta={{
           reference: quoteRef(quote.quote_number),
           issueDate: quote.issue_date,

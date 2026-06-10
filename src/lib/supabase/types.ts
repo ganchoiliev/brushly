@@ -1,6 +1,7 @@
-/* Hand-authored to match supabase/migrations/0001_init.sql + 0002_follow_ups.sql exactly.
-   That migration is already applied to the live project and is the schema
-   ground truth — change this file only when a new migration lands. */
+/* Hand-authored to match supabase/migrations/0001_init.sql +
+   0002_follow_ups.sql + 0003_item_presets.sql exactly. Those migrations
+   are already applied to the live project and are the schema ground
+   truth — change this file only when a new migration lands. */
 
 export type LeadSource = 'website' | 'ads' | 'referral' | 'phone' | 'manual'
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost' | 'spam'
@@ -346,6 +347,33 @@ export type Database = {
           },
         ]
       }
+      item_presets: {
+        Row: {
+          id: string
+          description: string
+          unit: ItemUnit
+          unit_price_pence: number
+          position: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          description: string
+          unit?: ItemUnit
+          unit_price_pence?: number
+          position?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          description?: string
+          unit?: ItemUnit
+          unit_price_pence?: number
+          position?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           id: number
@@ -420,4 +448,5 @@ export type Quote = Database['public']['Tables']['quotes']['Row']
 export type QuoteItem = Database['public']['Tables']['quote_items']['Row']
 export type Invoice = Database['public']['Tables']['invoices']['Row']
 export type InvoiceItem = Database['public']['Tables']['invoice_items']['Row']
+export type ItemPreset = Database['public']['Tables']['item_presets']['Row']
 export type Settings = Database['public']['Tables']['settings']['Row']

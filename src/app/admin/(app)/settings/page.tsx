@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import PageHeader from '@/components/admin/PageHeader'
 import SettingsForm from '@/components/admin/settings/SettingsForm'
+import SavedItemsManager from '@/components/admin/settings/SavedItemsManager'
 import { requireUser } from '@/lib/admin/auth'
 import { quoteRef, invoiceRef } from '@/lib/admin/format'
 
@@ -10,11 +11,14 @@ export const metadata: Metadata = {
 
 export default async function SettingsPage() {
   const { supabase } = await requireUser()
-  const { data: settings, error } = await supabase
-    .from('settings')
-    .select('*')
-    .eq('id', 1)
-    .maybeSingle()
+  const [{ data: settings, error }, { data: presets }] = await Promise.all([
+    supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
+    supabase
+      .from('item_presets')
+      .select('*')
+      .order('position')
+      .order('created_at'),
+  ])
   if (error || !settings) {
     throw new Error(`Couldn't load settings: ${error?.message ?? 'row missing'}`)
   }
@@ -43,6 +47,12 @@ export default async function SettingsPage() {
         </div>
       </div>
       <SettingsForm settings={settings} />
+      <section className="px-4 pb-10 md:max-w-lg md:px-8">
+        <h2 className="mb-3 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+          Saved items — your go-to quote lines
+        </h2>
+        <SavedItemsManager presets={presets ?? []} />
+      </section>
     </>
   )
 }

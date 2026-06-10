@@ -18,11 +18,10 @@ export default async function NewInvoicePage({
 
   /* Full settings row: the builder's live preview mirrors the PDF and
      needs company/VAT/bank fields (v1.2 §3). */
-  const { data: settings } = await supabase
-    .from('settings')
-    .select('*')
-    .eq('id', 1)
-    .maybeSingle()
+  const [{ data: settings }, { data: presets }] = await Promise.all([
+    supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
+    supabase.from('item_presets').select('*').order('position').order('created_at'),
+  ])
 
   let initialClient = null
   if (clientId && /^[0-9a-f-]{36}$/.test(clientId)) {
@@ -38,7 +37,12 @@ export default async function NewInvoicePage({
   return (
     <>
       <PageHeader title="New invoice" />
-      <QuoteBuilder kind="invoice" settings={settings} initialClient={initialClient} />
+      <QuoteBuilder
+        kind="invoice"
+        settings={settings}
+        initialClient={initialClient}
+        presets={presets ?? []}
+      />
     </>
   )
 }
