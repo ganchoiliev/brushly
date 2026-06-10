@@ -190,8 +190,8 @@ export async function updateQuote(input: unknown): Promise<ActionResult> {
     .eq('id', data.id)
     .maybeSingle()
   if (!existing) return { ok: false, error: 'Quote not found' }
-  if (existing.status === 'accepted' || existing.status === 'declined') {
-    return { ok: false, error: 'This quote has been decided — create a new one instead.' }
+  if (existing.status !== 'draft' && existing.status !== 'sent') {
+    return { ok: false, error: 'This quote is locked — create a new one instead.' }
   }
 
   const { lines, subtotal, vat, total } = computeTotals(data.items, data.vat_rate)

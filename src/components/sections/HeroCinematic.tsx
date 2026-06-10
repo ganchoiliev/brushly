@@ -412,6 +412,7 @@ export default function HeroCinematic() {
           {/* CTA */}
           <div className="hero-cta-group mt-5 flex items-center gap-5">
             <MagneticButton>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- pre-existing full-page anchor; rule only fires since the [...rest] catch-all landed, and swapping to <Link> would change the loader/wipe navigation behaviour */}
               <a
                 href="/contact"
                 className="inline-block px-5 py-2.5 font-body text-[11px] uppercase tracking-[0.2em] transition-all duration-500"
@@ -423,6 +424,7 @@ export default function HeroCinematic() {
                 Get a Quote
               </a>
             </MagneticButton>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- pre-existing full-page anchor; rule only fires since the [...rest] catch-all landed, and swapping to <Link> would change the loader/wipe navigation behaviour */}
             <a
               href="/gallery"
               className="font-body text-[12px] uppercase tracking-[0.15em] transition-colors duration-500"

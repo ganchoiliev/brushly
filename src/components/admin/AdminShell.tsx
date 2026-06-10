@@ -98,7 +98,7 @@ export default function AdminShell({
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="grid h-16 grid-cols-6">
-          {TABS.map((tab, i) => {
+          {TABS.map((tab) => {
             if (tab === null) {
               return (
                 <Link

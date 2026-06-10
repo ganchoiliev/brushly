@@ -32,6 +32,38 @@
   --color-status-red: #F87171;
 }
 
+/* Admin: dialog micro-transitions (zoom+fade in ~180ms, gentle exit) */
+@keyframes admin-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes admin-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.admin-dialog[data-state='open'] {
+  animation: admin-dialog-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.admin-overlay[data-state='open'] {
+  animation: admin-overlay-in 0.15s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-dialog[data-state='open'],
+  .admin-overlay[data-state='open'] {
+    animation: none;
+  }
+}
+
 /* Admin: hide scrollbars on horizontal filter rows */
 .scrollbar-none {
   scrollbar-width: none;
@@ -186,6 +218,28 @@ html.lenis body {
 @media (pointer: fine) {
   * {
     cursor: none !important;
+  }
+
+  /* The admin app does NOT load CustomCursor, so it must keep the real
+     cursor. These overrides re-assert sensible cursors for the whole admin
+     subtree (marketing is untouched). */
+  .admin-cursor,
+  .admin-cursor * {
+    cursor: auto !important;
+  }
+  .admin-cursor a[href],
+  .admin-cursor button:not(:disabled),
+  .admin-cursor [role='button'],
+  .admin-cursor label,
+  .admin-cursor select {
+    cursor: pointer !important;
+  }
+  .admin-cursor input,
+  .admin-cursor textarea {
+    cursor: text !important;
+  }
+  .admin-cursor button:disabled {
+    cursor: not-allowed !important;
   }
 }
 

@@ -55,14 +55,18 @@ export async function createInvoiceFromQuote(
     return { ok: false, error: 'Only accepted quotes become invoices.' }
   }
 
-  const { data: existing } = await supabase
+  // If a live (non-void) invoice already exists for this quote, go to it
+  // instead of making a duplicate. limit(1) rather than maybeSingle so two
+  // historical voids + one live row can't throw.
+  const { data: existingRows } = await supabase
     .from('invoices')
     .select('id')
     .eq('quote_id', quote.id)
     .neq('status', 'void')
-    .maybeSingle()
-  if (existing) {
-    return { ok: true, data: { id: existing.id } } // already there — just go to it
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (existingRows && existingRows.length > 0) {
+    return { ok: true, data: { id: existingRows[0].id } }
   }
 
   const { data: invoiceNumber, error: numberError } = await supabase.rpc(

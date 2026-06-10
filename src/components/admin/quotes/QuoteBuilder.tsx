@@ -306,7 +306,7 @@ export default function QuoteBuilder({
               <button
                 onClick={() => setClient(null)}
                 aria-label="Change client"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-admin-muted hover:bg-admin-raised"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm text-admin-muted hover:bg-admin-raised"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -321,7 +321,7 @@ export default function QuoteBuilder({
               <button
                 onClick={() => setClient(null)}
                 aria-label="Cancel new client"
-                className="flex h-10 w-10 items-center justify-center rounded-sm text-admin-muted hover:bg-admin-raised"
+                className="flex h-11 w-11 items-center justify-center rounded-sm text-admin-muted hover:bg-admin-raised"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -408,7 +408,7 @@ export default function QuoteBuilder({
                     onClick={() => moveItem(it.key, -1)}
                     disabled={i === 0}
                     aria-label="Move up"
-                    className="flex h-8 w-9 items-center justify-center rounded-sm border border-white/10 text-admin-muted disabled:opacity-30"
+                    className="flex h-11 w-11 items-center justify-center rounded-sm border border-white/10 text-admin-muted disabled:opacity-30"
                   >
                     <ChevronUp className="h-4 w-4" />
                   </button>
@@ -416,7 +416,7 @@ export default function QuoteBuilder({
                     onClick={() => moveItem(it.key, 1)}
                     disabled={i === items.length - 1}
                     aria-label="Move down"
-                    className="flex h-8 w-9 items-center justify-center rounded-sm border border-white/10 text-admin-muted disabled:opacity-30"
+                    className="flex h-11 w-11 items-center justify-center rounded-sm border border-white/10 text-admin-muted disabled:opacity-30"
                   >
                     <ChevronDown className="h-4 w-4" />
                   </button>
@@ -566,11 +566,15 @@ function ClientPicker({
   const [hits, setHits] = useState<ClientHit[]>([])
   const [searched, setSearched] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const version = useRef(0)
 
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(async () => {
+      // Ignore a slow response that lands after a newer keystroke fired.
+      const ticket = ++version.current
       const result = await searchClients(term)
+      if (ticket !== version.current) return
       if (result.ok) {
         setHits(result.data ?? [])
         setSearched(true)

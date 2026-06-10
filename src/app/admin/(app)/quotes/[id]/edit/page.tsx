@@ -32,7 +32,8 @@ export default async function EditQuotePage({
       .maybeSingle(),
   ])
   if (!quote || !quote.clients) notFound()
-  if (quote.status === 'accepted' || quote.status === 'declined') {
+  // Only draft/sent quotes can be edited; decided or expired ones are locked.
+  if (quote.status !== 'draft' && quote.status !== 'sent') {
     redirect(`/admin/quotes/${id}`)
   }
 

@@ -30,7 +30,7 @@ export default function AdminRootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <div className="min-h-dvh bg-brushly-charcoal text-brushly-cream">
+    <div className="admin-cursor min-h-dvh bg-brushly-charcoal text-brushly-cream">
       {children}
       <Toaster
         theme="dark"

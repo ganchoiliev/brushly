@@ -18,7 +18,7 @@ export default function ClientEditCard({ client }: { client: Client }) {
           <button
             onClick={() => setEditing(false)}
             aria-label="Cancel"
-            className="flex h-10 w-10 items-center justify-center rounded-sm text-brushly-cream/70 hover:bg-admin-raised"
+            className="flex h-11 w-11 items-center justify-center rounded-sm text-brushly-cream/70 hover:bg-admin-raised"
           >
             <X className="h-4 w-4" />
           </button>
