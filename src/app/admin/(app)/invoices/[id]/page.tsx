@@ -94,6 +94,7 @@ export default async function InvoiceDetailPage({
               <p className="mt-1 font-body text-[13px] text-admin-muted">
                 Issued {formatDate(invoice.issue_date)}
                 {invoice.due_date && <> · due {formatDate(invoice.due_date)}</>}
+                {invoice.sent_at && <> · sent {timeAgo(invoice.sent_at)}</>}
                 {invoice.paid_at && (
                   <>
                     {' '}

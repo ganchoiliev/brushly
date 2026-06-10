@@ -1,7 +1,8 @@
 /* Hand-authored to match supabase/migrations/0001_init.sql +
-   0002_follow_ups.sql + 0003_item_presets.sql exactly. Those migrations
-   are already applied to the live project and are the schema ground
-   truth — change this file only when a new migration lands. */
+   0002_follow_ups.sql + 0003_item_presets.sql + 0004_invoice_sent_at.sql
+   exactly. Those migrations are applied to the live project and are the
+   schema ground truth — change this file only when a new migration
+   lands. */
 
 export type LeadSource = 'website' | 'ads' | 'referral' | 'phone' | 'manual'
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost' | 'spam'
@@ -249,6 +250,7 @@ export type Database = {
           subtotal_pence: number
           vat_pence: number
           total_pence: number
+          sent_at: string | null
           paid_at: string | null
           payment_method: PaymentMethod | null
           notes: string | null
@@ -267,6 +269,7 @@ export type Database = {
           subtotal_pence?: number
           vat_pence?: number
           total_pence?: number
+          sent_at?: string | null
           paid_at?: string | null
           payment_method?: PaymentMethod | null
           notes?: string | null
@@ -285,6 +288,7 @@ export type Database = {
           subtotal_pence?: number
           vat_pence?: number
           total_pence?: number
+          sent_at?: string | null
           paid_at?: string | null
           payment_method?: PaymentMethod | null
           notes?: string | null

@@ -267,11 +267,9 @@ export async function sendInvoice(raw: unknown): Promise<ActionResult> {
   /* Test sends change NO state (§4.1). */
   if (test) return { ok: true }
 
-  /* No sent_at column on invoices (schema is law until a migration says
-     otherwise) — status alone records the send. */
   const { error: updateError } = await supabase
     .from('invoices')
-    .update({ status: 'sent' })
+    .update({ status: 'sent', sent_at: new Date().toISOString() })
     .eq('id', invoice.id)
   if (updateError) console.error('sendInvoice status update failed:', updateError)
 
