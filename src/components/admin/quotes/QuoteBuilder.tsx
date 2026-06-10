@@ -3,9 +3,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, ChevronUp, ChevronDown, Search, UserPlus, X } from 'lucide-react'
+import { AnimatePresence, Reorder, useDragControls } from 'framer-motion'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import {
+  Plus,
+  Minus,
+  Trash2,
+  GripVertical,
+  MoreVertical,
+  Search,
+  UserPlus,
+  X,
+} from 'lucide-react'
 import useReducedMotion from '@/hooks/useReducedMotion'
+import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import { createQuote, updateQuote } from '@/lib/admin/actions/quotes'
 import { createInvoice } from '@/lib/admin/actions/invoices'
 import { searchClients } from '@/lib/admin/actions/clients'
@@ -83,6 +94,9 @@ const inputClass = `w-full ${inputBase}`
 const selectAllOnFocus = (e: React.FocusEvent<HTMLInputElement>) =>
   e.currentTarget.select()
 
+const menuItemClass =
+  'flex h-11 cursor-pointer select-none items-center rounded-sm px-3 font-body text-[14px] text-brushly-cream outline-none transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-admin-raised'
+
 export default function QuoteBuilder({
   kind = 'quote',
   settings,
@@ -128,6 +142,10 @@ export default function QuoteBuilder({
     quote ? (quote.terms ?? '') : (settings.default_terms ?? '')
   )
   const [pending, setPending] = useState(false)
+  /* The freshly added card focuses its description (§2); removal of a card
+     with content asks first — confirmRemoveKey holds whose dialog is open. */
+  const [autofocusKey, setAutofocusKey] = useState<number | null>(null)
+  const [confirmRemoveKey, setConfirmRemoveKey] = useState<number | null>(null)
 
   function patchItem(key: number, patch: Partial<ItemDraft>) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)))
@@ -141,6 +159,26 @@ export default function QuoteBuilder({
       ;[next[i], next[j]] = [next[j], next[i]]
       return next
     })
+  }
+  function removeItem(key: number) {
+    setItems((prev) => (prev.length === 1 ? prev : prev.filter((x) => x.key !== key)))
+  }
+  /* Steppers move in whole numbers; typed decimals (1.5) survive them. */
+  function stepQty(key: number, dir: -1 | 1) {
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.key !== key) return it
+        const cur = parseFloat(it.qty)
+        const next = Number.isFinite(cur) ? cur + dir : 1
+        if (next <= 0) return it
+        return { ...it, qty: String(next) }
+      })
+    )
+  }
+  function addLine() {
+    const it = newItem()
+    setItems((prev) => [...prev, it])
+    setAutofocusKey(it.key)
   }
 
   const lineTotals = items.map((it) => {
@@ -417,108 +455,43 @@ export default function QuoteBuilder({
         <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
           Work &amp; prices
         </h2>
-        <div className="space-y-3">
-          {/* Layout animations on add/remove/reorder (§2.3) — 200ms,
-              skipped under reduced motion. */}
+        {/* Cards reorder by dragging the left-edge handle (mouse grabs
+            instantly, touch holds briefly so scrolling stays free); the
+            overflow menu keeps Move up/down as the accessible fallback.
+            Enter/exit at 200ms, skipped under reduced motion (§2.3). */}
+        <Reorder.Group
+          as="div"
+          axis="y"
+          values={items}
+          onReorder={setItems}
+          className="space-y-3"
+        >
           <AnimatePresence initial={false}>
-          {items.map((it, i) => (
-            <motion.div
-              key={it.key}
-              layout={!reducedMotion}
-              initial={reducedMotion ? false : { opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={reducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="rounded-sm border border-admin-hairline bg-admin-card p-3"
-            >
-              <div className="flex items-start gap-2">
-                <textarea
-                  placeholder="What's being done"
-                  value={it.description}
-                  onChange={(e) => patchItem(it.key, { description: e.target.value })}
-                  rows={2}
-                  className={`${inputClass} min-h-12 flex-1 py-2.5 leading-snug`}
-                />
-                <div className="flex shrink-0 flex-col gap-1">
-                  <button
-                    onClick={() => moveItem(it.key, -1)}
-                    disabled={i === 0}
-                    aria-label="Move up"
-                    className="flex h-11 w-11 items-center justify-center rounded-sm border border-white/10 text-admin-muted disabled:opacity-30"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => moveItem(it.key, 1)}
-                    disabled={i === items.length - 1}
-                    aria-label="Move down"
-                    className="flex h-11 w-11 items-center justify-center rounded-sm border border-white/10 text-admin-muted disabled:opacity-30"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  value={it.qty}
-                  onChange={(e) => patchItem(it.key, { qty: e.target.value })}
-                  onFocus={selectAllOnFocus}
-                  inputMode="decimal"
-                  aria-label="Quantity"
-                  className={`${inputBase} h-12 w-14 text-center tabular-nums`}
-                />
-                <select
-                  value={it.unit}
-                  onChange={(e) => patchItem(it.key, { unit: e.target.value as ItemUnit })}
-                  aria-label="Unit"
-                  className={`${inputBase} h-12 w-20 appearance-none`}
-                >
-                  {UNITS.map((u) => (
-                    <option key={u.value} value={u.value}>
-                      {u.label}
-                    </option>
-                  ))}
-                </select>
-                {/* Price owns the row's spare width (§1): it must fit
-                    "12,500.00" while the digits are being typed. */}
-                <div className="relative flex-1">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-body text-[15px] text-admin-muted">
-                    £
-                  </span>
-                  <input
-                    value={it.price}
-                    onChange={(e) => patchItem(it.key, { price: e.target.value })}
-                    onFocus={selectAllOnFocus}
-                    onBlur={() => {
-                      const pence = parseGBPToPence(it.price)
-                      if (pence !== null) patchItem(it.key, { price: formatPounds(pence) })
-                    }}
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    aria-label="Price"
-                    className={`${inputClass} h-12 pl-7 text-right tabular-nums`}
-                  />
-                </div>
-                <button
-                  onClick={() => setItems((prev) => prev.filter((x) => x.key !== it.key))}
-                  disabled={items.length === 1}
-                  aria-label="Remove line"
-                  className="flex h-12 w-11 shrink-0 items-center justify-center rounded-sm border border-white/10 text-admin-muted transition-colors hover:text-status-red disabled:opacity-30"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-              {lineTotals[i] !== null && (
-                <p className="mt-2 text-right font-body text-[13px] tabular-nums text-brushly-cream/70">
-                  Line total {formatGBP(lineTotals[i]!)}
-                </p>
-              )}
-            </motion.div>
-          ))}
+            {items.map((it, i) => (
+              <LineItemCard
+                key={it.key}
+                item={it}
+                index={i}
+                count={items.length}
+                lineTotal={lineTotals[i]}
+                autofocus={it.key === autofocusKey}
+                reducedMotion={reducedMotion}
+                onPatch={(patch) => patchItem(it.key, patch)}
+                onStepQty={(dir) => stepQty(it.key, dir)}
+                onMove={(dir) => moveItem(it.key, dir)}
+                onRemove={() => {
+                  if (it.description.trim() || it.price.trim()) {
+                    setConfirmRemoveKey(it.key)
+                  } else {
+                    removeItem(it.key)
+                  }
+                }}
+              />
+            ))}
           </AnimatePresence>
-        </div>
+        </Reorder.Group>
         <button
-          onClick={() => setItems((prev) => [...prev, newItem()])}
+          onClick={addLine}
           className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-sm border border-dashed border-white/15 font-body text-[14px] text-brushly-cream/70 transition-colors hover:border-brushly-gold hover:text-brushly-gold"
         >
           <Plus className="h-4 w-4" />
@@ -609,7 +582,221 @@ export default function QuoteBuilder({
           </button>
         </div>
       </div>
+
+      {/* Confirm only when the line has content (§2) — empty lines just go. */}
+      <ConfirmDialog
+        open={confirmRemoveKey !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRemoveKey(null)
+        }}
+        title="Remove this line?"
+        body="It has work or a price on it — removing can't be undone."
+        confirmLabel="Remove line"
+        destructive
+        onConfirm={() => {
+          if (confirmRemoveKey !== null) removeItem(confirmRemoveKey)
+          setConfirmRemoveKey(null)
+        }}
+      />
     </div>
+  )
+}
+
+function LineItemCard({
+  item,
+  index,
+  count,
+  lineTotal,
+  autofocus,
+  reducedMotion,
+  onPatch,
+  onStepQty,
+  onMove,
+  onRemove,
+}: {
+  item: ItemDraft
+  index: number
+  count: number
+  lineTotal: number | null
+  autofocus: boolean
+  reducedMotion: boolean
+  onPatch: (patch: Partial<ItemDraft>) => void
+  onStepQty: (dir: -1 | 1) => void
+  onMove: (dir: -1 | 1) => void
+  onRemove: () => void
+}) {
+  const controls = useDragControls()
+  const pressTimer = useRef<number | null>(null)
+
+  /* Mouse picks the card up instantly; touch holds ~200ms first so the
+     handle doesn't fight page scrolling on phones. */
+  function handlePointerDown(e: React.PointerEvent) {
+    if (e.pointerType === 'touch') {
+      const evt = e.nativeEvent
+      pressTimer.current = window.setTimeout(() => controls.start(evt), 200)
+    } else {
+      controls.start(e)
+    }
+  }
+  function cancelPress() {
+    if (pressTimer.current !== null) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+    }
+  }
+
+  const qtyNum = parseFloat(item.qty)
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={item}
+      dragListener={false}
+      dragControls={controls}
+      initial={reducedMotion ? false : { opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={reducedMotion ? undefined : { opacity: 0, scale: 0.98 }}
+      transition={
+        reducedMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }
+      }
+      whileDrag={reducedMotion ? undefined : { scale: 1.02 }}
+      className="relative flex rounded-sm border border-admin-hairline bg-admin-card"
+    >
+      <div
+        aria-hidden
+        onPointerDown={handlePointerDown}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
+        className="flex w-8 shrink-0 cursor-grab touch-none select-none items-center justify-center self-stretch text-admin-muted/50 active:cursor-grabbing"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1 py-3 pr-3">
+        <div className="flex items-start gap-2">
+          <textarea
+            placeholder="What's being done"
+            value={item.description}
+            onChange={(e) => onPatch({ description: e.target.value })}
+            rows={2}
+            autoFocus={autofocus}
+            className={`${inputClass} min-h-12 flex-1 py-2.5 leading-snug [field-sizing:content]`}
+          />
+          <button
+            onClick={onRemove}
+            disabled={count === 1}
+            aria-label="Remove line"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-sm text-admin-muted transition-colors hover:bg-admin-raised hover:text-status-red disabled:opacity-30"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex h-12 shrink-0 items-stretch overflow-hidden rounded-sm border border-white/10 bg-admin-raised transition-colors focus-within:border-brushly-gold">
+            <button
+              type="button"
+              onClick={() => onStepQty(-1)}
+              disabled={Number.isFinite(qtyNum) && qtyNum <= 1}
+              aria-label="Decrease quantity"
+              className="flex w-7 items-center justify-center text-admin-muted transition-colors hover:text-brushly-cream disabled:opacity-30"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <input
+              value={item.qty}
+              onChange={(e) => onPatch({ qty: e.target.value })}
+              onFocus={selectAllOnFocus}
+              inputMode="decimal"
+              aria-label="Quantity"
+              className="w-9 bg-transparent text-center font-body text-[16px] tabular-nums text-brushly-cream outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => onStepQty(1)}
+              aria-label="Increase quantity"
+              className="flex w-7 items-center justify-center text-admin-muted transition-colors hover:text-brushly-cream"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <select
+            value={item.unit}
+            onChange={(e) => onPatch({ unit: e.target.value as ItemUnit })}
+            aria-label="Unit"
+            className={`${inputBase} h-12 w-18 appearance-none`}
+          >
+            {UNITS.map((u) => (
+              <option key={u.value} value={u.value}>
+                {u.label}
+              </option>
+            ))}
+          </select>
+          {/* Price owns the row's spare width (§1/§2): it must fit
+              "12,500.00" while the digits are being typed. */}
+          <div className="relative min-w-0 flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-body text-[15px] text-admin-muted">
+              £
+            </span>
+            <input
+              value={item.price}
+              onChange={(e) => onPatch({ price: e.target.value })}
+              onFocus={selectAllOnFocus}
+              onBlur={() => {
+                const pence = parseGBPToPence(item.price)
+                if (pence !== null) onPatch({ price: formatPounds(pence) })
+              }}
+              inputMode="decimal"
+              placeholder="0.00"
+              aria-label="Price"
+              className={`${inputClass} h-12 pl-7 text-right tabular-nums`}
+            />
+          </div>
+        </div>
+        {/* Overflow (accessible reorder fallback; §5 adds Save as preset)
+            sits quietly bottom-left; the live line total holds bottom-right. */}
+        <div className="mt-1 flex items-center justify-between">
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button
+                aria-label="Line options"
+                className="-ml-2 flex h-10 w-10 items-center justify-center rounded-sm text-admin-muted/70 transition-colors hover:bg-admin-raised hover:text-brushly-cream data-[state=open]:bg-admin-raised"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                align="start"
+                sideOffset={4}
+                className="z-50 min-w-40 rounded-sm border border-white/10 bg-admin-card p-1 shadow-2xl shadow-black/50"
+              >
+                <DropdownMenu.Item
+                  disabled={index === 0}
+                  onSelect={() => onMove(-1)}
+                  className={menuItemClass}
+                >
+                  Move up
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  disabled={index === count - 1}
+                  onSelect={() => onMove(1)}
+                  className={menuItemClass}
+                >
+                  Move down
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+          {lineTotal !== null && (
+            <div className="flex items-baseline gap-2">
+              <span className="font-body text-[12px] text-admin-muted">Line total</span>
+              <span className="font-body text-[14px] font-semibold tabular-nums text-brushly-cream">
+                {formatGBP(lineTotal)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </Reorder.Item>
   )
 }
 
