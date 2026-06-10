@@ -8,6 +8,25 @@ export function formatGBP(pence: number): string {
   return gbp.format(pence / 100)
 }
 
+const pounds = new Intl.NumberFormat('en-GB', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+/* Money inputs on blur: "1,250.50" with no symbol — the £ is rendered
+   as a prefix outside the value, and parseGBPToPence round-trips it. */
+export function formatPounds(pence: number): string {
+  return pounds.format(pence / 100)
+}
+
+/* "204455" → "20-44-55" for the settings field and anywhere a sort code
+   is shown; leaves anything that isn't 6 digits untouched. */
+export function formatSortCode(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.length !== 6) return raw
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 6)}`
+}
+
 /* "1,250.50" -> 125050. Returns null for anything that isn't money. */
 export function parseGBPToPence(input: string): number | null {
   const cleaned = input.replace(/[£,\s]/g, '')

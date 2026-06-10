@@ -4,10 +4,15 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { updateSettings } from '@/lib/admin/actions/settings'
+import { formatSortCode } from '@/lib/admin/format'
 import type { Settings } from '@/lib/supabase/types'
 
 const inputClass =
   'mt-1 h-12 w-full rounded-sm border border-white/10 bg-admin-raised px-3 font-body text-[16px] text-brushly-cream outline-none transition-colors focus:border-brushly-gold'
+
+/* Number fields: a tap replaces the value rather than appending to it. */
+const selectAllOnFocus = (e: React.FocusEvent<HTMLInputElement>) =>
+  e.currentTarget.select()
 
 export default function SettingsForm({ settings }: { settings: Settings }) {
   const router = useRouter()
@@ -81,11 +86,34 @@ export default function SettingsForm({ settings }: { settings: Settings }) {
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block">
             <span className="font-body text-[13px] text-brushly-cream/70">Sort code</span>
-            <input name="bank_sort_code" inputMode="numeric" placeholder="00-00-00" defaultValue={settings.bank_sort_code ?? ''} className={inputClass} />
+            <input
+              name="bank_sort_code"
+              inputMode="numeric"
+              placeholder="00-00-00"
+              defaultValue={settings.bank_sort_code ?? ''}
+              onFocus={selectAllOnFocus}
+              onBlur={(e) => {
+                e.currentTarget.value = formatSortCode(e.currentTarget.value)
+              }}
+              className={inputClass}
+            />
           </label>
           <label className="block">
             <span className="font-body text-[13px] text-brushly-cream/70">Account number</span>
-            <input name="bank_account_no" inputMode="numeric" defaultValue={settings.bank_account_no ?? ''} className={inputClass} />
+            <input
+              name="bank_account_no"
+              inputMode="numeric"
+              placeholder="12345678"
+              defaultValue={settings.bank_account_no ?? ''}
+              onFocus={selectAllOnFocus}
+              onBlur={(e) => {
+                /* Banks want bare digits — drop stray spaces or dashes,
+                   but never digits themselves. */
+                const digits = e.currentTarget.value.replace(/[\s-]/g, '')
+                e.currentTarget.value = digits
+              }}
+              className={inputClass}
+            />
           </label>
         </div>
       </section>

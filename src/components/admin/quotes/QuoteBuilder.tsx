@@ -9,7 +9,7 @@ import useReducedMotion from '@/hooks/useReducedMotion'
 import { createQuote, updateQuote } from '@/lib/admin/actions/quotes'
 import { createInvoice } from '@/lib/admin/actions/invoices'
 import { searchClients } from '@/lib/admin/actions/clients'
-import { formatGBP, parseGBPToPence, addDays, todayLondon } from '@/lib/admin/format'
+import { formatGBP, formatPounds, parseGBPToPence, addDays, todayLondon } from '@/lib/admin/format'
 import type { ItemUnit } from '@/lib/supabase/types'
 
 const UNITS: { value: ItemUnit; label: string }[] = [
@@ -71,8 +71,17 @@ const newItem = (): ItemDraft => ({
   price: '',
 })
 
-const inputClass =
-  'w-full rounded-sm border border-white/10 bg-admin-raised px-3 font-body text-[16px] text-brushly-cream outline-none transition-colors focus:border-brushly-gold'
+/* w-full lives apart from the base so fixed-width fields (qty, unit)
+   can opt out — stacking w-16 onto w-full hands the choice to stylesheet
+   order, which is how the price field once collapsed to 42px. */
+const inputBase =
+  'rounded-sm border border-white/10 bg-admin-raised px-3 font-body text-[16px] text-brushly-cream outline-none transition-colors focus:border-brushly-gold'
+const inputClass = `w-full ${inputBase}`
+
+/* Money/number fields: the whole value is the unit of editing — a tap
+   replaces it rather than appending to it. */
+const selectAllOnFocus = (e: React.FocusEvent<HTMLInputElement>) =>
+  e.currentTarget.select()
 
 export default function QuoteBuilder({
   kind = 'quote',
@@ -107,7 +116,7 @@ export default function QuoteBuilder({
           description: it.description,
           qty: String(it.qty),
           unit: it.unit,
-          price: (it.unit_price_pence / 100).toFixed(2),
+          price: formatPounds(it.unit_price_pence),
         }))
       : [newItem()]
   )
@@ -453,15 +462,16 @@ export default function QuoteBuilder({
                 <input
                   value={it.qty}
                   onChange={(e) => patchItem(it.key, { qty: e.target.value })}
+                  onFocus={selectAllOnFocus}
                   inputMode="decimal"
                   aria-label="Quantity"
-                  className={`${inputClass} h-12 w-16 text-center tabular-nums`}
+                  className={`${inputBase} h-12 w-14 text-center tabular-nums`}
                 />
                 <select
                   value={it.unit}
                   onChange={(e) => patchItem(it.key, { unit: e.target.value as ItemUnit })}
                   aria-label="Unit"
-                  className={`${inputClass} h-12 w-22 appearance-none`}
+                  className={`${inputBase} h-12 w-20 appearance-none`}
                 >
                   {UNITS.map((u) => (
                     <option key={u.value} value={u.value}>
@@ -469,6 +479,8 @@ export default function QuoteBuilder({
                     </option>
                   ))}
                 </select>
+                {/* Price owns the row's spare width (§1): it must fit
+                    "12,500.00" while the digits are being typed. */}
                 <div className="relative flex-1">
                   <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-body text-[15px] text-admin-muted">
                     £
@@ -476,6 +488,11 @@ export default function QuoteBuilder({
                   <input
                     value={it.price}
                     onChange={(e) => patchItem(it.key, { price: e.target.value })}
+                    onFocus={selectAllOnFocus}
+                    onBlur={() => {
+                      const pence = parseGBPToPence(it.price)
+                      if (pence !== null) patchItem(it.key, { price: formatPounds(pence) })
+                    }}
                     inputMode="decimal"
                     placeholder="0.00"
                     aria-label="Price"
@@ -548,10 +565,10 @@ export default function QuoteBuilder({
         </section>
       )}
 
-      {/* The money screen's anchor (§2.3): running totals + save, sticky so
-          they never leave view while editing. bottom-20 clears the mobile
-          tab bar; on md+ there is no tab bar. */}
-      <div className="sticky bottom-20 z-20 rounded-sm border border-admin-hairline bg-admin-card/95 p-4 shadow-lg shadow-black/40 backdrop-blur-lg md:bottom-4">
+      {/* Totals + save. Unstuck (v1.2 §1): the floating bar overlapped the
+          meta sections beneath it — nothing may ever overlap interactive
+          content. §3 restructures this block properly. */}
+      <div className="rounded-sm border border-admin-hairline bg-admin-card p-4">
         <div className="space-y-1 font-body text-[13px]">
           <div className="flex justify-between text-brushly-cream/70">
             <span>Subtotal</span>
