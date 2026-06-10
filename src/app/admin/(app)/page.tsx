@@ -73,7 +73,7 @@ export default async function DashboardPage() {
       .neq('status', 'spam'),
     supabase
       .from('quotes')
-      .select('total_pence')
+      .select('id')
       .in('status', ['draft', 'sent']),
     supabase
       .from('quotes')
@@ -124,7 +124,6 @@ export default async function DashboardPage() {
     })),
   ]
 
-  const openQuotesTotal = (openQuotes.data ?? []).reduce((s, q) => s + q.total_pence, 0)
   const acceptedTotal = (acceptedMonth.data ?? []).reduce((s, q) => s + q.total_pence, 0)
   const unpaidTotal = (unpaidInvoices.data ?? []).reduce((s, i) => s + i.total_pence, 0)
 
@@ -205,23 +204,29 @@ export default async function DashboardPage() {
         </section>
 
         <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="New leads (7d)" value={String(newLeads7d.count ?? 0)} href="/admin/leads?status=new" />
           <Stat
-            label="Open quotes"
+            title="New leads"
+            subtitle="last 7 days"
+            value={String(newLeads7d.count ?? 0)}
+            href="/admin/leads?status=new"
+          />
+          <Stat
+            title="Open quotes"
+            subtitle="awaiting answer"
             value={`${(openQuotes.data ?? []).length}`}
-            sub={formatGBP(openQuotesTotal)}
             href="/admin/quotes?status=sent"
           />
           <Stat
-            label="Won this month"
+            title="Booked this month"
+            subtitle="accepted quotes"
             value={formatGBP(acceptedTotal)}
             gold
             href="/admin/quotes?status=accepted"
           />
           <Stat
-            label="Unpaid invoices"
+            title="Unpaid invoices"
+            subtitle={`${formatGBP(unpaidTotal)} outstanding`}
             value={`${(unpaidInvoices.data ?? []).length}`}
-            sub={formatGBP(unpaidTotal)}
             href="/admin/invoices?status=sent"
           />
         </section>
@@ -257,15 +262,15 @@ export default async function DashboardPage() {
 }
 
 function Stat({
-  label,
+  title,
+  subtitle,
   value,
-  sub,
   gold,
   href,
 }: {
-  label: string
+  title: string
+  subtitle: string
   value: string
-  sub?: string
   gold?: boolean
   href: string
 }) {
@@ -275,7 +280,10 @@ function Stat({
       className="rounded-sm border border-admin-hairline bg-admin-card p-4 transition-colors hover:bg-admin-raised"
     >
       <p className="font-body text-[11px] uppercase tracking-wider text-admin-muted">
-        {label}
+        {title}
+      </p>
+      <p className="font-body text-[12px] tabular-nums text-admin-muted">
+        {subtitle}
       </p>
       <p
         className={`mt-1 font-body text-xl font-semibold tabular-nums ${
@@ -284,9 +292,6 @@ function Stat({
       >
         {value}
       </p>
-      {sub && (
-        <p className="font-body text-[12px] tabular-nums text-admin-muted">{sub}</p>
-      )}
     </Link>
   )
 }

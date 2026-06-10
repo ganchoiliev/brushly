@@ -31,12 +31,12 @@ export async function createClientRecord(
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = clientSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form' }
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
   }
 
   const { data, error } = await supabase
@@ -70,12 +70,12 @@ export async function updateClientRecord(input: unknown): Promise<ActionResult> 
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = clientUpdateSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form' }
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
   }
   const { id, ...fields } = parsed.data
 
@@ -112,7 +112,7 @@ export async function searchClients(
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const cleaned = term.replace(/[%_,]/g, ' ').trim()

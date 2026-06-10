@@ -32,12 +32,12 @@ export async function updateSettings(input: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = settingsSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form' }
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
   }
   const d = parsed.data
 

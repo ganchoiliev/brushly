@@ -33,12 +33,12 @@ export async function createLead(
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = leadCreateSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form' }
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
   }
   const { name, phone, email, service, notes, source } = parsed.data
 
@@ -75,11 +75,11 @@ export async function updateLeadStatus(input: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = statusSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'Invalid status' }
+  if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
 
   const { error } = await supabase
     .from('leads')
@@ -113,12 +113,12 @@ export async function updateLeadDetails(input: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = detailsSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form' }
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
   }
   const { id, name, phone, email, service } = parsed.data
 
@@ -152,11 +152,11 @@ export async function updateLeadNotes(input: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = notesSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'Check the form' }
+  if (!parsed.success) return { ok: false, error: 'Check the form and try again.' }
 
   const { error } = await supabase
     .from('leads')

@@ -15,17 +15,30 @@ export function parseGBPToPence(input: string): number | null {
   return Math.round(parseFloat(cleaned) * 100)
 }
 
+/* Detail screens and PDFs: "9 June 2026" (§1). */
 export function formatDate(iso: string | null): string {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-GB', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
     year: 'numeric',
     timeZone: 'Europe/London',
   })
 }
 
-/* "2h ago", "3d ago" — for lead ages and activity feeds. */
+/* Lists and compact rows: "Mon 9 Jun" (§1). */
+export function formatDateShort(iso: string | null): string {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'Europe/London',
+  })
+}
+
+/* "2h ago", "3 days ago" — for lead ages and activity feeds. Minutes and
+   hours stay compact; days and months are words a decorator would say. */
 export function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
   if (seconds < 60) return 'just now'
@@ -34,9 +47,10 @@ export function timeAgo(iso: string): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `${hours}h ago`
   const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}d ago`
+  if (days === 1) return 'yesterday'
+  if (days < 30) return `${days} days ago`
   const months = Math.floor(days / 30)
-  return `${months}mo ago`
+  return months === 1 ? '1 month ago' : `${months} months ago`
 }
 
 /* YYYY-MM-DD in Europe/London — date columns must not drift at BST edges. */

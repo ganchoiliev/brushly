@@ -19,17 +19,17 @@ export async function sendQuote(rawId: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
   const parsed = idSchema.safeParse(rawId)
-  if (!parsed.success) return { ok: false, error: 'Invalid quote' }
+  if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
 
   const built = await buildQuotePdfInput(supabase, parsed.data)
-  if (!built) return { ok: false, error: 'Quote not found' }
+  if (!built) return { ok: false, error: "Couldn't find that quote — go back and refresh." }
   const { input, quote } = built
 
   if (quote.status === 'accepted' || quote.status === 'declined') {
-    return { ok: false, error: 'This quote has already been decided.' }
+    return { ok: false, error: 'This quote was already answered — refresh to see where it stands.' }
   }
   if (!input.client.email) {
     return {
@@ -92,10 +92,10 @@ export async function markQuoteDecision(input: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
   const parsed = decisionSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'Invalid decision' }
+  if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
   const { id, decision } = parsed.data
 
   const { data: quote } = await supabase
@@ -103,9 +103,9 @@ export async function markQuoteDecision(input: unknown): Promise<ActionResult> {
     .select('id, status, lead_id')
     .eq('id', id)
     .maybeSingle()
-  if (!quote) return { ok: false, error: 'Quote not found' }
+  if (!quote) return { ok: false, error: "Couldn't find that quote — go back and refresh." }
   if (quote.status === 'accepted' || quote.status === 'declined') {
-    return { ok: false, error: 'This quote has already been decided.' }
+    return { ok: false, error: 'This quote was already answered — refresh to see where it stands.' }
   }
 
   const { error } = await supabase
@@ -142,13 +142,13 @@ export async function sendInvoice(rawId: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
   const parsed = idSchema.safeParse(rawId)
-  if (!parsed.success) return { ok: false, error: 'Invalid invoice' }
+  if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
 
   const built = await buildInvoicePdfInput(supabase, parsed.data)
-  if (!built) return { ok: false, error: 'Invoice not found' }
+  if (!built) return { ok: false, error: "Couldn't find that invoice — go back and refresh." }
   const { input, invoice } = built
 
   if (invoice.status === 'paid' || invoice.status === 'void') {

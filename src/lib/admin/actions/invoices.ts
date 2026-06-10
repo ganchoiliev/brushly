@@ -40,19 +40,19 @@ export async function createInvoiceFromQuote(
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
   const parsed = z.string().uuid().safeParse(rawId)
-  if (!parsed.success) return { ok: false, error: 'Invalid quote' }
+  if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
 
   const { data: quote } = await supabase
     .from('quotes')
     .select('*, quote_items(*)')
     .eq('id', parsed.data)
     .maybeSingle()
-  if (!quote) return { ok: false, error: 'Quote not found' }
+  if (!quote) return { ok: false, error: "Couldn't find that quote — go back and refresh." }
   if (quote.status !== 'accepted') {
-    return { ok: false, error: 'Only accepted quotes become invoices.' }
+    return { ok: false, error: 'Mark the quote as accepted first — then create the invoice.' }
   }
 
   // If a live (non-void) invoice already exists for this quote, go to it
@@ -155,12 +155,12 @@ export async function createInvoice(
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
 
   const parsed = invoiceInputSchema.safeParse(input)
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form' }
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
   }
   const data = parsed.data
 
@@ -251,17 +251,17 @@ export async function markInvoicePaid(input: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
   const parsed = paidSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'Invalid input' }
+  if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
 
   const { data: invoice } = await supabase
     .from('invoices')
     .select('id, status')
     .eq('id', parsed.data.id)
     .maybeSingle()
-  if (!invoice) return { ok: false, error: 'Invoice not found' }
+  if (!invoice) return { ok: false, error: "Couldn't find that invoice — go back and refresh." }
   if (invoice.status === 'paid') return { ok: false, error: 'Already marked as paid.' }
   if (invoice.status === 'void') return { ok: false, error: 'This invoice is void.' }
 
@@ -289,17 +289,17 @@ export async function voidInvoice(rawId: unknown): Promise<ActionResult> {
   try {
     ;({ supabase } = await requireAdmin())
   } catch {
-    return { ok: false, error: 'Not authorised' }
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
   }
   const parsed = z.string().uuid().safeParse(rawId)
-  if (!parsed.success) return { ok: false, error: 'Invalid invoice' }
+  if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
 
   const { data: invoice } = await supabase
     .from('invoices')
     .select('id, status')
     .eq('id', parsed.data)
     .maybeSingle()
-  if (!invoice) return { ok: false, error: 'Invoice not found' }
+  if (!invoice) return { ok: false, error: "Couldn't find that invoice — go back and refresh." }
   if (invoice.status === 'paid') {
     return { ok: false, error: "Paid invoices can't be voided." }
   }
