@@ -88,6 +88,7 @@ export default function HeroSplit() {
           </p>
           <div className="hero-cta mt-8">
             <MagneticButton>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- pre-existing full-page anchor; rule only fires since the [...rest] catch-all landed, and swapping to <Link> would change the loader/wipe navigation behaviour */}
               <a
                 href="/contact"
                 className="inline-block bg-brushly-black px-8 py-4 font-body text-[12px] uppercase tracking-[0.2em] text-brushly-cream transition-colors duration-300 hover:bg-brushly-gold-dark"

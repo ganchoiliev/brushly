@@ -94,6 +94,7 @@ export default function ShowcaseGrid() {
               </TextReveal>
             </div>
             <ScrollReveal delay={0.3}>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- pre-existing full-page anchor; rule only fires since the [...rest] catch-all landed, and swapping to <Link> would change the loader/wipe navigation behaviour */}
               <a
                 href="/gallery"
                 className="text-[13px] font-body font-medium uppercase tracking-[0.15em] transition-colors"

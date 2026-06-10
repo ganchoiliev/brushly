@@ -20,6 +20,16 @@
 
   /* Marquee Animation */
   --animate-marquee: marquee 30s linear infinite;
+
+  /* Admin surfaces — layered charcoal (admin app only) */
+  --color-admin-card: #1C1C1C;
+  --color-admin-raised: #262626;
+  --color-admin-muted: #9A9A93;
+
+  /* Admin status colors — badges/borders only */
+  --color-status-green: #4ADE80;
+  --color-status-amber: #FBBF24;
+  --color-status-red: #F87171;
 }
 
 /* Base Styles */
