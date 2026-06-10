@@ -6,7 +6,14 @@ import StatusBadge, { QUOTE_STATUS } from '@/components/admin/StatusBadge'
 import QuoteActions from '@/components/admin/quotes/QuoteActions'
 import CreateInvoiceButton from '@/components/admin/quotes/CreateInvoiceButton'
 import { requireUser } from '@/lib/admin/auth'
-import { formatGBP, formatDate, quoteRef, invoiceRef, timeAgo } from '@/lib/admin/format'
+import {
+  effectiveQuoteStatus,
+  formatGBP,
+  formatDate,
+  quoteRef,
+  invoiceRef,
+  timeAgo,
+} from '@/lib/admin/format'
 
 export const metadata: Metadata = {
   title: 'Quote',
@@ -47,6 +54,7 @@ export default async function QuoteDetailPage({
       : { data: null }
 
   const items = [...(quote.quote_items ?? [])].sort((a, b) => a.position - b.position)
+  const effective = effectiveQuoteStatus(quote.status, quote.valid_until)
   const client = quote.clients
   const editable = quote.status === 'draft' || quote.status === 'sent'
 
@@ -74,7 +82,7 @@ export default async function QuoteDetailPage({
                 <Pencil className="h-4 w-4" />
               </Link>
             )}
-            <StatusBadge map={QUOTE_STATUS} status={quote.status} />
+            <StatusBadge map={QUOTE_STATUS} status={effective} />
           </span>
         </div>
       </header>
@@ -89,7 +97,7 @@ export default async function QuoteDetailPage({
                 <h2 className="font-display text-4xl font-light tabular-nums text-brushly-cream">
                   {quoteRef(quote.quote_number)}
                 </h2>
-                <StatusBadge map={QUOTE_STATUS} status={quote.status} />
+                <StatusBadge map={QUOTE_STATUS} status={effective} />
               </div>
               <p className="mt-2 font-body text-[15px] font-medium text-brushly-cream">
                 {quote.title}

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireAdmin } from '@/lib/admin/auth'
+import { addDays, todayLondon } from '@/lib/admin/format'
 import type { ActionResult } from '@/lib/admin/actions/leads'
 import type { ItemUnit } from '@/lib/supabase/types'
 
@@ -244,4 +245,83 @@ export async function updateQuote(input: unknown): Promise<ActionResult> {
   revalidatePath(`/admin/quotes/${data.id}`)
   revalidatePath('/admin')
   return { ok: true }
+}
+
+/* Duplicate quote (§4, repeat clients): same client, title, items and
+   terms into a fresh draft with the next number and fresh dates.
+   Nothing else carried — no lead link, no notes, no status history. */
+const duplicateSchema = z.object({ id: z.string().uuid() })
+
+export async function duplicateQuote(
+  input: unknown
+): Promise<ActionResult<{ id: string; quote_number: number }>> {
+  let supabase
+  try {
+    ;({ supabase } = await requireAdmin())
+  } catch {
+    return { ok: false, error: "You've been signed out — sign in and try again." }
+  }
+
+  const parsed = duplicateSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
+  }
+
+  const { data: source } = await supabase
+    .from('quotes')
+    .select('*, quote_items(*)')
+    .eq('id', parsed.data.id)
+    .maybeSingle()
+  if (!source) return { ok: false, error: "Couldn't find that quote — go back and refresh." }
+
+  const { data: quoteNumber, error: numberError } = await supabase.rpc('next_number', {
+    kind: 'quote',
+  })
+  if (numberError || typeof quoteNumber !== 'number') {
+    console.error('duplicateQuote counter failed:', numberError)
+    return { ok: false, error: "Couldn't get the next quote number — try again." }
+  }
+
+  const today = todayLondon()
+  const { data: quote, error: quoteError } = await supabase
+    .from('quotes')
+    .insert({
+      quote_number: quoteNumber,
+      client_id: source.client_id,
+      title: source.title,
+      status: 'draft',
+      issue_date: today,
+      valid_until: addDays(today, 30),
+      vat_rate: source.vat_rate,
+      subtotal_pence: source.subtotal_pence,
+      vat_pence: source.vat_pence,
+      total_pence: source.total_pence,
+      terms: source.terms,
+    })
+    .select('id')
+    .single()
+  if (quoteError || !quote) {
+    console.error('duplicateQuote insert failed:', quoteError)
+    return { ok: false, error: "Couldn't create the copy — try again." }
+  }
+
+  const items = [...(source.quote_items ?? [])].sort((a, b) => a.position - b.position)
+  const { error: itemsError } = await supabase.from('quote_items').insert(
+    items.map((item, i) => ({
+      quote_id: quote.id,
+      position: i,
+      description: item.description,
+      qty: item.qty,
+      unit: item.unit,
+      unit_price_pence: item.unit_price_pence,
+      total_pence: item.total_pence,
+    }))
+  )
+  if (itemsError) {
+    console.error('duplicateQuote items failed:', itemsError)
+    return { ok: false, error: "Couldn't copy the quote lines — try again." }
+  }
+
+  revalidatePath('/admin/quotes')
+  return { ok: true, data: { id: quote.id, quote_number: quoteNumber } }
 }

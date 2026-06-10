@@ -81,11 +81,14 @@ export async function updateLeadStatus(input: unknown): Promise<ActionResult> {
   const parsed = statusSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Something went wrong — refresh the page and try again.' }
 
+  /* A decided lead doesn't need a call-back reminder — clear it. */
+  const decided = ['won', 'lost', 'spam'].includes(parsed.data.status)
   const { error } = await supabase
     .from('leads')
     .update({
       status: parsed.data.status as LeadStatus,
       status_changed_at: new Date().toISOString(),
+      ...(decided ? { follow_up_at: null } : {}),
     })
     .eq('id', parsed.data.id)
 

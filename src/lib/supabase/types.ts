@@ -1,4 +1,4 @@
-/* Hand-authored to match supabase/migrations/0001_init.sql exactly.
+/* Hand-authored to match supabase/migrations/0001_init.sql + 0002_follow_ups.sql exactly.
    That migration is already applied to the live project and is the schema
    ground truth — change this file only when a new migration lands. */
 
@@ -43,6 +43,7 @@ export type Database = {
           status: LeadStatus
           notes: string | null
           status_changed_at: string
+          follow_up_at: string | null
         }
         Insert: {
           id?: string
@@ -56,6 +57,7 @@ export type Database = {
           status?: LeadStatus
           notes?: string | null
           status_changed_at?: string
+          follow_up_at?: string | null
         }
         Update: {
           id?: string
@@ -69,6 +71,7 @@ export type Database = {
           status?: LeadStatus
           notes?: string | null
           status_changed_at?: string
+          follow_up_at?: string | null
         }
         Relationships: []
       }
@@ -130,6 +133,7 @@ export type Database = {
           terms: string | null
           sent_at: string | null
           decided_at: string | null
+          follow_up_at: string | null
         }
         Insert: {
           id?: string
@@ -149,6 +153,7 @@ export type Database = {
           terms?: string | null
           sent_at?: string | null
           decided_at?: string | null
+          follow_up_at?: string | null
         }
         Update: {
           id?: string
@@ -168,6 +173,7 @@ export type Database = {
           terms?: string | null
           sent_at?: string | null
           decided_at?: string | null
+          follow_up_at?: string | null
         }
         Relationships: [
           {

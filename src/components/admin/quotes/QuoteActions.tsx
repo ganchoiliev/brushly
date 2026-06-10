@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Eye, Download, Send, Trophy, X } from 'lucide-react'
+import { Eye, Download, Send, Trophy, X, Copy } from 'lucide-react'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import { sendQuote, markQuoteDecision } from '@/lib/admin/actions/send'
+import { duplicateQuote } from '@/lib/admin/actions/quotes'
+import { quoteRef } from '@/lib/admin/format'
 
 export default function QuoteActions({
   quoteId,
@@ -47,6 +49,20 @@ export default function QuoteActions({
     setDialog('send')
   }
 
+  /* Repeat clients (§4): same title, items and terms in a fresh draft. */
+  async function duplicate() {
+    setPending(true)
+    const result = await duplicateQuote({ id: quoteId })
+    setPending(false)
+    if (result.ok && result.data) {
+      toast.success(`Draft ${quoteRef(result.data.quote_number)} ready`)
+      router.push(`/admin/quotes/${result.data.id}`)
+      router.refresh()
+    } else if (!result.ok) {
+      toast.error(result.error)
+    }
+  }
+
   async function confirmDecision(decision: 'accepted' | 'declined') {
     setPending(true)
     const result = await markQuoteDecision({ id: quoteId, decision })
@@ -80,6 +96,15 @@ export default function QuoteActions({
           Download
         </a>
       </div>
+
+      <button
+        onClick={duplicate}
+        disabled={pending}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-sm border border-white/15 font-body text-[14px] font-medium text-brushly-cream transition-colors hover:bg-admin-raised disabled:opacity-60"
+      >
+        <Copy className="h-4 w-4" />
+        Duplicate quote
+      </button>
 
       {!decided && (
         <button

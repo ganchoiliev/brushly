@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, FileText } from 'lucide-react'
 import StatusBadge, { LEAD_STATUS } from '@/components/admin/StatusBadge'
 import ContactActions from '@/components/admin/ContactActions'
+import OutcomeButtons from '@/components/admin/leads/OutcomeButtons'
 import LeadStatusButtons from '@/components/admin/leads/LeadStatusButtons'
 import LeadNotes from '@/components/admin/leads/LeadNotes'
 import LeadDetailsForm from '@/components/admin/leads/LeadDetailsForm'
@@ -67,6 +68,10 @@ export default async function LeadDetailPage({
         </p>
 
         <ContactActions phone={lead.phone} email={lead.email} />
+
+        {!['won', 'lost', 'spam'].includes(lead.status) && (
+          <OutcomeButtons leadId={lead.id} followUpAt={lead.follow_up_at} />
+        )}
 
         <LeadDetailsForm lead={lead} />
 

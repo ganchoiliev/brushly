@@ -6,7 +6,12 @@ import EmptyState from '@/components/admin/EmptyState'
 import FilterTabs from '@/components/admin/FilterTabs'
 import StatusBadge, { QUOTE_STATUS } from '@/components/admin/StatusBadge'
 import { requireUser } from '@/lib/admin/auth'
-import { formatGBP, quoteRef, timeAgo } from '@/lib/admin/format'
+import {
+  effectiveQuoteStatus,
+  formatGBP,
+  quoteRef,
+  timeAgo,
+} from '@/lib/admin/format'
 import type { QuoteStatus } from '@/lib/supabase/types'
 
 export const metadata: Metadata = {
@@ -23,20 +28,29 @@ export default async function QuotesPage({
   const { status = 'all' } = await searchParams
   const { supabase } = await requireUser()
 
-  const { data: quotes, error } = await supabase
+  const { data: rawQuotes, error } = await supabase
     .from('quotes')
-    .select('id, quote_number, title, status, total_pence, created_at, clients(name)')
+    .select(
+      'id, quote_number, title, status, total_pence, created_at, valid_until, clients(name)'
+    )
     .order('created_at', { ascending: false })
     .limit(500)
   if (error) throw new Error(`Couldn't load quotes: ${error.message}`)
+
+  /* A sent quote past its valid-until shows as expired everywhere —
+     computed at read time, mirroring the overdue-invoice pattern (§4). */
+  const quotes = rawQuotes.map((q) => ({
+    ...q,
+    effective: effectiveQuoteStatus(q.status, q.valid_until),
+  }))
 
   const byStatus = Object.fromEntries(
     STATUSES.map((s) => [
       s,
       {
-        count: quotes.filter((q) => q.status === s).length,
+        count: quotes.filter((q) => q.effective === s).length,
         total: quotes
-          .filter((q) => q.status === s)
+          .filter((q) => q.effective === s)
           .reduce((sum, q) => sum + q.total_pence, 0),
       },
     ])
@@ -52,7 +66,7 @@ export default async function QuotesPage({
   ]
 
   const visible =
-    status === 'all' ? quotes : quotes.filter((q) => q.status === status)
+    status === 'all' ? quotes : quotes.filter((q) => q.effective === status)
   const visibleTotal = visible.reduce((sum, q) => sum + q.total_pence, 0)
 
   return (
@@ -106,7 +120,7 @@ export default async function QuotesPage({
                     <span className="font-body text-[15px] font-semibold tabular-nums text-brushly-cream">
                       {formatGBP(q.total_pence)}
                     </span>
-                    <StatusBadge map={QUOTE_STATUS} status={q.status} />
+                    <StatusBadge map={QUOTE_STATUS} status={q.effective} />
                   </div>
                 </Link>
               </li>

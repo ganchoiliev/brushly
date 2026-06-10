@@ -74,6 +74,46 @@ export function effectiveInvoiceStatus(
   return status
 }
 
+/* Same pattern for quotes (§4): sent and past valid-until shows as
+   expired in lists and detail — computed at read time, never stored. */
+export function effectiveQuoteStatus(
+  status: string,
+  validUntil: string | null
+): string {
+  if (status === 'sent' && validUntil && validUntil < todayLondon()) return 'expired'
+  return status
+}
+
+/* "2026-06-11" + 9 → the ISO instant of 09:00 London wall time that day
+   (BST-safe: tries both offsets and keeps the one that reads back right). */
+export function londonTime(dateIso: string, hour: number): string {
+  const hh = String(hour).padStart(2, '0')
+  for (const off of ['+01:00', '+00:00']) {
+    const d = new Date(`${dateIso}T${hh}:00:00${off}`)
+    const wall = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).format(d)
+    if (Number(wall) === hour) return d.toISOString()
+  }
+  return new Date(`${dateIso}T${hh}:00:00Z`).toISOString()
+}
+
+/* "due today" / "due yesterday" / "3 days overdue" for follow-up rows. */
+export function followUpDueLabel(followUpAt: string): string {
+  const due = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+  }).format(new Date(followUpAt))
+  const today = todayLondon()
+  if (due >= today) return 'due today'
+  const days = Math.round(
+    (new Date(`${today}T12:00:00Z`).getTime() - new Date(`${due}T12:00:00Z`).getTime()) /
+      86400000
+  )
+  return days === 1 ? 'due yesterday' : `${days} days overdue`
+}
+
 export function quoteRef(n: number): string {
   return `QU-${String(n).padStart(4, '0')}`
 }

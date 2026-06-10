@@ -3,9 +3,13 @@ import Link from 'next/link'
 import { Plus, Sun, Phone, FileText, Receipt } from 'lucide-react'
 import PageHeader from '@/components/admin/PageHeader'
 import StatCard from '@/components/admin/dashboard/StatCard'
+import FollowUpDone from '@/components/admin/dashboard/FollowUpDone'
 import { requireUser } from '@/lib/admin/auth'
 import {
+  addDays,
+  followUpDueLabel,
   formatGBP,
+  londonTime,
   quoteRef,
   invoiceRef,
   timeAgo,
@@ -32,16 +36,28 @@ function timeBounds() {
     today,
     monthStart,
     lastMonthStart: lastMonth.toISOString().slice(0, 10),
+    /* Follow-ups due today or earlier (§4): anything before tomorrow
+       00:00 London wall time. */
+    tomorrowStart: londonTime(addDays(today, 1), 0),
   }
 }
 
 export default async function DashboardPage() {
   const { supabase } = await requireUser()
 
-  const { dayAgo, weekAgo, twoWeeksAgo, today, monthStart, lastMonthStart } =
-    timeBounds()
+  const {
+    dayAgo,
+    weekAgo,
+    twoWeeksAgo,
+    today,
+    monthStart,
+    lastMonthStart,
+    tomorrowStart,
+  } = timeBounds()
 
   const [
+    dueLeadFollowUps,
+    dueQuoteFollowUps,
     staleLeads,
     staleQuotes,
     overdueInvoices,
@@ -57,6 +73,20 @@ export default async function DashboardPage() {
     recentQuotes,
     recentInvoices,
   ] = await Promise.all([
+    supabase
+      .from('leads')
+      .select('id, name, phone, follow_up_at')
+      .not('follow_up_at', 'is', null)
+      .lt('follow_up_at', tomorrowStart)
+      .order('follow_up_at')
+      .limit(20),
+    supabase
+      .from('quotes')
+      .select('id, quote_number, follow_up_at, clients(name, phone)')
+      .not('follow_up_at', 'is', null)
+      .lt('follow_up_at', tomorrowStart)
+      .order('follow_up_at')
+      .limit(20),
     supabase
       .from('leads')
       .select('id, name, phone, created_at')
@@ -137,6 +167,11 @@ export default async function DashboardPage() {
       .limit(10),
   ])
 
+  /* A row with a due follow-up replaces the generic nag for the same
+     lead/quote — one reason to call, not two. */
+  const followUpLeadIds = new Set((dueLeadFollowUps.data ?? []).map((l) => l.id))
+  const followUpQuoteIds = new Set((dueQuoteFollowUps.data ?? []).map((q) => q.id))
+
   const needsAttention: {
     href: string
     icon: React.ReactNode
@@ -144,7 +179,29 @@ export default async function DashboardPage() {
     sub: string
     /* When the right move is a call, the row carries a tap-to-call button. */
     phone: string | null
+    /* Follow-up rows also carry a one-tap done tick. */
+    done?: { kind: 'lead' | 'quote'; id: string; name: string }
   }[] = [
+    ...(dueLeadFollowUps.data ?? []).map((lead) => ({
+      href: `/admin/leads/${lead.id}`,
+      icon: <Phone className="h-4 w-4 text-brushly-gold" />,
+      text: `Call ${lead.name} back`,
+      sub: followUpDueLabel(lead.follow_up_at!),
+      phone: lead.phone,
+      done: { kind: 'lead' as const, id: lead.id, name: lead.name },
+    })),
+    ...(dueQuoteFollowUps.data ?? []).map((q) => ({
+      href: `/admin/quotes/${q.id}`,
+      icon: <Phone className="h-4 w-4 text-brushly-gold" />,
+      text: `Call ${q.clients?.name ?? 'the client'} back — ${quoteRef(q.quote_number)}`,
+      sub: followUpDueLabel(q.follow_up_at!),
+      phone: q.clients?.phone ?? null,
+      done: {
+        kind: 'quote' as const,
+        id: q.id,
+        name: q.clients?.name ?? quoteRef(q.quote_number),
+      },
+    })),
     ...(overdueInvoices.data ?? []).map((inv) => ({
       href: `/admin/invoices/${inv.id}`,
       icon: <Receipt className="h-4 w-4 text-status-red" />,
@@ -152,20 +209,24 @@ export default async function DashboardPage() {
       sub: `was due ${timeAgo(`${inv.due_date}T12:00:00Z`)}`,
       phone: null,
     })),
-    ...(staleLeads.data ?? []).map((lead) => ({
-      href: `/admin/leads/${lead.id}`,
-      icon: <Phone className="h-4 w-4 text-status-amber" />,
-      text: `${lead.name} hasn't been contacted`,
-      sub: `came in ${timeAgo(lead.created_at)}`,
-      phone: lead.phone,
-    })),
-    ...(staleQuotes.data ?? []).map((q) => ({
-      href: `/admin/quotes/${q.id}`,
-      icon: <FileText className="h-4 w-4 text-status-amber" />,
-      text: `${quoteRef(q.quote_number)} has no answer — worth a call?`,
-      sub: `sent ${timeAgo(q.sent_at!)} · ${formatGBP(q.total_pence)}`,
-      phone: q.clients?.phone ?? null,
-    })),
+    ...(staleLeads.data ?? [])
+      .filter((lead) => !followUpLeadIds.has(lead.id))
+      .map((lead) => ({
+        href: `/admin/leads/${lead.id}`,
+        icon: <Phone className="h-4 w-4 text-status-amber" />,
+        text: `${lead.name} hasn't been contacted`,
+        sub: `came in ${timeAgo(lead.created_at)}`,
+        phone: lead.phone,
+      })),
+    ...(staleQuotes.data ?? [])
+      .filter((q) => !followUpQuoteIds.has(q.id))
+      .map((q) => ({
+        href: `/admin/quotes/${q.id}`,
+        icon: <FileText className="h-4 w-4 text-status-amber" />,
+        text: `${quoteRef(q.quote_number)} has no answer — worth a call?`,
+        sub: `sent ${timeAgo(q.sent_at!)} · ${formatGBP(q.total_pence)}`,
+        phone: q.clients?.phone ?? null,
+      })),
   ]
 
   const acceptedTotal = (acceptedMonth.data ?? []).reduce((s, q) => s + q.total_pence, 0)
@@ -305,6 +366,13 @@ export default async function DashboardPage() {
                         >
                           <Phone className="h-[18px] w-[18px]" />
                         </a>
+                      )}
+                      {item.done && (
+                        <FollowUpDone
+                          kind={item.done.kind}
+                          id={item.done.id}
+                          name={item.done.name}
+                        />
                       )}
                     </li>
                   ))}
