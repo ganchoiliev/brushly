@@ -39,6 +39,17 @@ export function timeAgo(iso: string): string {
   return `${months}mo ago`
 }
 
+/* YYYY-MM-DD in Europe/London — date columns must not drift at BST edges. */
+export function todayLondon(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date())
+}
+
+export function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
 export function quoteRef(n: number): string {
   return `QU-${String(n).padStart(4, '0')}`
 }
