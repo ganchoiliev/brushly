@@ -3,8 +3,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import StatusBadge, { QUOTE_STATUS } from '@/components/admin/StatusBadge'
+import QuoteActions from '@/components/admin/quotes/QuoteActions'
 import { requireUser } from '@/lib/admin/auth'
-import { formatGBP, formatDate, quoteRef } from '@/lib/admin/format'
+import { formatGBP, formatDate, quoteRef, timeAgo } from '@/lib/admin/format'
 
 export const metadata: Metadata = {
   title: 'Quote',
@@ -75,8 +76,18 @@ export default async function QuoteDetailPage({
           <p className="mt-1 font-body text-[13px] text-admin-muted">
             Issued {formatDate(quote.issue_date)}
             {quote.valid_until && <> · valid until {formatDate(quote.valid_until)}</>}
+            {quote.sent_at && <> · sent {timeAgo(quote.sent_at)}</>}
+            {quote.decided_at && <> · decided {timeAgo(quote.decided_at)}</>}
           </p>
         </div>
+
+        <QuoteActions
+          quoteId={quote.id}
+          status={quote.status}
+          reference={quoteRef(quote.quote_number)}
+          clientEmail={client?.email ?? null}
+          clientName={client?.name ?? 'This client'}
+        />
 
         {client && (
           <Link
