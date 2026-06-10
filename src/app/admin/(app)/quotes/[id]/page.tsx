@@ -145,7 +145,9 @@ export default async function QuoteDetailPage({
                 status={quote.status}
                 reference={quoteRef(quote.quote_number)}
                 clientEmail={client?.email ?? null}
-                clientName={client?.name ?? 'This client'}
+                title={quote.title}
+                totalPence={quote.total_pence}
+                validUntil={quote.valid_until}
               />
             </aside>
             {quote.status === 'accepted' && !existingInvoice && (
@@ -169,7 +171,9 @@ export default async function QuoteDetailPage({
               status={quote.status}
               reference={quoteRef(quote.quote_number)}
               clientEmail={client?.email ?? null}
-              clientName={client?.name ?? 'This client'}
+              title={quote.title}
+              totalPence={quote.total_pence}
+              validUntil={quote.valid_until}
             />
           </aside>
         </div>

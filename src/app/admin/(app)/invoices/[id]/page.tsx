@@ -139,7 +139,9 @@ export default async function InvoiceDetailPage({
                 status={effective}
                 reference={invoiceRef(invoice.invoice_number)}
                 clientEmail={client?.email ?? null}
-                clientName={client?.name ?? 'This client'}
+                title={invoice.title}
+                totalPence={invoice.total_pence}
+                dueDate={invoice.due_date}
               />
             </aside>
 
@@ -152,7 +154,9 @@ export default async function InvoiceDetailPage({
               status={effective}
               reference={invoiceRef(invoice.invoice_number)}
               clientEmail={client?.email ?? null}
-              clientName={client?.name ?? 'This client'}
+              title={invoice.title}
+              totalPence={invoice.total_pence}
+              dueDate={invoice.due_date}
             />
           </aside>
         </div>

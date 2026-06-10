@@ -7,6 +7,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Eye, Download, Send, Banknote, Landmark, Ban } from 'lucide-react'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import MotionDialogContent from '@/components/admin/MotionDialogContent'
+import SendDialog, { type SendFields } from '@/components/admin/SendDialog'
 import { sendInvoice } from '@/lib/admin/actions/send'
 import { markInvoicePaid, voidInvoice } from '@/lib/admin/actions/invoices'
 
@@ -15,38 +16,45 @@ export default function InvoiceActions({
   status,
   reference,
   clientEmail,
-  clientName,
+  title,
+  totalPence,
+  dueDate,
 }: {
   invoiceId: string
   status: string // effective status (overdue already computed)
   reference: string
   clientEmail: string | null
-  clientName: string
+  title: string | null
+  totalPence: number
+  dueDate: string | null
 }) {
   const router = useRouter()
   const [dialog, setDialog] = useState<'send' | 'paid' | 'void' | null>(null)
   const [pending, setPending] = useState(false)
+  const [sendPending, setSendPending] = useState<'client' | 'test' | null>(null)
   const pdfUrl = `/admin/api/invoices/${invoiceId}/pdf`
   const closed = status === 'paid' || status === 'void'
 
   function openSend() {
-    if (!clientEmail) {
-      toast.error(`${clientName} has no email — add one on their client page first.`)
-      return
-    }
     setDialog('send')
   }
 
-  async function confirmSend() {
-    setPending(true)
-    const result = await sendInvoice(invoiceId)
-    setPending(false)
-    setDialog(null)
-    if (result.ok) {
-      toast.success(`Invoice emailed to ${clientEmail}`)
-      router.refresh()
-    } else {
+  /* §4.1: a test send delivers to hello@ only, changes no state, and
+     keeps the dialog open so the real send is one tap away. */
+  async function doSend(fields: SendFields, test: boolean) {
+    setSendPending(test ? 'test' : 'client')
+    const result = await sendInvoice({ id: invoiceId, ...fields, test })
+    setSendPending(null)
+    if (!result.ok) {
       toast.error(result.error)
+      return
+    }
+    if (test) {
+      toast.success('Test sent to hello@brushly.uk — go check it reads right.')
+    } else {
+      toast.success(`Invoice emailed to ${fields.to}`)
+      setDialog(null)
+      router.refresh()
     }
   }
 
@@ -154,14 +162,17 @@ export default function InvoiceActions({
         </>
       )}
 
-      <ConfirmDialog
+      <SendDialog
         open={dialog === 'send'}
         onOpenChange={(open) => !open && setDialog(null)}
-        title={`Send ${reference}?`}
-        body={`This emails the invoice PDF to ${clientEmail} from hello@brushly.uk.`}
-        confirmLabel="Send it"
-        pending={pending}
-        onConfirm={confirmSend}
+        docType="invoice"
+        reference={reference}
+        clientEmail={clientEmail}
+        title={title}
+        totalPence={totalPence}
+        secondaryDate={dueDate}
+        pending={sendPending}
+        onSend={doSend}
       />
       <ConfirmDialog
         open={dialog === 'void'}

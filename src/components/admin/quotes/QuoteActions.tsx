@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Eye, Download, Send, Trophy, X, Copy } from 'lucide-react'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
+import SendDialog, { type SendFields } from '@/components/admin/SendDialog'
 import { sendQuote, markQuoteDecision } from '@/lib/admin/actions/send'
 import { duplicateQuote } from '@/lib/admin/actions/quotes'
 import { quoteRef } from '@/lib/admin/format'
@@ -14,38 +15,45 @@ export default function QuoteActions({
   status,
   reference,
   clientEmail,
-  clientName,
+  title,
+  totalPence,
+  validUntil,
 }: {
   quoteId: string
   status: string
   reference: string
   clientEmail: string | null
-  clientName: string
+  title: string | null
+  totalPence: number
+  validUntil: string | null
 }) {
   const router = useRouter()
   const [dialog, setDialog] = useState<'send' | 'accepted' | 'declined' | null>(null)
   const [pending, setPending] = useState(false)
+  const [sendPending, setSendPending] = useState<'client' | 'test' | null>(null)
   const pdfUrl = `/admin/api/quotes/${quoteId}/pdf`
   const decided = status === 'accepted' || status === 'declined'
 
-  async function confirmSend() {
-    setPending(true)
-    const result = await sendQuote(quoteId)
-    setPending(false)
-    setDialog(null)
-    if (result.ok) {
-      toast.success(`Quote emailed to ${clientEmail}`)
-      router.refresh()
-    } else {
+  /* §4.1: a test send delivers to hello@ only, changes no state, and
+     keeps the dialog open so the real send is one tap away. */
+  async function doSend(fields: SendFields, test: boolean) {
+    setSendPending(test ? 'test' : 'client')
+    const result = await sendQuote({ id: quoteId, ...fields, test })
+    setSendPending(null)
+    if (!result.ok) {
       toast.error(result.error)
+      return
+    }
+    if (test) {
+      toast.success('Test sent to hello@brushly.uk — go check it reads right.')
+    } else {
+      toast.success(`Quote emailed to ${fields.to}`)
+      setDialog(null)
+      router.refresh()
     }
   }
 
   function openSend() {
-    if (!clientEmail) {
-      toast.error(`${clientName} has no email — add one on their client page first.`)
-      return
-    }
     setDialog('send')
   }
 
@@ -149,14 +157,17 @@ export default function QuoteActions({
         </div>
       )}
 
-      <ConfirmDialog
+      <SendDialog
         open={dialog === 'send'}
         onOpenChange={(open) => !open && setDialog(null)}
-        title={`Send ${reference}?`}
-        body={`This emails the quote PDF to ${clientEmail} from hello@brushly.uk.`}
-        confirmLabel="Send it"
-        pending={pending}
-        onConfirm={confirmSend}
+        docType="quote"
+        reference={reference}
+        clientEmail={clientEmail}
+        title={title}
+        totalPence={totalPence}
+        secondaryDate={validUntil}
+        pending={sendPending}
+        onSend={doSend}
       />
       <ConfirmDialog
         open={dialog === 'accepted'}
