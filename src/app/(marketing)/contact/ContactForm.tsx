@@ -27,19 +27,35 @@ export default function ContactForm() {
 
   useEffect(() => {
     if (reduced) return
+    // On touch devices (the paid mobile traffic) Lenis is skipped and native
+    // scroll drives ScrollTrigger; skip the entrance reveal entirely so the
+    // form is plain, always-visible HTML — no flash, and no way to be left
+    // hidden by a missed/reversed trigger. Matches SmoothScroll's touch path.
+    const isTouch =
+      window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
+    if (isTouch) return
     const ctx = gsap.context(() => {
-      gsap.from('.contact-form-area > *', {
-        y: 40,
-        opacity: 0,
-        stagger: 0.1,
-        duration: 0.8,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: 'top 80%',
-          toggleActions: 'play none none reverse',
-        },
-      })
+      // Desktop-only enhancement. immediateRender:false keeps the content
+      // visible until the trigger actually fires, so a ScrollTrigger/Lenis
+      // failure leaves it visible rather than stuck at opacity:0; once:true
+      // reveals a single time and never reverses back to the hidden state.
+      gsap.fromTo(
+        '.contact-form-area > *',
+        { y: 40, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          stagger: 0.1,
+          duration: 0.8,
+          ease: 'power3.out',
+          immediateRender: false,
+          scrollTrigger: {
+            trigger: sectionRef.current,
+            start: 'top 80%',
+            once: true,
+          },
+        }
+      )
     }, sectionRef)
     return () => ctx.revert()
   }, [reduced])
@@ -89,7 +105,7 @@ export default function ContactForm() {
       <Container>
         <div className="grid grid-cols-1 gap-20 md:grid-cols-2">
           {/* Form */}
-          <div className="contact-form-area">
+          <div className="contact-form-area order-2 md:order-1">
             {submitted ? (
               <div className="flex min-h-[400px] flex-col items-start justify-center">
                 <h3 className="font-display text-3xl font-light text-brushly-cream">
@@ -110,16 +126,16 @@ export default function ContactForm() {
                   className={inputStyles}
                 />
                 <input
-                  type="email"
-                  name="email"
-                  placeholder="Email Address"
+                  type="tel"
+                  name="phone"
+                  placeholder="Phone Number"
                   required
                   className={inputStyles}
                 />
                 <input
-                  type="tel"
-                  name="phone"
-                  placeholder="Phone Number"
+                  type="email"
+                  name="email"
+                  placeholder="Email Address (optional)"
                   className={inputStyles}
                 />
                 <select
@@ -158,8 +174,10 @@ export default function ContactForm() {
             )}
           </div>
 
-          {/* Contact Info */}
-          <div className="contact-form-area flex flex-col justify-center">
+          {/* Contact Info — rendered above the form on mobile (order-1) so the
+              phone/email/area sit first; restored to the right column on
+              desktop (md:order-2). */}
+          <div className="contact-form-area order-1 md:order-2 flex flex-col justify-center">
             <div className="flex flex-col gap-10">
               <div>
                 <Badge>Phone</Badge>

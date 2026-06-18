@@ -157,6 +157,24 @@ html.lenis body {
   .service-panel-mobile > div {
     scroll-snap-align: start;
   }
+
+  /* Reserve room for the fixed MobileContactBar (md:hidden) so it never
+     covers the footer / end of page content. Bar height ≈ 56px + the
+     bottom safe-area inset; add a little breathing room above it. */
+  body {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* P4: the contact form must be readable without scroll JS. This is the
+   visible-by-default baseline — if the GSAP bundle never loads or runs,
+   nothing sets opacity:0, so the form shows. The reveal is a desktop-only
+   progressive enhancement (ContactForm.tsx): it's skipped on touch and uses
+   immediateRender:false + once, so it can never leave the form hidden. While
+   GSAP is animating, its inline styles take precedence over this baseline. */
+.contact-form-area,
+.contact-form-area > * {
+  opacity: 1;
 }
 
 /* Custom Scrollbar */

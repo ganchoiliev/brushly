@@ -2,6 +2,7 @@ import SmoothScroll from '@/components/animations/SmoothScroll'
 import PageLoader from '@/components/layout/PageLoader'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
+import MobileContactBar from '@/components/layout/MobileContactBar'
 import CustomCursor from '@/components/animations/CustomCursor'
 import GrainOverlay from '@/components/animations/GrainOverlay'
 import { Analytics } from '@vercel/analytics/next'
@@ -40,6 +41,10 @@ gtag('config', '${ADS_ID}');`}
         <main>{children}</main>
         <Footer />
       </SmoothScroll>
+      {/* Rendered outside SmoothScroll so no transformed ancestor becomes the
+          containing block for its fixed positioning (same reason the mobile
+          nav overlay lives outside the header). */}
+      <MobileContactBar />
       <CustomCursor />
       <GrainOverlay />
       <Analytics />

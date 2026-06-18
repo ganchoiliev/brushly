@@ -9,8 +9,13 @@ const singleLine = z.string().min(1).max(2000).regex(/^[^\r\n]+$/, 'Invalid valu
 
 const contactSchema = z.object({
   name: singleLine,
-  email: singleLine.regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email'),
-  phone: z.string().max(50).regex(/^[^\r\n]*$/).optional().nullable(),
+  // Phone-first contact form: phone is required, email is optional. The client
+  // always sends the email field, so accept an empty string or a valid address.
+  email: z
+    .union([z.literal(''), singleLine.regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email')])
+    .optional()
+    .nullable(),
+  phone: singleLine.max(50),
   service: singleLine,
   message: z.string().min(1).max(10000),
 })
@@ -44,6 +49,9 @@ export async function POST(request: Request) {
     )
   }
   const { name, email, phone, service, message } = parsed.data
+  // Email is optional now — normalise empty/absent to null for storage,
+  // reply-to, and the notification email.
+  const emailValue = email && email.length > 0 ? email : null
 
   /* Store the lead and send the email independently: one side failing
      must never block the other, and the visitor always gets success for
@@ -52,8 +60,8 @@ export async function POST(request: Request) {
     const supabase = createAdminClient()
     const { error } = await supabase.from('leads').insert({
       name,
-      email,
-      phone: phone || null,
+      email: emailValue,
+      phone,
       service,
       message,
       source: 'website',
@@ -68,14 +76,14 @@ export async function POST(request: Request) {
     await resend.emails.send({
       from: 'Brushly Website <hello@brushly.uk>',
       to: 'hello@brushly.uk',
-      replyTo: email,
+      ...(emailValue ? { replyTo: emailValue } : {}),
       subject: `New Quote Request — ${service}`,
       html: `
         <h2>New Quote Request</h2>
         <table style="border-collapse:collapse;width:100%;max-width:600px;">
           <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Name</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(name)}</td></tr>
-          <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Email</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(email)}</td></tr>
-          <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Phone</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${phone ? escapeHtml(phone) : 'Not provided'}</td></tr>
+          <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Phone</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(phone)}</td></tr>
+          <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Email</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${emailValue ? escapeHtml(emailValue) : 'Not provided'}</td></tr>
           <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Service</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(service)}</td></tr>
         </table>
         <h3 style="margin-top:20px;">Message</h3>
