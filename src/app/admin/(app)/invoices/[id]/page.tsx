@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, FileText } from 'lucide-react'
+import { ArrowLeft, FileText, Pencil } from 'lucide-react'
 import StatusBadge, { INVOICE_STATUS } from '@/components/admin/StatusBadge'
 import InvoiceActions from '@/components/admin/invoices/InvoiceActions'
 import { requireUser } from '@/lib/admin/auth'
@@ -54,6 +54,8 @@ export default async function InvoiceDetailPage({
   )
   const client = invoice.clients
   const effective = effectiveInvoiceStatus(invoice.status, invoice.due_date)
+  // Only draft/sent invoices can be corrected; paid/void are locked.
+  const editable = invoice.status === 'draft' || invoice.status === 'sent'
 
   return (
     <>
@@ -69,7 +71,16 @@ export default async function InvoiceDetailPage({
           <h1 className="min-w-0 truncate font-body text-[15px] font-medium tabular-nums text-brushly-cream/80">
             {invoiceRef(invoice.invoice_number)}
           </h1>
-          <span className="ml-auto shrink-0">
+          <span className="ml-auto flex shrink-0 items-center gap-2">
+            {editable && (
+              <Link
+                href={`/admin/invoices/${invoice.id}/edit`}
+                aria-label="Edit invoice"
+                className="flex h-11 w-11 items-center justify-center rounded-sm border border-white/10 text-brushly-cream/70 transition-colors hover:bg-admin-raised"
+              >
+                <Pencil className="h-4 w-4" />
+              </Link>
+            )}
             <StatusBadge map={INVOICE_STATUS} status={effective} />
           </span>
         </div>

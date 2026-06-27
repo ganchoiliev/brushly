@@ -418,7 +418,7 @@ function BrushlyPdf({ input }: { input: PdfInput }) {
           <View style={styles.footerRule}>
             {input.docType === 'INVOICE' && input.payment?.accountNo && (
               <Text style={[styles.footerText, { marginBottom: 4 }]}>
-                <Text style={styles.footerStrong}>Payment by bank transfer{'   '}</Text>
+                <Text style={styles.footerStrong}>Payment by bank transfer or cash{'   '}</Text>
                 {input.payment.bankName ? `${input.payment.bankName} · ` : ''}
                 Sort code {sortCode(input.payment.sortCode)} · Account{' '}
                 {dash(input.payment.accountNo)} · Reference: {input.reference}

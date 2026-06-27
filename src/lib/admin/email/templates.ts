@@ -87,7 +87,7 @@ export function buildDocumentEmail(input: DocumentEmailInput): {
     ? `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;border:1px solid ${RULE};border-top:2px solid ${GOLD};border-collapse:separate;">
         <tr>
-          <td colspan="2" style="padding:12px 16px 4px;font-family:${FONT};font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;">Pay by bank transfer</td>
+          <td colspan="2" style="padding:12px 16px 4px;font-family:${FONT};font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;">Pay by bank transfer or cash</td>
         </tr>
         ${payment.bankName ? factRow('Bank', payment.bankName) : ''}
         ${factRow('Sort code', formatSortCode(payment.sortCode ?? ''))}
@@ -160,7 +160,7 @@ export function buildDocumentEmail(input: DocumentEmailInput): {
     ...(payment
       ? [
           '',
-          'Pay by bank transfer',
+          'Pay by bank transfer or cash',
           ...(payment.bankName ? [`Bank: ${payment.bankName}`] : []),
           `Sort code: ${formatSortCode(payment.sortCode ?? '')}`,
           `Account number: ${payment.accountNo ?? ''}`,

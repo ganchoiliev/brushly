@@ -245,6 +245,89 @@ export async function createInvoice(
   return { ok: true, data: { id: invoice.id } }
 }
 
+/* Edit a draft/sent invoice — same shape as create minus the client (you
+   can't move an invoice to a different client on edit), mirroring updateQuote.
+   Totals are recomputed server-side; the lines are replaced wholesale. */
+const invoiceUpdateSchema = invoiceInputSchema
+  .omit({ client: true })
+  .extend({ id: z.string().uuid() })
+
+export async function updateInvoice(input: unknown): Promise<ActionResult> {
+  let supabase
+  try {
+    ;({ supabase } = await requireAdmin())
+  } catch {
+    return { ok: false, error: 'You\'ve been signed out — sign in and try again.' }
+  }
+
+  const parsed = invoiceUpdateSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Check the form and try again.' }
+  }
+  const data = parsed.data
+
+  const { data: existing } = await supabase
+    .from('invoices')
+    .select('id, status')
+    .eq('id', data.id)
+    .maybeSingle()
+  if (!existing) return { ok: false, error: "Couldn't find that invoice — go back and refresh." }
+  if (existing.status !== 'draft' && existing.status !== 'sent') {
+    return { ok: false, error: 'This invoice is locked — create a new one instead.' }
+  }
+
+  const { lines, subtotal, vat, total } = computeTotals(data.items, data.vat_rate)
+
+  const { error: invoiceError } = await supabase
+    .from('invoices')
+    .update({
+      title: data.title,
+      due_date: data.due_date ?? null,
+      vat_rate: data.vat_rate,
+      subtotal_pence: subtotal,
+      vat_pence: vat,
+      total_pence: total,
+      notes: data.notes ?? null,
+    })
+    .eq('id', data.id)
+  if (invoiceError) {
+    console.error('updateInvoice failed:', invoiceError)
+    return { ok: false, error: "Couldn't save — try again." }
+  }
+
+  // Replace the lines wholesale — simplest correct way to handle edits,
+  // removals and reordering in one go (same as updateQuote).
+  const { error: deleteError } = await supabase
+    .from('invoice_items')
+    .delete()
+    .eq('invoice_id', data.id)
+  if (deleteError) {
+    console.error('updateInvoice item delete failed:', deleteError)
+    return { ok: false, error: "Couldn't save the invoice lines — try again." }
+  }
+  const { error: itemsError } = await supabase.from('invoice_items').insert(
+    lines.map((line, i) => ({
+      invoice_id: data.id,
+      position: i,
+      description: line.description,
+      note: line.note,
+      qty: line.qty,
+      unit: line.unit as ItemUnit,
+      unit_price_pence: line.unit_price_pence,
+      total_pence: line.total_pence,
+    }))
+  )
+  if (itemsError) {
+    console.error('updateInvoice items insert failed:', itemsError)
+    return { ok: false, error: "Couldn't save the invoice lines — try again." }
+  }
+
+  revalidatePath('/admin/invoices')
+  revalidatePath(`/admin/invoices/${data.id}`)
+  revalidatePath('/admin')
+  return { ok: true }
+}
+
 const paidSchema = z.object({
   id: z.string().uuid(),
   method: z.enum(['bank_transfer', 'cash']),

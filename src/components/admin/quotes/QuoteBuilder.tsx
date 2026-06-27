@@ -20,7 +20,7 @@ import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import DocumentPreview from '@/components/admin/quotes/DocumentPreview'
 import PresetPicker from '@/components/admin/quotes/PresetPicker'
 import { createQuote, updateQuote } from '@/lib/admin/actions/quotes'
-import { createInvoice } from '@/lib/admin/actions/invoices'
+import { createInvoice, updateInvoice } from '@/lib/admin/actions/invoices'
 import { searchClients } from '@/lib/admin/actions/clients'
 import { createItemPreset } from '@/lib/admin/actions/presets'
 import { formatGBP, formatPounds, parseGBPToPence, addDays, todayLondon } from '@/lib/admin/format'
@@ -408,14 +408,23 @@ export default function QuoteBuilder({
             postcode: client.postcode || null,
           }
     const result = isInvoice
-      ? await createInvoice({
-          client: clientPayload,
-          title: title.trim(),
-          due_date: validUntil || null,
-          vat_rate: vatRate,
-          items: cleanItems,
-          notes: notes || null,
-        })
+      ? editing
+        ? await updateInvoice({
+            id: quote!.id,
+            title: title.trim(),
+            due_date: validUntil || null,
+            vat_rate: vatRate,
+            items: cleanItems,
+            notes: notes || null,
+          })
+        : await createInvoice({
+            client: clientPayload,
+            title: title.trim(),
+            due_date: validUntil || null,
+            vat_rate: vatRate,
+            items: cleanItems,
+            notes: notes || null,
+          })
       : editing
         ? await updateQuote({
             id: quote!.id,
@@ -442,7 +451,13 @@ export default function QuoteBuilder({
       return
     }
     toast.success(
-      isInvoice ? 'Invoice created' : editing ? 'Quote saved' : 'Quote created'
+      isInvoice
+        ? editing
+          ? 'Invoice saved'
+          : 'Invoice created'
+        : editing
+          ? 'Quote saved'
+          : 'Quote created'
     )
     const id = editing ? quote!.id : (result as { data: { id: string } }).data.id
     router.replace(`/admin/${isInvoice ? 'invoices' : 'quotes'}/${id}`)

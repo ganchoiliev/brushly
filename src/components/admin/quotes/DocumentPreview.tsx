@@ -392,7 +392,7 @@ export default function DocumentPreview({
                 {input.docType === 'INVOICE' && input.payment?.accountNo && (
                   <div style={{ fontSize: 7.5, color: PDF_COLORS.muted, lineHeight: 1.6, marginBottom: 4 }}>
                     <span style={{ fontSize: 8, color: PDF_COLORS.ink, fontWeight: 700 }}>
-                      Payment by bank transfer{'   '}
+                      Payment by bank transfer or cash{'   '}
                     </span>
                     {input.payment.bankName ? `${input.payment.bankName} · ` : ''}
                     Sort code {sortCode(input.payment.sortCode)} · Account{' '}
