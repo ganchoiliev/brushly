@@ -260,6 +260,7 @@ export type Database = {
           paid_at: string | null
           payment_method: PaymentMethod | null
           notes: string | null
+          public_token: string | null
         }
         Insert: {
           id?: string
@@ -279,6 +280,7 @@ export type Database = {
           paid_at?: string | null
           payment_method?: PaymentMethod | null
           notes?: string | null
+          public_token?: string | null
         }
         Update: {
           id?: string
@@ -298,6 +300,7 @@ export type Database = {
           paid_at?: string | null
           payment_method?: PaymentMethod | null
           notes?: string | null
+          public_token?: string | null
         }
         Relationships: [
           {
@@ -492,6 +495,54 @@ export type Database = {
             vat_registered: boolean
             vat_number: string | null
             default_terms: string | null
+          }
+        } | null
+      }
+      /* Public invoice read — mirrors get_public_quote, keyed "invoice", with
+         the bank fields added to company for the payment block. */
+      get_public_invoice: {
+        Args: { p_token: string }
+        Returns: {
+          invoice: {
+            invoice_number: number
+            title: string | null
+            status: InvoiceStatus
+            issue_date: string | null
+            due_date: string | null
+            vat_rate: number
+            subtotal_pence: number
+            vat_pence: number
+            total_pence: number
+            notes: string | null
+            public_token: string
+          }
+          items: {
+            description: string
+            note: string | null
+            qty: number
+            unit: ItemUnit
+            unit_price_pence: number
+            total_pence: number
+          }[]
+          client: {
+            name: string
+            address_line1: string | null
+            address_line2: string | null
+            town: string | null
+            postcode: string | null
+          }
+          company: {
+            company_name: string
+            company_number: string
+            address: string
+            phone: string
+            email: string
+            vat_registered: boolean
+            vat_number: string | null
+            default_terms: string | null
+            bank_name: string | null
+            bank_sort_code: string | null
+            bank_account_no: string | null
           }
         } | null
       }

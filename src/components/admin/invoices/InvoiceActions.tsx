@@ -7,8 +7,9 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Eye, Download, Send, Banknote, Landmark, Ban } from 'lucide-react'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
 import MotionDialogContent from '@/components/admin/MotionDialogContent'
-import SendDialog, { type SendFields } from '@/components/admin/SendDialog'
+import SendDialog, { type SendFields, type SendChannel } from '@/components/admin/SendDialog'
 import { sendInvoice } from '@/lib/admin/actions/send'
+import { sendInvoiceSms } from '@/lib/admin/actions/sms'
 import { markInvoicePaid, voidInvoice } from '@/lib/admin/actions/invoices'
 
 export default function InvoiceActions({
@@ -16,6 +17,7 @@ export default function InvoiceActions({
   status,
   reference,
   clientEmail,
+  clientPhone,
   title,
   totalPence,
   dueDate,
@@ -24,6 +26,7 @@ export default function InvoiceActions({
   status: string // effective status (overdue already computed)
   reference: string
   clientEmail: string | null
+  clientPhone: string | null
   title: string | null
   totalPence: number
   dueDate: string | null
@@ -39,23 +42,44 @@ export default function InvoiceActions({
     setDialog('send')
   }
 
-  /* §4.1: a test send delivers to hello@ only, changes no state, and
-     keeps the dialog open so the real send is one tap away. */
-  async function doSend(fields: SendFields, test: boolean) {
+  /* §4.1: a test send delivers to hello@ only, changes no state, and keeps
+     the dialog open so the real send is one tap away. The channel decides
+     which pipes run — email (PDF), SMS (public link), or both. A test is
+     always email-only (there's no free SMS test inbox). */
+  async function doSend(fields: SendFields, test: boolean, channel: SendChannel) {
     setSendPending(test ? 'test' : 'client')
-    const result = await sendInvoice({ id: invoiceId, ...fields, test })
-    setSendPending(null)
-    if (!result.ok) {
-      toast.error(result.error)
-      return
+    try {
+      if (channel === 'email' || channel === 'both') {
+        const result = await sendInvoice({ id: invoiceId, ...fields, test })
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+      }
+      if (!test && (channel === 'sms' || channel === 'both')) {
+        const result = await sendInvoiceSms({ id: invoiceId })
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+      }
+    } finally {
+      setSendPending(null)
     }
+
     if (test) {
       toast.success('Test sent to hello@brushly.uk — go check it reads right.')
-    } else {
-      toast.success(`Invoice emailed to ${fields.to}`)
-      setDialog(null)
-      router.refresh()
+      return
     }
+    toast.success(
+      channel === 'sms'
+        ? 'Invoice texted to the client'
+        : channel === 'both'
+          ? 'Invoice emailed and texted'
+          : `Invoice emailed to ${fields.to}`
+    )
+    setDialog(null)
+    router.refresh()
   }
 
   async function confirmPaid(method: 'bank_transfer' | 'cash') {
@@ -168,6 +192,8 @@ export default function InvoiceActions({
         docType="invoice"
         reference={reference}
         clientEmail={clientEmail}
+        clientPhone={clientPhone}
+        smsAvailable
         title={title}
         totalPence={totalPence}
         secondaryDate={dueDate}
