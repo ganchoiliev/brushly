@@ -251,10 +251,17 @@ export async function updateQuote(input: unknown): Promise<ActionResult> {
   return { ok: true }
 }
 
-/* Duplicate quote (§4, repeat clients): same client, title, items and
-   terms into a fresh draft with the next number and fresh dates.
-   Nothing else carried — no lead link, no notes, no status history. */
-const duplicateSchema = z.object({ id: z.string().uuid() })
+/* Duplicate quote (§4, repeat clients): same title, items and terms into
+   a fresh draft with the next number and fresh dates. Nothing else carried
+   — no lead link, no notes, no status history.
+
+   client_id, when given, re-addresses the copy to a DIFFERENT existing
+   client (the same job quoted to another customer) — their name, email and
+   address come from the clients table on render. Omitted → same client. */
+const duplicateSchema = z.object({
+  id: z.string().uuid(),
+  client_id: z.string().uuid().optional(),
+})
 
 export async function duplicateQuote(
   input: unknown
@@ -278,6 +285,19 @@ export async function duplicateQuote(
     .maybeSingle()
   if (!source) return { ok: false, error: "Couldn't find that quote — go back and refresh." }
 
+  // Re-addressing to another client: confirm they exist before we burn a
+  // quote number, so a stale pick fails cleanly instead of on the insert.
+  let clientId = source.client_id
+  if (parsed.data.client_id && parsed.data.client_id !== source.client_id) {
+    const { data: target } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', parsed.data.client_id)
+      .maybeSingle()
+    if (!target) return { ok: false, error: "Couldn't find that client — refresh and try again." }
+    clientId = target.id
+  }
+
   const { data: quoteNumber, error: numberError } = await supabase.rpc('next_number', {
     kind: 'quote',
   })
@@ -291,7 +311,7 @@ export async function duplicateQuote(
     .from('quotes')
     .insert({
       quote_number: quoteNumber,
-      client_id: source.client_id,
+      client_id: clientId,
       title: source.title,
       status: 'draft',
       issue_date: today,
