@@ -20,7 +20,7 @@ export default function MotionDialogContent({
           initial={reduced ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+          className="admin-cursor fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
         />
       </Dialog.Overlay>
       <Dialog.Content asChild>
@@ -34,7 +34,7 @@ export default function MotionDialogContent({
               ? { duration: 0 }
               : { type: 'spring', duration: 0.25, bounce: 0.25 }
           }
-          className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-sm rounded-sm border border-white/10 bg-admin-card p-5 shadow-2xl shadow-black/50"
+          className="admin-cursor fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-sm rounded-sm border border-white/10 bg-admin-card p-5 shadow-2xl shadow-black/50"
         >
           {children}
         </motion.div>
