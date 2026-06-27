@@ -56,6 +56,7 @@ type ClientChoice =
 type ItemDraft = {
   key: number
   description: string
+  note: string // optional per-line detail (paint, colour, scope)
   qty: string
   unit: ItemUnit
   price: string // pounds, as typed
@@ -86,7 +87,7 @@ export type QuoteBuilderProps = {
     notes: string | null
     terms: string | null
     client: { id: string; name: string } & Partial<ClientDetail>
-    items: { description: string; qty: number; unit: ItemUnit; unit_price_pence: number }[]
+    items: { description: string; note: string | null; qty: number; unit: ItemUnit; unit_price_pence: number }[]
   } | null
 }
 
@@ -105,6 +106,7 @@ let keyCounter = 1
 const newItem = (): ItemDraft => ({
   key: keyCounter++,
   description: '',
+  note: '',
   qty: '1',
   unit: 'job',
   price: '',
@@ -170,6 +172,7 @@ export default function QuoteBuilder({
       ? quote.items.map((it) => ({
           key: keyCounter++,
           description: it.description,
+          note: it.note ?? '',
           qty: String(it.qty),
           unit: it.unit,
           price: formatPounds(it.unit_price_pence),
@@ -230,6 +233,7 @@ export default function QuoteBuilder({
       {
         key: keyCounter++,
         description: preset.description,
+        note: '',
         qty: '1',
         unit: preset.unit,
         price: formatPounds(preset.unit_price_pence),
@@ -314,6 +318,7 @@ export default function QuoteBuilder({
         const qty = parseFloat(it.qty)
         return {
           description: it.description,
+          note: it.note.trim() || null,
           qty: Number.isFinite(qty) && qty > 0 ? qty : 0,
           unit: it.unit,
           unitPricePence: parseGBPToPence(it.price) ?? 0,
@@ -345,7 +350,7 @@ export default function QuoteBuilder({
     validUntil,
     notes,
     terms,
-    items: items.map((it) => [it.description, it.qty, it.unit, it.price]),
+    items: items.map((it) => [it.description, it.note, it.qty, it.unit, it.price]),
   })
   const [cleanSnapshot] = useState(snapshot)
   const dirty = snapshot !== cleanSnapshot
@@ -378,6 +383,7 @@ export default function QuoteBuilder({
       }
       cleanItems.push({
         description: it.description.trim(),
+        note: it.note.trim() || null,
         qty,
         unit: it.unit,
         unit_price_pence: pence,
@@ -795,6 +801,9 @@ function LineItemCard({
 }) {
   const controls = useDragControls()
   const pressTimer = useRef<number | null>(null)
+  /* The note is opt-in per line: the input only shows once asked for (or
+     when the line already carries one, on edit). */
+  const [showNote, setShowNote] = useState(item.note.trim() !== '')
 
   /* Mouse picks the card up instantly; touch holds ~200ms first so the
      handle doesn't fight page scrolling on phones. */
@@ -858,6 +867,27 @@ function LineItemCard({
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
+        {/* Optional per-line detail (paint, colour, scope) — printed under
+            the description on the PDF, never in the price column. */}
+        {showNote ? (
+          <input
+            value={item.note}
+            onChange={(e) => onPatch({ note: e.target.value })}
+            placeholder="Paint, colour, scope detail…"
+            aria-label="Line note"
+            autoFocus={item.note === ''}
+            className={`${inputClass} mt-2 h-10 text-[14px] text-brushly-cream/80`}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowNote(true)}
+            className="mt-1 flex h-8 items-center gap-1 font-body text-[13px] text-admin-muted transition-colors hover:text-brushly-gold"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add note
+          </button>
+        )}
         <div className="mt-2 flex items-center gap-2">
           <div className="flex h-12 shrink-0 items-stretch overflow-hidden rounded-sm border border-white/10 bg-admin-raised transition-colors focus-within:border-brushly-gold">
             <button

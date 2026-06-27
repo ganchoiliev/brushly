@@ -200,6 +200,7 @@ export type Database = {
           quote_id: string
           position: number
           description: string
+          note: string | null
           qty: number
           unit: ItemUnit
           unit_price_pence: number
@@ -210,6 +211,7 @@ export type Database = {
           quote_id: string
           position?: number
           description: string
+          note?: string | null
           qty?: number
           unit?: ItemUnit
           unit_price_pence?: number
@@ -220,6 +222,7 @@ export type Database = {
           quote_id?: string
           position?: number
           description?: string
+          note?: string | null
           qty?: number
           unit?: ItemUnit
           unit_price_pence?: number
@@ -316,6 +319,7 @@ export type Database = {
           invoice_id: string
           position: number
           description: string
+          note: string | null
           qty: number
           unit: ItemUnit
           unit_price_pence: number
@@ -326,6 +330,7 @@ export type Database = {
           invoice_id: string
           position?: number
           description: string
+          note?: string | null
           qty?: number
           unit?: ItemUnit
           unit_price_pence?: number
@@ -336,6 +341,7 @@ export type Database = {
           invoice_id?: string
           position?: number
           description?: string
+          note?: string | null
           qty?: number
           unit?: ItemUnit
           unit_price_pence?: number

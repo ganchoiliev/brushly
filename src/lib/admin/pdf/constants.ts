@@ -110,6 +110,9 @@ export type PdfInput = {
   }
   items: {
     description: string
+    /* Optional per-line detail (paint, colour, scope) printed under the
+       description; never affects pricing. */
+    note: string | null
     qty: number
     unit: string
     unitPricePence: number

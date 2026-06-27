@@ -42,6 +42,7 @@ export default async function EditQuotePage({
     .sort((a, b) => a.position - b.position)
     .map((item) => ({
       description: item.description,
+      note: item.note,
       qty: Number(item.qty),
       unit: item.unit as ItemUnit,
       unit_price_pence: item.unit_price_pence,

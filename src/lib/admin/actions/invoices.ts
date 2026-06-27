@@ -17,6 +17,8 @@ const optionalText = z
 
 const itemSchema = z.object({
   description: z.string().trim().min(1, 'Every line needs a description').max(500),
+  /* Optional per-line detail (paint, colour, scope) — never affects price. */
+  note: z.string().trim().max(500).nullable().optional().transform((v) => v || null),
   qty: z.number().positive().max(99999),
   unit: z.enum(['job', 'day', 'room', 'm2', 'item']),
   unit_price_pence: z.number().int().min(0).max(99_999_999),
@@ -107,6 +109,7 @@ export async function createInvoiceFromQuote(
       invoice_id: invoice.id,
       position: i,
       description: item.description,
+      note: item.note,
       qty: item.qty,
       unit: item.unit as ItemUnit,
       unit_price_pence: item.unit_price_pence,
@@ -224,6 +227,7 @@ export async function createInvoice(
       invoice_id: invoice.id,
       position: i,
       description: line.description,
+      note: line.note,
       qty: line.qty,
       unit: line.unit as ItemUnit,
       unit_price_pence: line.unit_price_pence,

@@ -33,9 +33,11 @@ const item = (
   description: string,
   qty: number,
   unit: string,
-  unitPricePence: number
+  unitPricePence: number,
+  note: string | null = null
 ): PdfInput['items'][number] => ({
   description,
+  note,
   qty,
   unit,
   unitPricePence,
@@ -80,7 +82,7 @@ const f2items = [
   item('Strip existing wallpaper, both reception rooms', 2, 'room', 18000),
   item('Line and prepare walls for paint', 2, 'room', 14000),
   item('Ceilings — two coats matt emulsion', 3, 'room', 12000),
-  item('Walls — two coats durable matt, colour TBC', 3, 'room', 16000),
+  item('Walls — two coats durable matt, colour TBC', 3, 'room', 16000, 'Dulux Heritage, Cornflower White (colour to be confirmed on site)'),
   item('Woodwork — prime and two coats satinwood to skirting and architraves', 1, 'job', 42000),
   item('Hallway, stairs and landing — full repaint including high-level cutting in', 1, 'job', 68000),
   item('Kitchen walls and ceiling, scrubbable matt', 1, 'job', 32000),

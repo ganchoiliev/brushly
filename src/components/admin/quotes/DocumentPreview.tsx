@@ -301,7 +301,19 @@ export default function DocumentPreview({
                       overflowWrap: 'break-word',
                     }}
                   >
-                    {item.description}
+                    <div>{item.description}</div>
+                    {item.note && (
+                      <div
+                        style={{
+                          fontSize: 7.5,
+                          lineHeight: 1.4,
+                          marginTop: 2,
+                          color: PDF_COLORS.muted,
+                        }}
+                      >
+                        {item.note}
+                      </div>
+                    )}
                   </div>
                   <div style={cell(COLS.qty, 'right')}>{qtyLabel(item.qty)}</div>
                   <div style={{ ...cell(COLS.unit, 'left'), paddingLeft: 10, color: PDF_COLORS.muted }}>

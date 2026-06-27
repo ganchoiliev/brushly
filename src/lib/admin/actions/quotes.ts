@@ -17,6 +17,8 @@ const optionalText = z
 
 const itemSchema = z.object({
   description: z.string().trim().min(1, 'Every line needs a description').max(500),
+  /* Optional per-line detail (paint, colour, scope) — never affects price. */
+  note: z.string().trim().max(500).nullable().optional().transform((v) => v || null),
   qty: z.number().positive('Quantity must be above zero').max(99999),
   unit: z.enum(['job', 'day', 'room', 'm2', 'item']),
   unit_price_pence: z.number().int().min(0).max(99_999_999),
@@ -139,6 +141,7 @@ export async function createQuote(
       quote_id: quote.id,
       position: i,
       description: line.description,
+      note: line.note,
       qty: line.qty,
       unit: line.unit as ItemUnit,
       unit_price_pence: line.unit_price_pence,
@@ -230,6 +233,7 @@ export async function updateQuote(input: unknown): Promise<ActionResult> {
       quote_id: data.id,
       position: i,
       description: line.description,
+      note: line.note,
       qty: line.qty,
       unit: line.unit as ItemUnit,
       unit_price_pence: line.unit_price_pence,
@@ -311,6 +315,7 @@ export async function duplicateQuote(
       quote_id: quote.id,
       position: i,
       description: item.description,
+      note: item.note,
       qty: item.qty,
       unit: item.unit,
       unit_price_pence: item.unit_price_pence,

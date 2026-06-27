@@ -188,6 +188,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   colDesc: { flex: 1, paddingRight: COLS.descPadRight, fontSize: 9, lineHeight: 1.4 },
+  /* The description text inside the colDesc cell sets its own size so the
+     lineHeight multiplier doesn't fall back to react-pdf's 18pt default. */
+  descText: { fontSize: 9, lineHeight: 1.4 },
+  /* Per-line note — a muted detail line under the description (paint,
+     colour, scope). Smaller and quieter, never in the price columns. */
+  itemNote: { fontSize: 7.5, color: MUTED, lineHeight: 1.4, marginTop: 2 },
   colQty: { width: COLS.qty, textAlign: 'right', fontSize: 9, lineHeight: 1.4 },
   colUnit: {
     width: COLS.unit,
@@ -293,7 +299,10 @@ function BrushlyPdf({ input }: { input: PdfInput }) {
 
   const itemRow = (item: PdfInput['items'][number], i: number) => (
     <View key={i} style={styles.row} wrap={false}>
-      <Text style={styles.colDesc}>{item.description}</Text>
+      <View style={styles.colDesc}>
+        <Text style={styles.descText}>{item.description}</Text>
+        {item.note && <Text style={styles.itemNote}>{item.note}</Text>}
+      </View>
       <Text style={styles.colQty}>{qtyLabel(item.qty)}</Text>
       <Text style={styles.colUnit}>{UNIT_LABEL[item.unit] ?? item.unit}</Text>
       <Text style={styles.colPrice}>{money(item.unitPricePence)}</Text>

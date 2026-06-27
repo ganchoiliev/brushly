@@ -49,6 +49,7 @@ export async function buildQuotePdfInput(supabase: DB, id: string) {
     },
     items: items.map((item) => ({
       description: item.description,
+      note: item.note,
       qty: Number(item.qty),
       unit: item.unit,
       unitPricePence: item.unit_price_pence,
@@ -100,6 +101,7 @@ export async function buildInvoicePdfInput(supabase: DB, id: string) {
     },
     items: items.map((item) => ({
       description: item.description,
+      note: item.note,
       qty: Number(item.qty),
       unit: item.unit,
       unitPricePence: item.unit_price_pence,
