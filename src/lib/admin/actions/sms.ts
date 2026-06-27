@@ -70,7 +70,10 @@ export async function sendQuoteSms(raw: unknown): Promise<ActionResult> {
     `${SITE_URL}/q/${quote.public_token} — any questions call ${PHONE}.`
 
   try {
-    const client = twilio(sid, authToken)
+    /* The Brushly Messaging Service lives in Twilio's Ireland (IE1) data
+       residency region — without pinning region/edge the SDK hits the US
+       endpoint, where the IE1 Messaging Service SID 404s and the send dies. */
+    const client = twilio(sid, authToken, { region: 'ie1', edge: 'dublin' })
     await client.messages.create({ to: mobile, body, messagingServiceSid })
   } catch (error) {
     console.error('sendQuoteSms send failed:', error)
