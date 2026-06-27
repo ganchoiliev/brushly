@@ -59,9 +59,13 @@ const cell = (width: number, align: 'left' | 'right'): React.CSSProperties => ({
 export default function DocumentPreview({
   input,
   pdfHref,
+  chromeless = false,
 }: {
   input: PdfInput
   pdfHref: string | null
+  /* The public quote page reuses just the rendered page — no "Live
+     preview" label, no Open-PDF button. It brings its own chrome. */
+  chromeless?: boolean
 }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const pageRef = useRef<HTMLDivElement>(null)
@@ -86,6 +90,7 @@ export default function DocumentPreview({
 
   return (
     <div>
+      {!chromeless && (
       <div className="mb-3 flex h-11 items-center justify-between">
         <span className="font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
           Live preview
@@ -108,6 +113,7 @@ export default function DocumentPreview({
           </span>
         )}
       </div>
+      )}
 
       <div
         ref={outerRef}

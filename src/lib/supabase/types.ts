@@ -136,6 +136,7 @@ export type Database = {
           sent_at: string | null
           decided_at: string | null
           follow_up_at: string | null
+          public_token: string | null
         }
         Insert: {
           id?: string
@@ -156,6 +157,7 @@ export type Database = {
           sent_at?: string | null
           decided_at?: string | null
           follow_up_at?: string | null
+          public_token?: string | null
         }
         Update: {
           id?: string
@@ -176,6 +178,7 @@ export type Database = {
           sent_at?: string | null
           decided_at?: string | null
           follow_up_at?: string | null
+          public_token?: string | null
         }
         Relationships: [
           {
@@ -445,6 +448,52 @@ export type Database = {
       next_number: {
         Args: { kind: 'quote' | 'invoice' }
         Returns: number
+      }
+      /* Public quote read: token in, one assembled quote out (or null).
+         SECURITY DEFINER — the only keyhole anon can reach. */
+      get_public_quote: {
+        Args: { p_token: string }
+        Returns: {
+          quote: {
+            quote_number: number
+            title: string
+            status: QuoteStatus
+            issue_date: string | null
+            valid_until: string | null
+            vat_rate: number
+            subtotal_pence: number
+            vat_pence: number
+            total_pence: number
+            notes: string | null
+            terms: string | null
+            public_token: string
+          }
+          items: {
+            description: string
+            note: string | null
+            qty: number
+            unit: ItemUnit
+            unit_price_pence: number
+            total_pence: number
+          }[]
+          client: {
+            name: string
+            address_line1: string | null
+            address_line2: string | null
+            town: string | null
+            postcode: string | null
+          }
+          company: {
+            company_name: string
+            company_number: string
+            address: string
+            phone: string
+            email: string
+            vat_registered: boolean
+            vat_number: string | null
+            default_terms: string | null
+          }
+        } | null
       }
     }
     Enums: Record<string, never>

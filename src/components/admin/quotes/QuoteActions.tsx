@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Eye, Download, Send, Trophy, X, Copy, Users } from 'lucide-react'
 import ConfirmDialog from '@/components/admin/ConfirmDialog'
-import SendDialog, { type SendFields } from '@/components/admin/SendDialog'
+import SendDialog, { type SendFields, type SendChannel } from '@/components/admin/SendDialog'
 import ClientPickerDialog from '@/components/admin/quotes/ClientPickerDialog'
 import { sendQuote, markQuoteDecision } from '@/lib/admin/actions/send'
+import { sendQuoteSms } from '@/lib/admin/actions/sms'
 import { duplicateQuote } from '@/lib/admin/actions/quotes'
 import { quoteRef } from '@/lib/admin/format'
 
@@ -16,6 +17,7 @@ export default function QuoteActions({
   status,
   reference,
   clientEmail,
+  clientPhone,
   title,
   totalPence,
   validUntil,
@@ -24,6 +26,7 @@ export default function QuoteActions({
   status: string
   reference: string
   clientEmail: string | null
+  clientPhone: string | null
   title: string | null
   totalPence: number
   validUntil: string | null
@@ -36,22 +39,43 @@ export default function QuoteActions({
   const decided = status === 'accepted' || status === 'declined'
 
   /* §4.1: a test send delivers to hello@ only, changes no state, and
-     keeps the dialog open so the real send is one tap away. */
-  async function doSend(fields: SendFields, test: boolean) {
+     keeps the dialog open so the real send is one tap away. The channel
+     decides which pipes run — email (PDF), SMS (public link), or both.
+     A test is always email-only (there's no free SMS test inbox). */
+  async function doSend(fields: SendFields, test: boolean, channel: SendChannel) {
     setSendPending(test ? 'test' : 'client')
-    const result = await sendQuote({ id: quoteId, ...fields, test })
-    setSendPending(null)
-    if (!result.ok) {
-      toast.error(result.error)
-      return
+    try {
+      if (channel === 'email' || channel === 'both') {
+        const result = await sendQuote({ id: quoteId, ...fields, test })
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+      }
+      if (!test && (channel === 'sms' || channel === 'both')) {
+        const result = await sendQuoteSms({ id: quoteId })
+        if (!result.ok) {
+          toast.error(result.error)
+          return
+        }
+      }
+    } finally {
+      setSendPending(null)
     }
+
     if (test) {
       toast.success('Test sent to hello@brushly.uk — go check it reads right.')
-    } else {
-      toast.success(`Quote emailed to ${fields.to}`)
-      setDialog(null)
-      router.refresh()
+      return
     }
+    toast.success(
+      channel === 'sms'
+        ? 'Quote texted to the client'
+        : channel === 'both'
+          ? 'Quote emailed and texted'
+          : `Quote emailed to ${fields.to}`
+    )
+    setDialog(null)
+    router.refresh()
   }
 
   function openSend() {
@@ -184,6 +208,8 @@ export default function QuoteActions({
         docType="quote"
         reference={reference}
         clientEmail={clientEmail}
+        clientPhone={clientPhone}
+        smsAvailable
         title={title}
         totalPence={totalPence}
         secondaryDate={validUntil}

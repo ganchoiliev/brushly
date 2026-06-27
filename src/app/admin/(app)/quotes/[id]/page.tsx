@@ -145,6 +145,7 @@ export default async function QuoteDetailPage({
                 status={quote.status}
                 reference={quoteRef(quote.quote_number)}
                 clientEmail={client?.email ?? null}
+                clientPhone={client?.phone ?? null}
                 title={quote.title}
                 totalPence={quote.total_pence}
                 validUntil={quote.valid_until}
@@ -171,6 +172,7 @@ export default async function QuoteDetailPage({
               status={quote.status}
               reference={quoteRef(quote.quote_number)}
               clientEmail={client?.email ?? null}
+              clientPhone={client?.phone ?? null}
               title={quote.title}
               totalPence={quote.total_pence}
               validUntil={quote.valid_until}
