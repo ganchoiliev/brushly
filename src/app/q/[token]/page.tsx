@@ -95,7 +95,7 @@ export default async function PublicQuotePage({
           </span>
         </div>
 
-        <DocumentPreview chromeless input={input} pdfHref={null} />
+        <DocumentPreview chromeless acceptCta="web" input={input} pdfHref={null} />
 
         {acceptable && <AcceptQuote token={q.public_token} reference={ref} />}
 

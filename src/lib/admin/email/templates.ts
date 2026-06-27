@@ -178,3 +178,147 @@ export function buildDocumentEmail(input: DocumentEmailInput): {
 
   return { html, text: textLines.join('\n') }
 }
+
+/* ── Acceptance emails ──────────────────────────────────────────────────
+   Sent when a client accepts a quote on the public page: a receipt to the
+   client and an alert to the owner. Same branded shell as the quote email
+   (charcoal band, gold accents, plain-text wordmark, inline styles). The
+   client copy carries no link (reply/call, like the quote email); the owner
+   alert is internal, so it links straight to the admin quote. */
+type AcceptanceCompany = {
+  name: string
+  companyNumber: string
+  address: string
+  phone: string
+  email: string
+}
+
+export type AcceptanceEmailInput =
+  | {
+      variant: 'client'
+      firstName: string
+      reference: string
+      title: string | null
+      totalPence: number
+      company: AcceptanceCompany
+    }
+  | {
+      variant: 'owner'
+      clientName: string
+      reference: string
+      title: string | null
+      totalPence: number
+      adminUrl: string
+      company: AcceptanceCompany
+    }
+
+export function buildAcceptanceEmail(input: AcceptanceEmailInput): {
+  html: string
+  text: string
+} {
+  const total = formatGBP(input.totalPence)
+  const caption = `${input.company.name} · Registered in England & Wales · Company No. ${input.company.companyNumber} · Registered office: ${input.company.address}`
+  const jobSuffix = input.title ? ` (${input.title})` : ''
+
+  const factRow = (label: string, value: string, strong = false) => `
+        <tr>
+          <td style="padding:6px 16px;font-family:${FONT};font-size:13px;color:${MUTED};">${escapeHtml(label)}</td>
+          <td align="right" style="padding:6px 16px;font-family:${FONT};font-size:13px;color:${INK};${strong ? 'font-weight:700;' : ''}font-variant-numeric:tabular-nums;">${escapeHtml(value)}</td>
+        </tr>`
+
+  const factsBlock = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${PAPER};border:1px solid ${RULE};border-collapse:separate;">
+        ${factRow('Quote', input.reference)}
+        ${input.title ? factRow('Job', input.title) : ''}
+        ${factRow('Total', total, true)}
+      </table>`
+
+  let paragraphs: string[]
+  let linkHtml = ''
+  let linkText: string[] = []
+
+  if (input.variant === 'client') {
+    paragraphs = [
+      `Hi ${input.firstName},`,
+      `Thank you — we've received your acceptance of quote ${input.reference}${jobSuffix} for ${total}.`,
+      `We'll be in touch shortly to book you in. In the meantime, just reply to this email or call ${input.company.phone} if anything comes up.`,
+    ]
+  } else {
+    paragraphs = [
+      `${input.clientName} has accepted quote ${input.reference}${jobSuffix} for ${total}.`,
+    ]
+    linkHtml = `
+          <tr>
+            <td style="padding:18px 32px 4px;">
+              <p style="margin:0;font-family:${FONT};font-size:15px;line-height:1.65;color:${INK};">Open it in the admin: <a href="${escapeHtml(input.adminUrl)}" style="color:${GOLD};">${escapeHtml(input.adminUrl)}</a></p>
+            </td>
+          </tr>`
+    linkText = ['', `Open it in the admin: ${input.adminUrl}`]
+  }
+
+  const paragraphsHtml = paragraphs
+    .map(
+      (p) =>
+        `<p style="margin:0 0 16px;font-family:${FONT};font-size:15px;line-height:1.65;color:${INK};">${escapeHtml(p)}</p>`
+    )
+    .join('\n              ')
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Quote ${escapeHtml(input.reference)} accepted — ${escapeHtml(input.company.name)}</title>
+</head>
+<body style="margin:0;padding:0;background:#EFEAE3;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFEAE3;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border:1px solid ${RULE};">
+          <tr>
+            <td style="background:${CHARCOAL};padding:20px 32px;">
+              <span style="font-family:Georgia,'Times New Roman',serif;font-size:19px;letter-spacing:6px;color:${GOLD};">BRUSHLY</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px 4px;">
+              ${paragraphsHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 32px 4px;">
+              ${factsBlock}
+            </td>
+          </tr>${linkHtml}
+          <tr>
+            <td style="padding:20px 32px 24px;">
+              <p style="margin:0;font-family:${FONT};font-size:13px;line-height:1.6;color:${MUTED};">${escapeHtml(input.company.email)} · ${escapeHtml(input.company.phone)}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 32px 18px;border-top:1px solid ${RULE};">
+              <p style="margin:0;font-family:${FONT};font-size:11px;line-height:1.6;color:${MUTED};">${escapeHtml(caption)}</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  const text = [
+    ...paragraphs,
+    '',
+    `Quote: ${input.reference}`,
+    ...(input.title ? [`Job: ${input.title}`] : []),
+    `Total: ${total}`,
+    ...linkText,
+    '',
+    `${input.company.email} · ${input.company.phone}`,
+    '',
+    caption,
+  ].join('\n')
+
+  return { html, text }
+}

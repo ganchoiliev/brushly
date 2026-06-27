@@ -60,12 +60,17 @@ export default function DocumentPreview({
   input,
   pdfHref,
   chromeless = false,
+  acceptCta = 'email',
 }: {
   input: PdfInput
   pdfHref: string | null
   /* The public quote page reuses just the rendered page — no "Live
      preview" label, no Open-PDF button. It brings its own chrome. */
   chromeless?: boolean
+  /* The quote footer's accept call-to-action. 'email' (default) matches the
+     emailed PDF — "Reply to this email…"; 'web' is for the public page that
+     has an Accept button. The PDF/email copy itself never changes. */
+  acceptCta?: 'email' | 'web'
 }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const pageRef = useRef<HTMLDivElement>(null)
@@ -400,7 +405,9 @@ export default function DocumentPreview({
                       ? `This quote is valid until ${dateGB(input.secondaryDate.value)}. `
                       : ''}
                     <span style={{ fontSize: 8, color: PDF_COLORS.ink, fontWeight: 700 }}>
-                      Reply to this email or call us to accept.
+                      {acceptCta === 'web'
+                        ? 'Use the Accept button below, or call 01737 479161 to accept.'
+                        : 'Reply to this email or call us to accept.'}
                     </span>
                   </div>
                 )}
