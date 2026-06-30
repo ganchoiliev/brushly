@@ -43,6 +43,7 @@ export async function buildQuotePdfInput(supabase: DB, id: string) {
     },
     client: {
       name: quote.clients.name,
+      contactName: quote.clients.contact_name,
       addressLines: clientAddressLines(quote.clients),
       email: quote.clients.email,
       phone: quote.clients.phone,
@@ -96,6 +97,7 @@ export async function buildInvoicePdfInput(supabase: DB, id: string) {
     },
     client: {
       name: invoice.clients.name,
+      contactName: invoice.clients.contact_name,
       addressLines: clientAddressLines(invoice.clients),
       email: invoice.clients.email,
       phone: invoice.clients.phone,

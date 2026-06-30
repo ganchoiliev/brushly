@@ -116,6 +116,10 @@ export type PdfInput = {
   }
   client: {
     name: string
+    /* Optional contact to greet in the covering email (commercial clients).
+       Greeting-only: the printed "Prepared for"/"Billed to" always uses
+       `name`, so billing is unaffected. Absent for residential clients. */
+    contactName?: string | null
     addressLines: string[]
     email: string | null
     phone: string | null

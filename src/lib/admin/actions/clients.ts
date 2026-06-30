@@ -15,6 +15,9 @@ const optionalText = z
 
 const clientSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(200),
+  /* Optional contact to greet (commercial clients): emails say "Hi Amy"
+     while billing stays the company name. Blank for residential. */
+  contact_name: optionalText,
   email: optionalText,
   phone: optionalText,
   address_line1: optionalText,
@@ -43,6 +46,7 @@ export async function createClientRecord(
     .from('clients')
     .insert({
       name: parsed.data.name,
+      contact_name: parsed.data.contact_name ?? null,
       email: parsed.data.email ?? null,
       phone: parsed.data.phone ?? null,
       address_line1: parsed.data.address_line1 ?? null,
@@ -83,6 +87,7 @@ export async function updateClientRecord(input: unknown): Promise<ActionResult> 
     .from('clients')
     .update({
       name: fields.name,
+      contact_name: fields.contact_name ?? null,
       email: fields.email ?? null,
       phone: fields.phone ?? null,
       address_line1: fields.address_line1 ?? null,

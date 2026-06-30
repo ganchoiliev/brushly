@@ -82,7 +82,7 @@ export async function sendQuote(raw: unknown): Promise<ActionResult> {
   const { html, text } = buildDocumentEmail({
     docType: 'QUOTE',
     reference: input.reference,
-    firstName: firstName(input.client.name),
+    firstName: firstName(input.client.contactName || input.client.name),
     message,
     totalPence: input.totalPence,
     secondaryDate: input.secondaryDate,
@@ -230,7 +230,7 @@ export async function sendInvoice(raw: unknown): Promise<ActionResult> {
   const { html, text } = buildDocumentEmail({
     docType: 'INVOICE',
     reference: input.reference,
-    firstName: firstName(input.client.name),
+    firstName: firstName(input.client.contactName || input.client.name),
     message,
     totalPence: input.totalPence,
     secondaryDate: input.secondaryDate,

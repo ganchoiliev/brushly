@@ -28,6 +28,7 @@ export default function ClientForm({
     const form = new FormData(e.currentTarget)
     const fields = {
       name: form.get('name'),
+      contact_name: form.get('contact_name') || null,
       phone: form.get('phone') || null,
       email: form.get('email') || null,
       address_line1: form.get('address_line1') || null,
@@ -61,6 +62,12 @@ export default function ClientForm({
       <label className="block">
         <span className="font-body text-[13px] text-brushly-cream/70">Name</span>
         <input name="name" required defaultValue={client?.name ?? ''} autoComplete="off" className={inputClass} />
+      </label>
+      <label className="mt-3 block">
+        <span className="font-body text-[13px] text-brushly-cream/70">
+          Contact name <span className="text-admin-muted">(who to address — leave blank for residential)</span>
+        </span>
+        <input name="contact_name" defaultValue={client?.contact_name ?? ''} autoComplete="off" className={inputClass} />
       </label>
       <div className="mt-3 grid grid-cols-2 gap-3">
         <label className="block">
