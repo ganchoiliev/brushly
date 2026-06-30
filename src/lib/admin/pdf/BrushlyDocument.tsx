@@ -20,6 +20,7 @@ import {
   qtyLabel,
   sortCode,
   dash,
+  siteAddressLines,
   type PdfInput,
 } from '@/lib/admin/pdf/constants'
 
@@ -153,6 +154,19 @@ const styles = StyleSheet.create({
   blockLine: { fontSize: 9, lineHeight: 1.6 },
   blockMuted: { fontSize: 9, lineHeight: 1.6, color: MUTED },
 
+  /* Site address — the optional "where the work happens" block, sitting
+     directly beneath the billing block. A gold label sets it apart from the
+     muted "Prepared for"/"Billed to" label above it without a heavy border. */
+  siteBlock: { marginTop: 12, alignItems: 'flex-end' },
+  siteLabel: {
+    fontSize: 7,
+    color: GOLD,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+    fontWeight: 500,
+    marginBottom: 6,
+  },
+
   title: {
     fontFamily: 'Cormorant',
     fontWeight: 600,
@@ -277,6 +291,7 @@ function BrushlyPdf({ input }: { input: PdfInput }) {
   const showVat = input.vatRate > 0
   const items = input.items
   const lastIndex = items.length - 1
+  const siteLines = siteAddressLines(input.siteAddress)
 
   const totalsCard = (
     <View style={styles.totalsCard}>
@@ -381,6 +396,16 @@ function BrushlyPdf({ input }: { input: PdfInput }) {
                 <Text style={[styles.blockMuted, { textAlign: 'right' }]}>
                   {input.client.email}
                 </Text>
+              )}
+              {siteLines.length > 0 && (
+                <View style={styles.siteBlock}>
+                  <Text style={styles.siteLabel}>Site address</Text>
+                  {siteLines.map((line, i) => (
+                    <Text key={i} style={[styles.blockLine, { textAlign: 'right' }]}>
+                      {line}
+                    </Text>
+                  ))}
+                </View>
               )}
             </View>
           </View>

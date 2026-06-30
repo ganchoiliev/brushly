@@ -88,6 +88,9 @@ export async function createInvoiceFromQuote(
       quote_id: quote.id,
       client_id: quote.client_id,
       title: quote.title,
+      /* The invoice bills the same job — carry the quote's site address so
+         the work address survives quote → invoice. */
+      site_address: quote.site_address,
       issue_date: today,
       due_date: addDays(today, 14),
       vat_rate: quote.vat_rate,
@@ -144,6 +147,9 @@ const invoiceInputSchema = z.object({
     newClientSchema,
   ]),
   title: z.string().trim().min(1, 'Give the invoice a title').max(300),
+  /* Optional site address — where the work happens, when that differs from
+     the client's billing address (B2B). Free text, blank → null. */
+  site_address: optionalText,
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   vat_rate: z.number().min(0).max(100),
   items: z.array(itemSchema).min(1, 'Add at least one line'),
@@ -207,6 +213,7 @@ export async function createInvoice(
       invoice_number: invoiceNumber,
       client_id: clientId,
       title: data.title,
+      site_address: data.site_address ?? null,
       issue_date: todayLondon(),
       due_date: data.due_date ?? null,
       vat_rate: data.vat_rate,
@@ -282,6 +289,7 @@ export async function updateInvoice(input: unknown): Promise<ActionResult> {
     .from('invoices')
     .update({
       title: data.title,
+      site_address: data.site_address ?? null,
       due_date: data.due_date ?? null,
       vat_rate: data.vat_rate,
       subtotal_pence: subtotal,

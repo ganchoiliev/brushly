@@ -47,6 +47,7 @@ export async function buildQuotePdfInput(supabase: DB, id: string) {
       email: quote.clients.email,
       phone: quote.clients.phone,
     },
+    siteAddress: quote.site_address,
     items: items.map((item) => ({
       description: item.description,
       note: item.note,
@@ -99,6 +100,7 @@ export async function buildInvoicePdfInput(supabase: DB, id: string) {
       email: invoice.clients.email,
       phone: invoice.clients.phone,
     },
+    siteAddress: invoice.site_address,
     items: items.map((item) => ({
       description: item.description,
       note: item.note,

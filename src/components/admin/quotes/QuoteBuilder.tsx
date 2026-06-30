@@ -82,6 +82,7 @@ export type QuoteBuilderProps = {
   quote?: {
     id: string
     title: string
+    site_address: string | null
     valid_until: string | null
     vat_rate: number
     notes: string | null
@@ -167,6 +168,9 @@ export default function QuoteBuilder({
     !quote && !initialClient && !!lead && candidateClients.length > 0
   )
   const [title, setTitle] = useState(quote?.title ?? lead?.service ?? '')
+  /* Optional site address — where the work happens, when that differs from
+     the client's billing address (B2B). Blank → nothing prints. */
+  const [siteAddress, setSiteAddress] = useState(quote?.site_address ?? '')
   const [items, setItems] = useState<ItemDraft[]>(
     quote
       ? quote.items.map((it) => ({
@@ -311,6 +315,7 @@ export default function QuoteBuilder({
               email: client.email || null,
               phone: client.phone || null,
             },
+    siteAddress: siteAddress.trim() || null,
     items: items
       .map((it, i) => ({ it, lt: lineTotals[i] }))
       .filter(({ it }) => it.description.trim() !== '' || it.price.trim() !== '')
@@ -347,6 +352,7 @@ export default function QuoteBuilder({
   const snapshot = JSON.stringify({
     client: client === null ? null : client.kind === 'existing' ? client.id : client,
     title,
+    siteAddress,
     validUntil,
     notes,
     terms,
@@ -412,6 +418,7 @@ export default function QuoteBuilder({
         ? await updateInvoice({
             id: quote!.id,
             title: title.trim(),
+            site_address: siteAddress.trim() || null,
             due_date: validUntil || null,
             vat_rate: vatRate,
             items: cleanItems,
@@ -420,6 +427,7 @@ export default function QuoteBuilder({
         : await createInvoice({
             client: clientPayload,
             title: title.trim(),
+            site_address: siteAddress.trim() || null,
             due_date: validUntil || null,
             vat_rate: vatRate,
             items: cleanItems,
@@ -429,6 +437,7 @@ export default function QuoteBuilder({
         ? await updateQuote({
             id: quote!.id,
             title: title.trim(),
+            site_address: siteAddress.trim() || null,
             valid_until: validUntil || null,
             vat_rate: vatRate,
             items: cleanItems,
@@ -437,6 +446,7 @@ export default function QuoteBuilder({
           })
         : await createQuote({
             title: title.trim(),
+            site_address: siteAddress.trim() || null,
             valid_until: validUntil || null,
             vat_rate: vatRate,
             items: cleanItems,
@@ -619,6 +629,22 @@ export default function QuoteBuilder({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g. Full interior repaint — 3-bed, Reigate"
           className={`${inputClass} h-13`}
+        />
+      </section>
+
+      {/* Site address — optional. Only for B2B jobs where the work happens
+          somewhere other than the client's billing address; blank on
+          residential jobs, where it prints nothing. */}
+      <section>
+        <h2 className="mb-2 font-body text-[12px] font-medium uppercase tracking-wider text-admin-muted">
+          Site address (if different from client)
+        </h2>
+        <textarea
+          value={siteAddress}
+          onChange={(e) => setSiteAddress(e.target.value)}
+          rows={2}
+          placeholder="Where the work happens — leave blank if it's the client's address"
+          className={`${inputClass} py-3`}
         />
       </section>
 

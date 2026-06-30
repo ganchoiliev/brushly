@@ -137,6 +137,7 @@ export type Database = {
           decided_at: string | null
           follow_up_at: string | null
           public_token: string | null
+          site_address: string | null
         }
         Insert: {
           id?: string
@@ -158,6 +159,7 @@ export type Database = {
           decided_at?: string | null
           follow_up_at?: string | null
           public_token?: string | null
+          site_address?: string | null
         }
         Update: {
           id?: string
@@ -179,6 +181,7 @@ export type Database = {
           decided_at?: string | null
           follow_up_at?: string | null
           public_token?: string | null
+          site_address?: string | null
         }
         Relationships: [
           {
@@ -261,6 +264,7 @@ export type Database = {
           payment_method: PaymentMethod | null
           notes: string | null
           public_token: string | null
+          site_address: string | null
         }
         Insert: {
           id?: string
@@ -281,6 +285,7 @@ export type Database = {
           payment_method?: PaymentMethod | null
           notes?: string | null
           public_token?: string | null
+          site_address?: string | null
         }
         Update: {
           id?: string
@@ -301,6 +306,7 @@ export type Database = {
           payment_method?: PaymentMethod | null
           notes?: string | null
           public_token?: string | null
+          site_address?: string | null
         }
         Relationships: [
           {
@@ -470,6 +476,7 @@ export type Database = {
             notes: string | null
             terms: string | null
             public_token: string
+            site_address: string | null
           }
           items: {
             description: string
@@ -515,6 +522,7 @@ export type Database = {
             total_pence: number
             notes: string | null
             public_token: string
+            site_address: string | null
           }
           items: {
             description: string

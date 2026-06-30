@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { renderBrushlyPdf, type PdfInput } from '../src/lib/admin/pdf/BrushlyDocument'
+import { siteAddressLines } from '../src/lib/admin/pdf/constants'
 
 const OUT = path.join(process.cwd(), '.pdf-proof')
 
@@ -62,6 +63,9 @@ const base = {
     'Payment within 14 days of completion. Materials remain our property until paid in full. Any variations to the agreed scope are quoted separately before work begins.',
   company: COMPANY,
   client: CLIENT,
+  /* Most fixtures carry no site address (residential billing = site); the
+     two below override this to prove the block renders, short and long. */
+  siteAddress: null as string | null,
   payment: null as PdfInput['payment'],
 }
 
@@ -73,6 +77,8 @@ const fixture1: PdfInput = {
   docType: 'QUOTE',
   reference: 'QU-0101',
   title: 'Front door repaint',
+  /* Short, single-line site address (with). */
+  siteAddress: 'Flat 2, 14 Eastgate, Redhill RH1 1AB',
   secondaryDate: { label: 'Valid until', value: '2026-07-10' },
   items: f1items,
   ...totals(f1items, 0),
@@ -99,6 +105,10 @@ const fixture2: PdfInput = {
   docType: 'INVOICE',
   reference: 'INV-0042',
   title: 'Full interior redecoration — 4-bed, Reigate',
+  /* Long, multi-line site address (with) — wraps under a billing block that
+     also has an address and email. */
+  siteAddress:
+    'Eastgate Business Park\nUnit 7, Building C\nLeasehold Common Parts\nReigate, Surrey RH2 9PQ',
   secondaryDate: { label: 'Due', value: '2026-06-24' },
   items: f2items,
   ...totals(f2items, 0),
@@ -218,6 +228,8 @@ async function main() {
     for (const it of input.items) {
       expect.push(money(it.totalPence), money(it.unitPricePence))
     }
+    // A present site address must reach the text layer, line by line.
+    for (const line of siteAddressLines(input.siteAddress)) expect.push(line)
     const missing = expect.filter((m) => !text.includes(m))
     const pages = readdirSync(OUT).filter(
       (f) => f.startsWith(`${name}-`) && f.endsWith('.png')

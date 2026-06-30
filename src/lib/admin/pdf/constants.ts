@@ -86,6 +86,18 @@ export function clientAddressLines(client: {
   ].filter((line): line is string => !!line && line.trim() !== '')
 }
 
+/* The optional site address is one free-text field (a textarea), so it
+   arrives as raw text with whatever line breaks were typed. Both renderers
+   split it the same way — trim each line, drop the blanks — so the print
+   and the live preview can never disagree on it. */
+export function siteAddressLines(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '')
+}
+
 export type PdfInput = {
   docType: 'QUOTE' | 'INVOICE'
   reference: string
@@ -108,6 +120,10 @@ export type PdfInput = {
     email: string | null
     phone: string | null
   }
+  /* Optional site address (B2B: where the work happens, when that differs
+     from the client's billing address). Raw free text — null/empty renders
+     nothing, so residential jobs where billing = site look unchanged. */
+  siteAddress: string | null
   items: {
     description: string
     /* Optional per-line detail (paint, colour, scope) printed under the

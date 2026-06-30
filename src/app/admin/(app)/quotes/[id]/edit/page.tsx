@@ -62,6 +62,7 @@ export default async function EditQuotePage({
         quote={{
           id: quote.id,
           title: quote.title,
+          site_address: quote.site_address,
           valid_until: quote.valid_until,
           vat_rate: Number(quote.vat_rate),
           notes: quote.notes,

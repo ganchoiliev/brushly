@@ -58,6 +58,7 @@ export default async function PublicInvoicePage({
       email: null,
       phone: null,
     },
+    siteAddress: inv.site_address,
     items: items.map((it) => ({
       description: it.description,
       note: it.note,

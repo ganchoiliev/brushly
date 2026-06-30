@@ -59,6 +59,7 @@ export default async function PublicQuotePage({
       email: null,
       phone: null,
     },
+    siteAddress: q.site_address,
     items: items.map((it) => ({
       description: it.description,
       note: it.note,

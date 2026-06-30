@@ -65,6 +65,7 @@ export default async function EditInvoicePage({
         quote={{
           id: invoice.id,
           title: invoice.title ?? '',
+          site_address: invoice.site_address,
           valid_until: invoice.due_date,
           vat_rate: Number(invoice.vat_rate),
           notes: invoice.notes,

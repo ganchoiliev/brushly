@@ -12,6 +12,7 @@ import {
   qtyLabel,
   sortCode,
   dash,
+  siteAddressLines,
   type PdfInput,
 } from '@/lib/admin/pdf/constants'
 
@@ -38,6 +39,16 @@ const blockMuted: React.CSSProperties = {
   fontSize: 9,
   lineHeight: 1.6,
   color: PDF_COLORS.muted,
+}
+/* Mirrors BrushlyDocument's siteLabel — gold, to set the site-address block
+   apart from the muted billing label above it. */
+const siteLabel: React.CSSProperties = {
+  fontSize: 7,
+  color: PDF_COLORS.gold,
+  letterSpacing: 1.5,
+  textTransform: 'uppercase',
+  fontWeight: 500,
+  marginBottom: 6,
 }
 const th: React.CSSProperties = {
   fontSize: 7,
@@ -92,6 +103,7 @@ export default function DocumentPreview({
   }, [])
 
   const showVat = input.vatRate > 0
+  const siteLines = siteAddressLines(input.siteAddress)
 
   return (
     <div>
@@ -268,6 +280,16 @@ export default function DocumentPreview({
                     <div style={blockLine}>—</div>
                   )}
                   {input.client.email && <div style={blockMuted}>{input.client.email}</div>}
+                  {siteLines.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={siteLabel}>Site address</div>
+                      {siteLines.map((line, i) => (
+                        <div key={i} style={blockLine}>
+                          {line}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
