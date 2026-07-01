@@ -4,12 +4,14 @@
    schema ground truth — change this file only when a new migration
    lands. */
 
-export type LeadSource = 'website' | 'ads' | 'referral' | 'phone' | 'manual'
+export type LeadSource = 'website' | 'ads' | 'referral' | 'phone' | 'manual' | 'visualizer'
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost' | 'spam'
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired'
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void'
 export type ItemUnit = 'job' | 'day' | 'room' | 'm2' | 'item'
 export type PaymentMethod = 'bank_transfer' | 'cash'
+export type VisualizerService = 'interior' | 'exterior' | 'wallpaper' | 'finish'
+export type VisualizerRenderStatus = 'processing' | 'done' | 'failed'
 
 export type Database = {
   public: {
@@ -450,6 +452,95 @@ export type Database = {
         }
         Relationships: []
       }
+      visualizer_renders: {
+        Row: {
+          id: string
+          created_at: string
+          session_id: string
+          ip_hash: string | null
+          service: VisualizerService
+          color_label: string | null
+          color_hex: string | null
+          finish: string | null
+          prompt: string | null
+          source_path: string
+          result_path: string | null
+          model: string | null
+          status: VisualizerRenderStatus
+          qa_score: number | null
+          cost_pence: number
+          lead_id: string | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          session_id: string
+          ip_hash?: string | null
+          service: VisualizerService
+          color_label?: string | null
+          color_hex?: string | null
+          finish?: string | null
+          prompt?: string | null
+          source_path: string
+          result_path?: string | null
+          model?: string | null
+          status?: VisualizerRenderStatus
+          qa_score?: number | null
+          cost_pence?: number
+          lead_id?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          session_id?: string
+          ip_hash?: string | null
+          service?: VisualizerService
+          color_label?: string | null
+          color_hex?: string | null
+          finish?: string | null
+          prompt?: string | null
+          source_path?: string
+          result_path?: string | null
+          model?: string | null
+          status?: VisualizerRenderStatus
+          qa_score?: number | null
+          cost_pence?: number
+          lead_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'visualizer_renders_lead_id_fkey'
+            columns: ['lead_id']
+            isOneToOne: false
+            referencedRelation: 'leads'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      visualizer_usage: {
+        Row: {
+          bucket_key: string
+          day: string
+          render_count: number
+          spend_pence: number
+          updated_at: string
+        }
+        Insert: {
+          bucket_key: string
+          day?: string
+          render_count?: number
+          spend_pence?: number
+          updated_at?: string
+        }
+        Update: {
+          bucket_key?: string
+          day?: string
+          render_count?: number
+          spend_pence?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -460,6 +551,23 @@ export type Database = {
       next_number: {
         Args: { kind: 'quote' | 'invoice' }
         Returns: number
+      }
+      /* Atomic quota check+increment for the public visualizer render path.
+         Called only via the service-role client. */
+      visualizer_check_and_increment: {
+        Args: {
+          p_session: string
+          p_ip_hash: string | null
+          p_max_per_session: number
+          p_max_per_ip: number
+          p_est_cost_pence: number
+        }
+        Returns: {
+          allowed: boolean
+          reason?: 'session_limit' | 'ip_limit'
+          session_count?: number
+          ip_count?: number
+        }
       }
       /* Public quote read: token in, one assembled quote out (or null).
          SECURITY DEFINER — the only keyhole anon can reach. */
@@ -571,3 +679,5 @@ export type Invoice = Database['public']['Tables']['invoices']['Row']
 export type InvoiceItem = Database['public']['Tables']['invoice_items']['Row']
 export type ItemPreset = Database['public']['Tables']['item_presets']['Row']
 export type Settings = Database['public']['Tables']['settings']['Row']
+export type VisualizerRender = Database['public']['Tables']['visualizer_renders']['Row']
+export type VisualizerUsage = Database['public']['Tables']['visualizer_usage']['Row']

@@ -11,6 +11,7 @@ import { useLenis } from '@/components/animations/SmoothScroll'
 const navLinks = [
   { label: 'Home', href: '/' },
   { label: 'Services', href: '/services' },
+  { label: 'Visualizer', href: '/visualizer' },
   { label: 'Gallery', href: '/gallery' },
   { label: 'About', href: '/about' },
   { label: 'Contact', href: '/contact' },

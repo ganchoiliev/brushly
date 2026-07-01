@@ -11,6 +11,7 @@ import Testimonials from '@/components/sections/Testimonials'
 import CTASection from '@/components/sections/CTASection'
 import CredentialsStrip from '@/components/sections/CredentialsStrip'
 import ParallaxBreak from '@/components/sections/ParallaxBreak'
+import VisualizerTeaser from '@/components/sections/VisualizerTeaser'
 
 export default function HomePageClient() {
   return (
@@ -20,6 +21,7 @@ export default function HomePageClient() {
       <StatsCounter />
       <ProcessTimeline />
       <ShowcaseGrid />
+      <VisualizerTeaser />
       <ParallaxBreak />
       <BrandMarquee />
       <Testimonials />

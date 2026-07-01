@@ -44,3 +44,4 @@ node_modules
 # PDF proof harness output (scripts/pdf-proof.ts)
 .pdf-proof/
 .email-proof/
+real-wall.JPG # keep your personal room photo out of git
