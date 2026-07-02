@@ -13,13 +13,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GoldButton } from '@/components/gold-button';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { attachRenderToLead, listLeads, type StaffLead } from '@/lib/staff';
+import {
+  attachRenderToLead,
+  listLeads,
+  useStaffSession,
+  type StaffLead,
+} from '@/lib/staff';
 
 /* Staff-only: pick the lead this render belongs to. Searches the CRM by
    name or phone; recent leads shown by default. */
 export default function AttachScreen() {
   const router = useRouter();
   const { renderId } = useLocalSearchParams<{ renderId: string }>();
+  const hasSession = useStaffSession() !== null;
 
   const [query, setQuery] = useState('');
   const [leads, setLeads] = useState<StaffLead[]>([]);
@@ -50,7 +56,11 @@ export default function AttachScreen() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+    // hasSession is a dep so a re-sign-in (push /staff, sign in, pop back)
+    // refetches without the user having to touch the search box.
+  }, [query, hasSession]);
+
+  const authError = error !== null && /sign in/i.test(error);
 
   async function handleAttach(lead: StaffLead) {
     if (attaching || !renderId) return;
@@ -94,6 +104,12 @@ export default function AttachScreen() {
           onChangeText={setQuery}
         />
         {error && <Text style={styles.error}>{error}</Text>}
+        {authError && (
+          <GoldButton
+            label="Sign in"
+            onPress={() => router.push('/staff')}
+          />
+        )}
       </View>
 
       {loading ? (
@@ -102,6 +118,7 @@ export default function AttachScreen() {
         <FlatList
           data={leads}
           keyExtractor={(lead) => lead.id}
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.empty}>No leads found.</Text>

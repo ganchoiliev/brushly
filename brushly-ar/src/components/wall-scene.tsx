@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  ViroAmbientLight,
   ViroARPlane,
   ViroARScene,
   ViroDirectionalLight,
@@ -116,12 +117,16 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
       onAnchorRemoved={handleAnchorRemoved}
       onTrackingUpdated={handleTrackingUpdated}
     >
-      {/* AR light estimation supplies ambient; this soft key light exists so
-          satin/gloss sheens catch a specular highlight. */}
+      {/* The ambient light is load-bearing: Viro only forwards the AR light
+          estimate to JS, it never feeds the renderer, and the shader's ambient
+          term comes solely from ViroAmbientLight nodes — without one every
+          Lambert/Blinn/Phong quad renders near-black. The soft key light adds
+          a little directional variance on top. */}
+      <ViroAmbientLight color="#ffffff" intensity={1000} />
       <ViroDirectionalLight
         color="#ffffff"
         direction={[0.3, -1, -0.3]}
-        intensity={300}
+        intensity={200}
       />
       {Object.values(planes).map((plane) => (
         <ViroARPlane key={plane.anchorId} anchorId={plane.anchorId}>

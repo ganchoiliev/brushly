@@ -23,8 +23,18 @@ export interface RenderResult {
   afterUrl: string
 }
 
+/* RN's fetch rejects with a raw TypeError ('Network request failed') when
+   offline — wrap it so only curated copy ever reaches the error pill. */
+async function netFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch {
+    throw new Error('No connection — check your internet and try again.')
+  }
+}
+
 export async function uploadPhoto(session: string, localUri: string): Promise<string> {
-  const res = await fetch(apiUrl('/api/visualizer/upload-url'), {
+  const res = await netFetch(apiUrl('/api/visualizer/upload-url'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId: session, contentType: 'image/jpeg' }),
@@ -38,7 +48,7 @@ export async function uploadPhoto(session: string, localUri: string): Promise<st
 
   // RN's fetch turns a file:// response into a Blob it can re-send as a body.
   const photo = await (await fetch(localUri)).blob()
-  const put = await fetch(signedUrl, {
+  const put = await netFetch(signedUrl, {
     method: 'PUT',
     headers: { 'Content-Type': 'image/jpeg' },
     body: photo,
@@ -54,13 +64,19 @@ export async function requestRender(input: {
   colorId: string
   finish?: string
 }): Promise<RenderResult> {
-  const res = await fetch(apiUrl('/api/visualizer/render'), {
+  const res = await netFetch(apiUrl('/api/visualizer/render'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
   if (!res.ok) {
-    if (res.status === 429) throw new Error('limit_reached')
+    if (res.status === 429) {
+      // reason: 'session_limit' (8/session default) vs 'ip_limit' (30/day).
+      const j = (await res.json().catch(() => ({}))) as { reason?: string }
+      throw new Error(
+        j.reason === 'session_limit' ? 'limit_reached_session' : 'limit_reached_ip',
+      )
+    }
     const j = (await res.json().catch(() => ({}))) as { error?: string }
     throw new Error(j.error || 'Render failed. Please try again.')
   }

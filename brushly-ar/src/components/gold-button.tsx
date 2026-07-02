@@ -1,4 +1,5 @@
 import * as Haptics from 'expo-haptics';
+import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -28,6 +29,9 @@ export function GoldButton({
   style,
 }: GoldButtonProps) {
   const scale = useSharedValue(1);
+  // Throttle rapid double-taps — two router.back() calls in one burst pop
+  // two screens. Ref, not state: must apply within the same JS batch.
+  const lastPress = useRef(0);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.get() }],
@@ -45,6 +49,9 @@ export function GoldButton({
         scale.set(withTiming(1, { duration: 180 }));
       }}
       onPress={() => {
+        const now = Date.now();
+        if (now - lastPress.current < 600) return;
+        lastPress.current = now;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}

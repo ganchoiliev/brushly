@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -49,21 +49,34 @@ export default function ResultScreen() {
     transform: [{ translateX: containerW.get() * progress.get() - 21 }],
   }));
 
-  /* The signed URLs expire — pull the after image into cache once and
-     reuse the local copy for both save and share. expo-file-system /
-     media-library / sharing are lazy-imported: their native classes don't
-     exist in the web target's Node render, and neither action can run
-     before a user tap on a device anyway. */
+  /* The render is stored as result-<id>.png (Gemini returns PNG) — derive
+     extension + MIME from the signed URL's path instead of assuming jpg. */
+  const afterPath = String(params.afterUrl ?? '').split('?')[0];
+  const afterExt = afterPath.endsWith('.jpg') || afterPath.endsWith('.jpeg') ? 'jpg' : 'png';
+  const afterMime = afterExt === 'jpg' ? 'image/jpeg' : 'image/png';
+
+  /* The signed afterUrl expires 10 minutes after render — pull it into
+     cache once and reuse the local copy for save and share. expo-file-system
+     / media-library / sharing are lazy-imported: their native classes don't
+     exist in the web target's Node render. */
   async function downloadAfter(): Promise<string> {
     const { Directory, File, Paths } = await import('expo-file-system');
     const target = new File(
       new Directory(Paths.cache),
-      `brushly-render-${params.renderId}.jpg`,
+      `brushly-render-${params.renderId}.${afterExt}`,
     );
     if (target.exists) return target.uri;
     const downloaded = await File.downloadFileAsync(String(params.afterUrl), target);
     return downloaded.uri;
   }
+
+  /* Prefetch on mount so save/share still work if the client and staff
+     linger past the URL's TTL. Fire-and-forget; the tap paths retry. */
+  useEffect(() => {
+    if (Platform.OS === 'web' || !params.renderId) return;
+    downloadAfter().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per render result
+  }, [params.renderId]);
 
   async function handleSave() {
     setBusy('save');
@@ -95,7 +108,7 @@ export default function ResultScreen() {
         return;
       }
       const uri = await downloadAfter();
-      await Sharing.shareAsync(uri, { mimeType: 'image/jpeg' });
+      await Sharing.shareAsync(uri, { mimeType: afterMime });
     } catch {
       setNotice('Could not share the image. Please try again.');
     } finally {

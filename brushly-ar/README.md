@@ -88,3 +88,8 @@ Notes:
 - `visualizer_renders.lead_id` powers "Attach to lead"; the endpoints are
   `GET /api/staff/leads` and `POST /api/staff/attach-render` on the site,
   authenticated with the staff member's Supabase access token (`is_admin`).
+- Known hardening TODO: the staff Supabase session persists in plaintext
+  AsyncStorage (app sandbox). Android backup extraction is closed off with
+  `android.allowBackup: false`; for defence in depth, migrate to Supabase's
+  documented LargeSecureStore pattern (AES key in expo-secure-store,
+  ciphertext in AsyncStorage) before wide staff rollout.

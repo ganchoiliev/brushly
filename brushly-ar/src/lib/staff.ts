@@ -24,14 +24,18 @@ async function staffFetch(path: `/${string}`, init?: RequestInit): Promise<Respo
   const {
     data: { session },
   } = await supabase.auth.getSession()
-  if (!session) throw new Error('Not signed in.')
-  return fetch(apiUrl(path), {
-    ...init,
-    headers: {
-      ...init?.headers,
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  })
+  if (!session) throw new Error('Your staff session has expired — sign in again.')
+  try {
+    return await fetch(apiUrl(path), {
+      ...init,
+      headers: {
+        ...init?.headers,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    })
+  } catch {
+    throw new Error('No connection — check your internet and try again.')
+  }
 }
 
 export interface StaffLead {

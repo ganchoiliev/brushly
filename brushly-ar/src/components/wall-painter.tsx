@@ -49,23 +49,56 @@ export function WallPainter() {
   // In-flight guard must be a ref, not state — the shutter Pressable can
   // fire from a stale closure while a render is already running.
   const captureInFlight = useRef(false);
+  // The render takes 10-20s; if the user backs out (hardware back / close),
+  // the finished promise must not setState or yank them onto /result.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    // On Android, isARSupportedOnDevice REJECTS with Error('UNSUPPORTED' |
+    // 'UNKNOWN' | 'TRANSIENT') instead of resolving { isARSupported: false }
+    // (react-viro 2.57 ViroUtils.js) — so support has to be derived from the
+    // rejection message, with one retry for the transient states.
+    async function checkSupport(): Promise<boolean> {
       try {
         const support = await isARSupportedOnDevice();
-        if (cancelled) return;
-        if (!support.isARSupported) {
-          setPhase('unsupported');
-          return;
+        return support.isARSupported;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message === 'UNSUPPORTED') return false;
+        if (message === 'TRANSIENT' || message === 'UNKNOWN') {
+          await delay(1500);
+          try {
+            return (await isARSupportedOnDevice()).isARSupported;
+          } catch (retryError) {
+            const retryMessage =
+              retryError instanceof Error ? retryError.message : String(retryError);
+            return retryMessage !== 'UNSUPPORTED';
+          }
         }
+        // Unrecognised pre-check failure: don't brick the screen — let the
+        // AR session itself surface the problem.
+        return true;
+      }
+    }
+    (async () => {
+      const supported = await checkSupport();
+      if (cancelled) return;
+      if (!supported) {
+        setPhase('unsupported');
+        return;
+      }
+      try {
         const granted = await requestRequiredPermissions(['camera']);
         if (cancelled) return;
         setPhase(granted.camera === false ? 'denied' : 'ready');
       } catch {
-        // If the pre-checks themselves fail, let the AR session make the
-        // OS-level permission prompt — never brick the screen on a check.
         if (!cancelled) setPhase('ready');
       }
     })();
@@ -119,6 +152,7 @@ export function WallPainter() {
         finish,
       });
 
+      if (!alive.current) return;
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.push({
         pathname: '/result',
@@ -131,16 +165,21 @@ export function WallPainter() {
         },
       });
     } catch (error) {
+      if (!alive.current) return;
       const message = error instanceof Error ? error.message : '';
       setRenderError(
-        message === 'limit_reached'
-          ? 'You’ve reached today’s preview limit — try again tomorrow.'
-          : message || 'Something went wrong. Please try again.',
+        message === 'limit_reached_session'
+          ? 'That’s the preview limit for this session — try again in a little while.'
+          : message === 'limit_reached' || message === 'limit_reached_ip'
+            ? 'You’ve reached today’s preview limit — try again tomorrow.'
+            : message || 'Something went wrong. Please try again.',
       );
     } finally {
-      setOverlayHidden(false);
-      setRendering(false);
       captureInFlight.current = false;
+      if (alive.current) {
+        setOverlayHidden(false);
+        setRendering(false);
+      }
     }
   }
 
@@ -328,7 +367,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    // Above the RenderProgress overlay (zIndex 20) — closing mid-render is
+    // the only cancel affordance, especially on iOS with no hardware back.
+    zIndex: 30,
   },
   closeGlyph: {
     fontFamily: Fonts.bodyMedium,
