@@ -4,7 +4,7 @@ import {
   adaptInputSize,
   hexToRgb,
   linearToSrgb,
-  maskedMeanLuminance,
+  maskedMedianLuminance,
   motionBlend,
   motionScore,
   recolorPixels,
@@ -94,7 +94,7 @@ describe('motion', () => {
   })
 })
 
-describe('maskedMeanLuminance', () => {
+describe('maskedMedianLuminance', () => {
   it('measures only where the mask is on', () => {
     // Left half white, right half black; mask covers only the left half.
     const w = 8
@@ -107,14 +107,30 @@ describe('maskedMeanLuminance', () => {
       }
     const alpha = new Float32Array(w * h)
     for (let y = 0; y < h; y++) for (let x = 0; x < w / 2; x++) alpha[y * w + x] = 1
-    expect(maskedMeanLuminance(px, w, h, alpha, w, h)).toBeCloseTo(1, 3)
+    expect(maskedMedianLuminance(px, w, h, alpha, w, h)).toBeCloseTo(1, 3)
   })
 
   it('returns null under ~2% coverage', () => {
     const px = rgbaFill(8, 8, [255, 255, 255])
     const alpha = new Float32Array(64)
     alpha[0] = 1 // 1/64 ≈ 1.6%
-    expect(maskedMeanLuminance(px, 8, 8, alpha, 8, 8)).toBeNull()
+    expect(maskedMedianLuminance(px, 8, 8, alpha, 8, 8)).toBeNull()
+  })
+
+  it('is not dragged down by soft bleed onto dark furniture', () => {
+    // Bright wall confidently masked; dark furniture only bleed-masked at
+    // partial alpha. The reference must stay at the wall's brightness — a
+    // mean would sink and wash the recolour out.
+    const w = 10
+    const px = rgbaFill(w, 1, [230, 230, 230])
+    for (let x = 6; x < w; x++) {
+      const p = x * 4
+      px[p] = px[p + 1] = px[p + 2] = 20 // dark cabinets
+    }
+    const alpha = new Float32Array(w).fill(1)
+    for (let x = 6; x < w; x++) alpha[x] = 0.55 // bleed — below confidence cut
+    const wallY = relativeLuminance(srgbToLinear(230), srgbToLinear(230), srgbToLinear(230))
+    expect(maskedMedianLuminance(px, w, 1, alpha, w, 1)).toBeCloseTo(wallY, 3)
   })
 })
 
@@ -153,6 +169,16 @@ describe('recolorPixels', () => {
     const px2 = rgbaFill(1, 1, [50, 60, 70])
     recolorPixels(px2, 1, 1, fullAlpha(1), [255, 0, 0], 0.5, { tintStrength: 0 })
     expect([px2[0], px2[1], px2[2]]).toEqual([50, 60, 70])
+  })
+
+  it('washes saturated paints toward neutral in overbright areas instead of going neon', () => {
+    // A bright patch (far above the wall average) painted Red Earth: diffuse
+    // is capped, the excess arrives as neutral white — so green/blue must
+    // rise substantially instead of red pegging while the others stay low.
+    const px = rgbaFill(1, 1, [240, 240, 240])
+    recolorPixels(px, 1, 1, fullAlpha(1), [176, 106, 80], 0.15)
+    expect(px[1]).toBeGreaterThan(200) // green washed up (was ~170 under pure scaling)
+    expect(px[0] - px[2]).toBeLessThan(60) // channel spread collapsed — no neon
   })
 
   it('gloss finishes keep more of a specular highlight than matte', () => {

@@ -8,6 +8,8 @@ import {
   releaseSession,
   getActiveProvider,
   getActiveModel,
+  INTERIOR_CLASSES,
+  EXTERIOR_CLASSES,
   type ExecutionProvider,
 } from '@/lib/visualizer/segmentation'
 import { DEFAULT_TUNING } from '@/lib/visualizer/liveMath'
@@ -21,7 +23,12 @@ function providerOverride(): ExecutionProvider[] | undefined {
   return ep === 'wasm' || ep === 'webgl' || ep === 'webgpu' ? [ep] : undefined
 }
 
-const SAMPLES = ['/img/interior.webp', '/img/modern_kitchen.webp', '/img/hallway.webp']
+const SAMPLES = [
+  '/img/interior.webp',
+  '/img/modern_kitchen.webp',
+  '/img/hallway.webp',
+  '/img/exterior.webp',
+]
 const GOLD: [number, number, number] = [200, 169, 110]
 const BLEND = 0.55
 const MAX_CANVAS_WIDTH = 900
@@ -59,6 +66,8 @@ export default function SegmentationDebug() {
   const [mode, setMode] = useState<CompositorMode>('auto')
   const [showMask, setShowMask] = useState(false)
   const [simFinish, setSimFinish] = useState<string>(FINISHES.interior[0])
+  // Interior walls vs exterior facade — applies to the still path AND the sim.
+  const [target, setTarget] = useState<'interior' | 'exterior'>('interior')
   const [feather, setFeather] = useState(DEFAULT_TUNING.feather)
   const [temporalBase, setTemporalBase] = useState(DEFAULT_TUNING.temporalBase)
   const [tintStrength, setTintStrength] = useState(DEFAULT_TUNING.tintStrength)
@@ -81,6 +90,7 @@ export default function SegmentationDebug() {
       tintStrength: showMask ? 1 : tintStrength,
       edgeSigma,
     },
+    targetClasses: target === 'exterior' ? EXTERIOR_CLASSES : INTERIOR_CLASSES,
     compositorMode: mode,
     debugAllowAnyProvider: true,
     debugDisableFpsGuard: true,
@@ -188,7 +198,10 @@ export default function SegmentationDebug() {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
       const t0 = performance.now()
-      const { mask, width, height } = await segmentWall(canvas)
+      const { mask, width, height } = await segmentWall(
+        canvas,
+        target === 'exterior' ? EXTERIOR_CLASSES : INTERIOR_CLASSES,
+      )
       const inferMs = Math.round(performance.now() - t0)
 
       const frame = ctx.getImageData(0, 0, width, height)
@@ -313,7 +326,9 @@ export default function SegmentationDebug() {
                 <b className="text-brushly-gold">{simStats.fps}fps</b> · input{' '}
                 <b className="text-brushly-gold">{simStats.inputSize}</b> · compositor{' '}
                 <b className="text-brushly-gold">{simStats.compositor ?? '—'}</b> · draw{' '}
-                <b className="text-brushly-gold">{simStats.drawFps}fps</b>
+                <b className="text-brushly-gold">{simStats.drawFps}fps</b> · wallLum{' '}
+                <b className="text-brushly-gold">{simStats.wallLum}</b> · maskConf{' '}
+                <b className="text-brushly-gold">{simStats.maskConfidence}</b>
               </span>
             )}
           </span>
@@ -324,6 +339,24 @@ export default function SegmentationDebug() {
             switching webgl↔2d must mount a fresh element. */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
+            Target
+          </span>
+          {(['interior', 'exterior'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTarget(t)}
+              aria-pressed={target === t}
+              className={`border px-3 py-1.5 font-body text-[12px] transition-colors duration-200 ${
+                target === t
+                  ? 'border-brushly-gold bg-brushly-gold/10 text-brushly-cream'
+                  : 'border-brushly-gold/25 text-brushly-cream/60 hover:border-brushly-gold/60'
+              }`}
+            >
+              {t === 'interior' ? 'Interior walls' : 'Exterior facade'}
+            </button>
+          ))}
+          <span className="ml-4 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
             Compositor
           </span>
           {MODES.map((m) => (

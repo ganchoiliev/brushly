@@ -6,6 +6,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
+  EXTERIOR_CLASSES,
   dispose,
   getActiveModel,
   getActiveProvider,
@@ -32,13 +33,19 @@ vi.mock('onnxruntime-web/all', () => {
     }
   }
   // Fully-convolutional stand-in: input [1,3,S,S] → logits [1,150,S/8,S/8],
-  // wall (class 0) wins on the left half of every row.
+  // wall (class 0) wins on the left half of every row and building (class 1)
+  // on the right half — so both the interior and exterior target sets are
+  // assertable, including that they exclude each other.
   const makeLogits = (S: number) => {
     const out = S / 8
     const data = new Float32Array(150 * out * out)
+    const plane = out * out
     if (!h.degenerate) {
       for (let y = 0; y < out; y++)
-        for (let x = 0; x < out; x++) data[y * out + x] = x < out / 2 ? 5 : -5
+        for (let x = 0; x < out; x++) {
+          data[y * out + x] = x < out / 2 ? 5 : -5 // wall
+          data[plane + y * out + x] = x < out / 2 ? -5 : 5 // building
+        }
     }
     return new Tensor('float32', data, [1, 150, out, out])
   }
@@ -123,9 +130,23 @@ describe('segmentWallMargin (live path)', () => {
     expect(width).toBe(32)
     expect(height).toBe(32)
     expect(margin.length).toBe(32 * 32)
-    // signed margins survive (no thresholding): +5 on wall, -5 off wall
+    // signed margins survive (no thresholding): positive on wall, negative
+    // where building (a non-target class) wins
     expect(margin[16 * 32 + 4]).toBeGreaterThan(0)
     expect(margin[16 * 32 + 28]).toBeLessThan(0)
+  })
+
+  it('EXTERIOR_CLASSES targets the facade instead of interior walls', async () => {
+    const { margin } = await segmentWallMargin(fakeSource(640, 480), 256, EXTERIOR_CLASSES)
+    // Building wins on the right half; wall (now a NON-target) wins the left.
+    expect(margin[16 * 32 + 28]).toBeGreaterThan(0)
+    expect(margin[16 * 32 + 4]).toBeLessThan(0)
+  })
+
+  it('segmentWall with EXTERIOR_CLASSES masks the building half', async () => {
+    const { mask } = await segmentWall(fakeSource(100, 80), EXTERIOR_CLASSES)
+    expect(mask[40 * 100 + 90]).toBe(1)
+    expect(mask[40 * 100 + 10]).toBe(0)
   })
 })
 

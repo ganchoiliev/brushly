@@ -25,6 +25,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import {
+  INTERIOR_CLASSES,
   acquireSession,
   getActiveProvider,
   lazyInit,
@@ -35,7 +36,7 @@ import {
   DEFAULT_TUNING,
   adaptInputSize,
   hexToRgb,
-  maskedMeanLuminance,
+  maskedMedianLuminance,
   motionBlend,
   motionScore,
   smoothMargin,
@@ -62,6 +63,10 @@ export interface LiveStats {
   compositor: 'webgl' | '2d' | null
   /** Display-loop rate over the last second, fps. */
   drawFps: number
+  /** Wall reference luminance the recolour is using (linear, 0..1). */
+  wallLum: number
+  /** Median smoothed alpha over wall-ish cells — how confident the mask is. */
+  maskConfidence: number
 }
 
 const MIN_INTERVAL_MS = 100 // cap the model loop at ~10fps
@@ -128,6 +133,8 @@ interface Options {
   colorHex: string
   /** Paint finish label — drives specular preservation in the WebGL path. */
   finish?: string
+  /** ADE20K target classes: INTERIOR_CLASSES (walls) or EXTERIOR_CLASSES. */
+  targetClasses?: readonly number[]
   onStats?: (stats: LiveStats) => void
   /** Overrides for the smoothing/recolour constants (debug page sliders). */
   tuning?: Partial<LiveTuning>
@@ -145,6 +152,7 @@ export default function useLiveWallPreview({
   active,
   colorHex,
   finish,
+  targetClasses = INTERIOR_CLASSES,
   onStats,
   tuning,
   compositorMode = 'auto',
@@ -160,6 +168,8 @@ export default function useLiveWallPreview({
   const colorRef = useRef<[number, number, number]>(hexToRgb(colorHex))
   const finishRef = useRef(finish)
   finishRef.current = finish
+  const targetsRef = useRef(targetClasses)
+  targetsRef.current = targetClasses
   const onStatsRef = useRef(onStats)
   onStatsRef.current = onStats
   const tuningRef = useRef<LiveTuning>({ ...DEFAULT_TUNING, ...tuning })
@@ -256,6 +266,10 @@ export default function useLiveWallPreview({
       // the compile spike of the first 320 pass reads as "too slow" and
       // permanently locks the upgrade out (or worse, trips the fail guard).
       let skipSamples = 0
+      // Switching target classes (interior walls ↔ exterior facade) changes
+      // what the mask MEANS — EMA-blending across the switch ghosts the old
+      // surface, so the temporal history resets.
+      let lastTargetsKey = ''
       while (!stopped) {
         const video = videoRef.current
         if (!video || video.readyState < 2 || !video.videoWidth || document.hidden) {
@@ -283,7 +297,13 @@ export default function useLiveWallPreview({
             hasPrevLuma,
           )
           hasPrevLuma = true
-          const { margin, width, height } = await segmentWallMargin(grab, inputSize)
+          const targets = targetsRef.current
+          const targetsKey = targets.join(',')
+          if (targetsKey !== lastTargetsKey) {
+            smoothRef.current = null
+            lastTargetsKey = targetsKey
+          }
+          const { margin, width, height } = await segmentWallMargin(grab, inputSize, targets)
           if (stopped) return
           const smooth = smoothMargin(
             margin,
@@ -295,7 +315,7 @@ export default function useLiveWallPreview({
           )
           smoothRef.current = smooth
           wallLum =
-            maskedMeanLuminance(frame.data, inputSize, inputSize, smooth.data, width, height) ??
+            maskedMedianLuminance(frame.data, inputSize, inputSize, smooth.data, width, height) ??
             wallLum
           if (!compositing) {
             if (!startCompositor()) {
@@ -324,12 +344,16 @@ export default function useLiveWallPreview({
             durations.push(dt)
             if (durations.length > WINDOW) durations.shift()
             const avg = durations.reduce((a, b) => a + b, 0) / durations.length
+            // Mask-confidence probe: median smoothed alpha over wall-ish cells.
+            const conf = smooth.data.filter((v) => v > 0.5).sort()
             onStatsRef.current?.({
               inferMs: Math.round(dt),
               fps: Math.round(10000 / avg) / 10,
               inputSize,
               compositor: compositorRef.current?.kind ?? null,
               drawFps: drawFpsRef.current,
+              wallLum: Math.round(wallLum * 100) / 100,
+              maskConfidence: conf.length ? Math.round(conf[conf.length >> 1] * 100) / 100 : 0,
             })
             if (durations.length >= WINDOW) {
               if (!debugDisableFpsGuard && avg > FAIL_AVG_MS) {

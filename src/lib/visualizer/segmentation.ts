@@ -28,9 +28,14 @@ const MODEL_INT8_URL = '/models/wall-ade20k-int8.onnx'
 const MODEL_FP32_URL = '/models/wall-ade20k-fp32.onnx'
 const INPUT_SIZE = 512
 const NUM_CLASSES = 150
-const WALL_CLASS = 0 // ADE20K 'wall'
 const MEAN = [0.485, 0.456, 0.406]
 const STD = [0.229, 0.224, 0.225]
+
+// ADE20K class indices (0-based). Interior painting targets 'wall'; exterior
+// targets the building facade classes — pointing the interior mask at a house
+// front finds almost nothing, because facades classify as building/house.
+export const INTERIOR_CLASSES: readonly number[] = [0] // wall
+export const EXTERIOR_CLASSES: readonly number[] = [1, 25] // building;edifice, house
 
 export interface WallMask {
   /** 1 = wall, 0 = not wall; length = width * height (source resolution). */
@@ -235,22 +240,32 @@ function toInputTensorData(
 }
 
 /**
- * Per-pixel margin of the wall class over the best other class, at the model's
- * output resolution. margin > 0 ⇔ argmax == wall, but interpolating the margin
- * (instead of a hard mask) gives smooth boundaries when upsampling.
+ * Per-pixel margin of the best TARGET class over the best other class, at the
+ * model's output resolution. margin > 0 ⇔ argmax ∈ targets, but interpolating
+ * the margin (instead of a hard mask) gives smooth boundaries when upsampling.
  */
-function wallMargin(logits: Float32Array, outW: number, outH: number): Float32Array {
+function classMargin(
+  logits: Float32Array,
+  outW: number,
+  outH: number,
+  targets: readonly number[],
+): Float32Array {
   const plane = outW * outH
   const margin = new Float32Array(plane)
+  const isTarget = new Uint8Array(NUM_CLASSES)
+  for (const c of targets) isTarget[c] = 1
   for (let i = 0; i < plane; i++) {
-    const wall = logits[WALL_CLASS * plane + i]
+    let target = -Infinity
     let best = -Infinity
     for (let c = 0; c < NUM_CLASSES; c++) {
-      if (c === WALL_CLASS) continue
       const v = logits[c * plane + i]
-      if (v > best) best = v
+      if (isTarget[c]) {
+        if (v > target) target = v
+      } else if (v > best) {
+        best = v
+      }
     }
-    margin[i] = wall - best
+    margin[i] = target - best
   }
   return margin
 }
@@ -286,6 +301,7 @@ function upsampleToMask(
 async function runMargin(
   source: HTMLCanvasElement | ImageData,
   inputSize: number,
+  targets: readonly number[],
 ): Promise<{ margin: Float32Array; outW: number; outH: number }> {
   // Everything — session acquisition INCLUDED — runs inside the tracked
   // promise, and the chain is extended synchronously at call time. If any
@@ -315,15 +331,19 @@ async function runMargin(
     ),
   )
   const { data, outH, outW } = await work
-  return { margin: wallMargin(data, outW, outH), outW, outH }
+  return { margin: classMargin(data, outW, outH, targets), outW, outH }
 }
 
 /**
- * Runs ADE20K segmentation on a still and returns a binary wall mask at the
- * source's resolution (1 = wall). Initialises the model on first call.
+ * Runs ADE20K segmentation on a still and returns a binary mask of the target
+ * classes at the source's resolution (1 = target). Defaults to interior walls;
+ * pass EXTERIOR_CLASSES for building facades. Initialises the model on first call.
  */
-export async function segmentWall(source: HTMLCanvasElement | ImageData): Promise<WallMask> {
-  const { margin, outW, outH } = await runMargin(source, INPUT_SIZE)
+export async function segmentWall(
+  source: HTMLCanvasElement | ImageData,
+  targets: readonly number[] = INTERIOR_CLASSES,
+): Promise<WallMask> {
+  const { margin, outW, outH } = await runMargin(source, INPUT_SIZE, targets)
   const mask = upsampleToMask(margin, outW, outH, source.width, source.height)
   return { mask, width: source.width, height: source.height }
 }
@@ -345,7 +365,8 @@ export interface WallMargin {
 export async function segmentWallMargin(
   source: HTMLCanvasElement | ImageData,
   inputSize: number,
+  targets: readonly number[] = INTERIOR_CLASSES,
 ): Promise<WallMargin> {
-  const { margin, outW, outH } = await runMargin(source, inputSize)
+  const { margin, outW, outH } = await runMargin(source, inputSize, targets)
   return { margin, width: outW, height: outH }
 }

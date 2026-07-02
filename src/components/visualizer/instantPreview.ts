@@ -10,10 +10,18 @@
 // falls back to the plain photo backdrop. Runs on whatever provider is
 // available — one 512 pass is fine even on wasm.
 
-import { acquireSession, releaseSession, segmentWallMargin } from '@/lib/visualizer/segmentation'
 import {
+  EXTERIOR_CLASSES,
+  INTERIOR_CLASSES,
+  acquireSession,
+  releaseSession,
+  segmentWallMargin,
+} from '@/lib/visualizer/segmentation'
+import type { VisualizerService } from '@/lib/supabase/types'
+import {
+  DEFAULT_TUNING,
   hexToRgb,
-  maskedMeanLuminance,
+  maskedMedianLuminance,
   recolorPixels,
   smoothMargin,
   specPreserveForFinish,
@@ -31,6 +39,7 @@ export async function makeInstantPreview(
   file: File,
   colorHex: string,
   finish: string,
+  service: VisualizerService = 'interior',
 ): Promise<string | null> {
   acquireSession()
   try {
@@ -51,11 +60,19 @@ export async function makeInstantPreview(
     ctx.drawImage(bitmap, 0, 0, w, h)
     bitmap.close?.()
 
-    const { margin, width: mw, height: mh } = await segmentWallMargin(canvas, STILL_INPUT)
+    const { margin, width: mw, height: mh } = await segmentWallMargin(
+      canvas,
+      STILL_INPUT,
+      service === 'exterior' ? EXTERIOR_CLASSES : INTERIOR_CLASSES,
+    )
     // blend=1: single frame, no temporal history — just the feathered alpha.
-    const smooth = smoothMargin(margin, mw, mh, null, 1.5, 1)
+    // Same feather as the live overlay (DEFAULT_TUNING.feather) so the instant
+    // preview reads at the identical paint saturation the user just saw —
+    // ALPHA_GAIN is calibrated against this feather, and a looser one leaves
+    // the wall bleeding through (diluted colour).
+    const smooth = smoothMargin(margin, mw, mh, null, DEFAULT_TUNING.feather, 1)
     const frame = ctx.getImageData(0, 0, w, h)
-    const wallLum = maskedMeanLuminance(frame.data, w, h, smooth.data, mw, mh) ?? 0.5
+    const wallLum = maskedMedianLuminance(frame.data, w, h, smooth.data, mw, mh) ?? 0.5
     const alpha = upsampleAlphaBilinear(smooth.data, mw, mh, w, h)
     recolorPixels(frame.data, w, h, alpha, hexToRgb(colorHex), wallLum, {
       specPreserve: specPreserveForFinish(finish),

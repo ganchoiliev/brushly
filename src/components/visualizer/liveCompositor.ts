@@ -123,12 +123,18 @@ void main() {
     }
   }
   alpha = wsum > 1e-5 ? alpha / wsum : texture(uMask, suv).r;
+  alpha = min(alpha * 1.06, 1.0); // confidence gain — keep in sync with liveMath.ALPHA_GAIN
 
-  // Luminance-transfer recolour (see liveMath.recolorPixels).
+  // Luminance-transfer recolour (see liveMath.recolorPixels). Diffuse is
+  // capped at ~1.25× the wall average — beyond that, brightness is light
+  // washing over the surface and must be added as NEUTRAL white, or
+  // saturated paints (reds especially) scale into neon.
   float denom = max(uWallLum, 0.02);
   float shading = min(y / denom, 2.5);
+  float diffuse = min(shading, 1.25);
+  float wash = (shading - diffuse) * 0.55;
   float highlight = smoothstep(denom * 1.6, denom * 2.4, y) * uSpec * 0.35;
-  vec3 recol = uPaint * shading + vec3(highlight);
+  vec3 recol = uPaint * diffuse + vec3(wash + highlight);
   vec3 outLin = mix(lin, recol, clamp(alpha * uTint, 0.0, 1.0));
   outColor = vec4(pow(outLin, vec3(1.0 / 2.2)), 1.0);
 }`

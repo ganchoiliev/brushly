@@ -25,12 +25,23 @@ export interface LiveTuning {
 }
 
 export const DEFAULT_TUNING: LiveTuning = {
-  feather: 1.5,
+  // 0.9, not the original 1.5: real ADE20K wall margins sit around +2..3
+  // logits, and sigmoid(2.5/1.5)=0.84 left 16% of the original wall bleeding
+  // through everywhere — paint looked diluted (terracotta read as salmon).
+  // Edge smoothness is the JBU/bilinear upsample's job, not the feather's.
+  feather: 0.9,
   temporalBase: 0.35,
   temporalMax: 0.85,
   tintStrength: 1,
   edgeSigma: 0.08,
 }
+
+/**
+ * Confidence gain applied to the mask alpha at consumption (shader + CPU):
+ * pushes confidently-wall cells the last few percent to fully opaque paint
+ * while leaving genuine edge feathering intact.
+ */
+export const ALPHA_GAIN = 1.06
 
 /* ---------------- colour primitives ---------------- */
 
@@ -143,11 +154,16 @@ export function motionBlend(motion: number, tuning: LiveTuning): number {
 /* ---------------- luminance statistics ---------------- */
 
 /**
- * Mask-weighted mean LINEAR luminance of an RGBA frame, sampled at the
- * alpha's (coarser) resolution. Returns null when the mask covers almost
- * nothing — the caller should hold its previous estimate.
+ * Wall reference luminance: the alpha-weighted MEDIAN linear luminance over
+ * confidently-masked cells, sampled at the alpha's (coarser) resolution.
+ * Median over confident cells, not a mean over everything: the soft mask
+ * always bleeds a little onto furniture at partial alpha, and on a light
+ * wall with dark furniture a mean gets dragged down — which inflates the
+ * per-pixel shading ratio and washes the whole wall out (salmon instead of
+ * terracotta). Returns null when the mask covers almost nothing — the
+ * caller should hold its previous estimate.
  */
-export function maskedMeanLuminance(
+export function maskedMedianLuminance(
   rgba: Uint8ClampedArray,
   pw: number,
   ph: number,
@@ -155,24 +171,39 @@ export function maskedMeanLuminance(
   aw: number,
   ah: number,
 ): number | null {
-  let sum = 0
+  const samples: { y: number; w: number }[] = []
   let weight = 0
   for (let y = 0; y < ah; y++) {
     const py = Math.min(ph - 1, Math.floor(((y + 0.5) * ph) / ah))
     for (let x = 0; x < aw; x++) {
       const a = alpha[y * aw + x]
-      if (a < 0.05) continue
+      if (a < 0.6) continue // low-confidence cells are usually bleed, not wall
       const px = Math.min(pw - 1, Math.floor(((x + 0.5) * pw) / aw))
       const p = (py * pw + px) * 4
-      sum +=
-        a *
-        relativeLuminance(srgbToLinear(rgba[p]), srgbToLinear(rgba[p + 1]), srgbToLinear(rgba[p + 2]))
+      samples.push({
+        y: relativeLuminance(
+          srgbToLinear(rgba[p]),
+          srgbToLinear(rgba[p + 1]),
+          srgbToLinear(rgba[p + 2]),
+        ),
+        w: a,
+      })
       weight += a
     }
   }
   // Under ~2% coverage the estimate is dominated by misclassified pixels.
   if (weight < aw * ah * 0.02) return null
-  return sum / weight
+  samples.sort((s, t) => s.y - t.y)
+  // 60th percentile, not the median: wall luminance distributions skew
+  // bright (lit wall + darker corners), and anchoring slightly above centre
+  // puts the TYPICAL lit wall pixel at shading ≈ 1 — i.e. exactly the swatch
+  // colour — instead of rendering the whole wall ~20% over-bright.
+  let cum = 0
+  for (const s of samples) {
+    cum += s.w
+    if (cum >= weight * 0.6) return s.y
+  }
+  return samples[samples.length - 1].y
 }
 
 /* ---------------- recolour (CPU reference of the shader) ---------------- */
@@ -205,7 +236,7 @@ export function recolorPixels(
   const pb = srgbToLinear(paint[2])
   const denom = Math.max(wallLum, 0.02)
   for (let i = 0; i < alpha.length; i++) {
-    const a = alpha[i] * tint
+    const a = Math.min(alpha[i] * ALPHA_GAIN, 1) * tint
     if (a < 0.004) continue
     const p = i * 4
     const lr = srgbToLinear(rgba[p])
@@ -213,12 +244,18 @@ export function recolorPixels(
     const lb = srgbToLinear(rgba[p + 2])
     const y = relativeLuminance(lr, lg, lb)
     const shading = Math.min(y / denom, 2.5)
+    // Diffuse reflection is capped by the paint's albedo: scaling chroma past
+    // ~1.25× the wall average turns saturated paints (reds especially) neon.
+    // Brightness beyond the cap is light washing over the surface — add it as
+    // NEUTRAL white, which is how a sunlit patch on red paint actually looks.
+    const diffuse = Math.min(shading, 1.25)
+    const wash = (shading - diffuse) * 0.55
     // Specular preservation: luminance well above the wall average is a
     // highlight — glossier finishes keep more of it on top of the paint.
     const highlight = smoothstep(denom * 1.6, denom * 2.4, y) * spec * 0.35
-    const rr = pr * shading + highlight
-    const rg = pg * shading + highlight
-    const rb = pb * shading + highlight
+    const rr = pr * diffuse + wash + highlight
+    const rg = pg * diffuse + wash + highlight
+    const rb = pb * diffuse + wash + highlight
     rgba[p] = linearToSrgb(lr + (rr - lr) * a)
     rgba[p + 1] = linearToSrgb(lg + (rg - lg) * a)
     rgba[p + 2] = linearToSrgb(lb + (rb - lb) * a)

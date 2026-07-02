@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import type { VisualizerService } from '@/lib/supabase/types'
 import { FINISHES, PALETTE_BY_SPECTRUM, SERVICE_LABELS, getColor } from '@/lib/visualizer/palette'
+import { EXTERIOR_CLASSES, INTERIOR_CLASSES } from '@/lib/visualizer/segmentation'
 import { trackEvent } from '@/lib/gtag'
 import useLiveWallPreview, { coverCrop } from './useLiveWallPreview'
 
@@ -54,6 +55,10 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
     active: state === 'live',
     colorHex: liveColor.hex,
     finish,
+    // Exterior mode paints the building facade, not interior walls — the
+    // ADE20K classes differ, and pointing the wall mask at a house front
+    // finds almost nothing.
+    targetClasses: service === 'exterior' ? EXTERIOR_CLASSES : INTERIOR_CLASSES,
   })
 
   useEffect(() => {
