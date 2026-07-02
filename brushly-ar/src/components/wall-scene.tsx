@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ViroARPlane,
   ViroARScene,
+  ViroDirectionalLight,
   ViroMaterials,
   ViroQuad,
   ViroTrackingStateConstants,
@@ -10,19 +11,11 @@ import {
   type ViroTrackingState,
 } from '@reactvision/react-viro';
 
-import { SWATCHES, wallMaterialName } from '@/constants/swatches';
+import { WALL_MATERIALS, wallMaterialName, type Sheen } from '@/lib/materials';
 
-/* One translucent material per swatch. Lambert shading lets ARKit/ARCore's
-   estimated scene light shade the tint, which reads far more like paint
-   than a flat unlit overlay. Registered once at module load. */
-ViroMaterials.createMaterials(
-  Object.fromEntries(
-    SWATCHES.map((s) => [
-      wallMaterialName(s.id),
-      { diffuseColor: s.hex, lightingModel: 'Lambert' as const },
-    ]),
-  ),
-);
+/* One material per (colour, sheen) pair — switching colour or finish
+   re-materials every wall quad instantly. Registered once at module load. */
+ViroMaterials.createMaterials(WALL_MATERIALS);
 
 const WALL_OPACITY = 0.6;
 
@@ -35,6 +28,7 @@ interface TrackedPlane {
 
 export interface WallSceneProps {
   selectedColorId: string;
+  sheen: Sheen;
   onWallCountChanged: (count: number) => void;
   onTrackingReady: (ready: boolean) => void;
 }
@@ -64,7 +58,8 @@ function asTrackedPlane(anchor: ViroAnchor): TrackedPlane | null {
 export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
   const appProps =
     props.arSceneNavigator?.viroAppProps ?? props.sceneNavigator?.viroAppProps;
-  const selectedColorId = appProps?.selectedColorId ?? SWATCHES[0].id;
+  const selectedColorId = appProps?.selectedColorId ?? 'sage-green';
+  const sheen = appProps?.sheen ?? 'matte';
   const onWallCountChanged = appProps?.onWallCountChanged;
   const onTrackingReady = appProps?.onTrackingReady;
 
@@ -107,7 +102,7 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
     onWallCountChanged?.(wallCount);
   }, [wallCount, onWallCountChanged]);
 
-  const material = wallMaterialName(selectedColorId);
+  const material = wallMaterialName(selectedColorId, sheen);
 
   return (
     <ViroARScene
@@ -117,6 +112,13 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
       onAnchorRemoved={handleAnchorRemoved}
       onTrackingUpdated={handleTrackingUpdated}
     >
+      {/* AR light estimation supplies ambient; this soft key light exists so
+          satin/gloss sheens catch a specular highlight. */}
+      <ViroDirectionalLight
+        color="#ffffff"
+        direction={[0.3, -1, -0.3]}
+        intensity={300}
+      />
       {Object.values(planes).map((plane) => (
         <ViroARPlane key={plane.anchorId} anchorId={plane.anchorId}>
           {/* Plane anchors have +Y normals in local space; -90° about X lays

@@ -8,22 +8,31 @@ import {
   requestRequiredPermissions,
 } from '@reactvision/react-viro';
 
+import { GoldButton } from '@/components/gold-button';
+import { LooksRow } from '@/components/looks-row';
+import { ServiceFinishBar } from '@/components/service-finish-bar';
 import { SwatchRow } from '@/components/swatch-row';
 import WallScene, { type WallSceneProps } from '@/components/wall-scene';
-import { DEFAULT_SWATCH_ID } from '@/constants/swatches';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { GoldButton } from '@/components/gold-button';
+import { sheenForFinish } from '@/lib/materials';
+import { FINISHES, type VisualizerService } from '@/lib/palette';
 
 type Phase = 'checking' | 'unsupported' | 'denied' | 'ready';
+type PickerMode = 'colours' | 'looks';
 
 /* Full-bleed AR wall painter: camera passthrough, vertical-plane detection,
-   live colour quads, swatch picker. Native only — see wall-painter.web.tsx. */
+   live colour quads, palette + service/finish/Looks controls.
+   Native only — see wall-painter.web.tsx. */
 export function WallPainter() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
   const [phase, setPhase] = useState<Phase>('checking');
-  const [selectedId, setSelectedId] = useState(DEFAULT_SWATCH_ID);
+  const [service, setService] = useState<VisualizerService>('interior');
+  const [finish, setFinish] = useState<string>(FINISHES.interior[0]);
+  const [colorId, setColorId] = useState('sage-green');
+  const [lookId, setLookId] = useState<string | null>(null);
+  const [pickerMode, setPickerMode] = useState<PickerMode>('colours');
   const [trackingReady, setTrackingReady] = useState(false);
   const [wallCount, setWallCount] = useState(0);
 
@@ -53,11 +62,12 @@ export function WallPainter() {
 
   const viroAppProps: WallSceneProps = useMemo(
     () => ({
-      selectedColorId: selectedId,
+      selectedColorId: colorId,
+      sheen: sheenForFinish(finish),
       onWallCountChanged: setWallCount,
       onTrackingReady: setTrackingReady,
     }),
-    [selectedId],
+    [colorId, finish],
   );
 
   if (phase === 'checking') {
@@ -118,10 +128,60 @@ export function WallPainter() {
             <Text style={styles.hintText}>{hint}</Text>
           </View>
         )}
-        <SwatchRow
-          selectedId={selectedId}
-          onSelect={(swatch) => setSelectedId(swatch.id)}
+
+        <ServiceFinishBar
+          service={service}
+          finish={finish}
+          onServiceChange={(next) => {
+            setService(next);
+            setFinish(FINISHES[next][0]);
+            setLookId(null);
+          }}
+          onFinishChange={(next) => {
+            setFinish(next);
+            setLookId(null);
+          }}
         />
+
+        <View style={styles.modeRow}>
+          {(['colours', 'looks'] as PickerMode[]).map((mode) => {
+            const active = pickerMode === mode;
+            return (
+              <Pressable
+                key={mode}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => setPickerMode(mode)}
+                style={[styles.modeTab, active && styles.modeTabActive]}
+              >
+                <Text style={[styles.modeText, active && styles.modeTextActive]}>
+                  {mode === 'colours' ? 'Colours' : 'Looks'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {pickerMode === 'colours' ? (
+          <SwatchRow
+            selectedId={colorId}
+            onSelect={(color) => {
+              setColorId(color.id);
+              setLookId(null);
+            }}
+          />
+        ) : (
+          <LooksRow
+            selectedLookId={lookId}
+            onSelect={(look) => {
+              // Looks are curated interior schemes — colour + finish together.
+              setService('interior');
+              setColorId(look.colorId);
+              setFinish(look.finish);
+              setLookId(look.id);
+            }}
+          />
+        )}
       </View>
     </View>
   );
@@ -190,6 +250,29 @@ const styles = StyleSheet.create({
   hintText: {
     fontFamily: Fonts.body,
     fontSize: 13,
+    color: Colors.cream,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.md,
+  },
+  modeTab: {
+    paddingVertical: 4,
+    paddingHorizontal: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'transparent',
+  },
+  modeTabActive: {
+    borderBottomColor: Colors.gold,
+  },
+  modeText: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: 13,
+    letterSpacing: 0.5,
+    color: Colors.creamFaint,
+  },
+  modeTextActive: {
     color: Colors.cream,
   },
 });

@@ -2,41 +2,46 @@ import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { SWATCHES, type Swatch } from '@/constants/swatches';
+import { PALETTE_BY_SPECTRUM, type PaintColor } from '@/lib/palette';
 
 interface SwatchRowProps {
   selectedId: string;
-  onSelect: (swatch: Swatch) => void;
+  onSelect: (color: PaintColor) => void;
 }
 
-/* Horizontal colour picker for AR mode — dark scrim behind, gold ring on
-   the active swatch, selected colour name above. */
+/* Horizontal colour picker for AR mode — the full Brushly palette in
+   spectrum order, gold ring on the active swatch, name + brand above. */
 export function SwatchRow({ selectedId, onSelect }: SwatchRowProps) {
-  const selected = SWATCHES.find((s) => s.id === selectedId);
+  const selected = PALETTE_BY_SPECTRUM.find((c) => c.id === selectedId);
 
   return (
     <View style={styles.wrap}>
-      {selected && <Text style={styles.label}>{selected.label}</Text>}
+      {selected && (
+        <Text style={styles.label}>
+          {selected.label}
+          <Text style={styles.brand}>  ·  {selected.brand}</Text>
+        </Text>
+      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
       >
-        {SWATCHES.map((swatch) => {
-          const active = swatch.id === selectedId;
+        {PALETTE_BY_SPECTRUM.map((color) => {
+          const active = color.id === selectedId;
           return (
             <Pressable
-              key={swatch.id}
+              key={color.id}
               accessibilityRole="button"
-              accessibilityLabel={`Paint colour ${swatch.label}`}
+              accessibilityLabel={`Paint colour ${color.label} by ${color.brand}`}
               accessibilityState={{ selected: active }}
               onPress={() => {
                 Haptics.selectionAsync();
-                onSelect(swatch);
+                onSelect(color);
               }}
               style={[styles.ring, active && styles.ringActive]}
             >
-              <View style={[styles.dot, { backgroundColor: swatch.hex }]} />
+              <View style={[styles.dot, { backgroundColor: color.hex }]} />
             </Pressable>
           );
         })}
@@ -56,11 +61,14 @@ const styles = StyleSheet.create({
     color: Colors.cream,
     textAlign: 'center',
   },
+  brand: {
+    fontFamily: Fonts.body,
+    color: Colors.creamFaint,
+  },
   row: {
     gap: Spacing.sm,
     paddingHorizontal: Spacing.lg,
     flexGrow: 1,
-    justifyContent: 'center',
   },
   ring: {
     width: 48,
