@@ -55,14 +55,24 @@ export async function uploadPhoto(session: string, localUri: string): Promise<st
     signedUrl: string
   }
 
-  // RN's fetch turns a file:// response into a Blob it can re-send as a body.
-  const photo = await (await fetch(localUri)).blob()
-  const put = await netFetch(signedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'image/jpeg' },
-    body: photo,
-  })
-  if (!put.ok) throw new Error('Could not upload your photo. Please try again.')
+  // Android RN can't build a Blob from the file:// bytes ("creating blobs from
+  // 'ArrayBuffer'/'ArrayBufferView' are not supported"), so PUT the raw file via
+  // expo-file-system, which streams the bytes without a Blob. Lazy-imported: the
+  // legacy native module doesn't exist in the web target's Node render.
+  const FileSystem = await import('expo-file-system/legacy')
+  let put: { status: number }
+  try {
+    put = await FileSystem.uploadAsync(signedUrl, localUri, {
+      httpMethod: 'PUT',
+      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+      headers: { 'Content-Type': 'image/jpeg' },
+    })
+  } catch {
+    throw new Error('Could not upload your photo. Please try again.')
+  }
+  if (put.status < 200 || put.status >= 300) {
+    throw new Error('Could not upload your photo. Please try again.')
+  }
   return path
 }
 

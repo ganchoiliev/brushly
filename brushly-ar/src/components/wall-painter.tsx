@@ -263,13 +263,12 @@ export function WallPainter() {
         autofocus
         initialScene={{ scene: WallScene }}
         viroAppProps={viroAppProps}
-        // Hide the painted wall behind real objects in front of it (sofa, lamp).
-        // Viro auto-selects the depth source (LiDAR → ARCore Depth → monocular →
-        // plane fallback). DEVICE-QA: on non-depth devices confirm it degrades
-        // gracefully; if it costs FPS/thermals, gate via
-        // navigatorRef.current?.arSceneNavigator.isDepthOcclusionSupported() and
-        // fall back to "peopleOnly", and tune monocularDepthTargetFPS.
-        occlusionMode="depthBased"
+        // Occlusion (hide paint behind furniture) TEMPORARILY DISABLED for the
+        // stable-baseline build — "depthBased" is unverified on this device and a
+        // candidate crash cause. Re-enable (gated via
+        // arSceneNavigator.isDepthOcclusionSupported()) once the base app is
+        // confirmed working on-device.
+        occlusionMode="disabled"
         style={StyleSheet.absoluteFill}
       />
 

@@ -31,10 +31,19 @@ import {
    - the flat per-(colour,sheen) PBR materials — kept as an on-device fallback.
    DEVICE-QA: if the shader quad renders black/blank on an EAS build, flip
    USE_CALIBRATED_SHADER to false to A/B against the known-good flat quad. */
-ViroMaterials.createMaterials(WALL_MATERIALS);
-registerCalibratedWallMaterial();
 
-const USE_CALIBRATED_SHADER = true;
+// TEMPORARILY false: the calibrated camera-sampling shader crashed on first
+// device test (custom GLSL / camera_texture binding is unverified on-device).
+// Ship the known-good flat quad first to confirm the base AR + capture + render
+// work on a real device, then re-enable and debug the shader on that foundation.
+const USE_CALIBRATED_SHADER = false;
+
+ViroMaterials.createMaterials(WALL_MATERIALS);
+// Only register the camera-sampling shader material when it's actually in use:
+// Viro may compile the shaderModifier at registration, so registering it while
+// disabled could crash the exact same way. Declared before this so the guard works.
+if (USE_CALIBRATED_SHADER) registerCalibratedWallMaterial();
+
 const WALL_OPACITY = 0.6; // flat-fallback opacity; the shader path uses 1.0
 
 interface TrackedPlane {
