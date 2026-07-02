@@ -1,5 +1,6 @@
 import 'server-only'
 import crypto from 'node:crypto'
+import { callGenerateContent } from './gemini-shared'
 import type { EngineEditInput, EngineEditResult, ImageEngine } from './types'
 
 /* Dependency-free Vertex AI adapter: mints a Google access token from the
@@ -72,12 +73,6 @@ async function getAccessToken(sa: ServiceAccount): Promise<string> {
   return data.access_token
 }
 
-interface GenerateContentResponse {
-  candidates?: {
-    content?: { parts?: { inlineData?: { data: string; mimeType: string } }[] }
-  }[]
-}
-
 export class VertexEngine implements ImageEngine {
   readonly name = 'vertex'
 
@@ -94,37 +89,12 @@ export class VertexEngine implements ImageEngine {
       `https://${location}-aiplatform.googleapis.com/v1/projects/${project}` +
       `/locations/${location}/publishers/google/models/${model}:generateContent`
 
-    const body = {
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { inlineData: { mimeType: input.mimeType, data: input.imageBase64 } },
-            { text: input.prompt },
-          ],
-        },
-      ],
-      // Image-out models require IMAGE in the response modalities.
-      generationConfig: { responseModalities: ['IMAGE'] },
-    }
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    })
-    if (!res.ok) {
-      throw new Error(`Vertex generateContent failed: ${res.status} ${await res.text()}`)
-    }
-
-    const data = (await res.json()) as GenerateContentResponse
-    const parts = data.candidates?.[0]?.content?.parts ?? []
-    const img = parts.find((p) => p.inlineData)?.inlineData
-    if (!img) throw new Error('Vertex returned no image')
-
+    const img = await callGenerateContent(
+      'Vertex',
+      url,
+      { Authorization: `Bearer ${token}` },
+      input,
+    )
     return {
       imageBase64: img.data,
       mimeType: img.mimeType || 'image/png',

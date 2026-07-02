@@ -3,8 +3,10 @@ import crypto from 'node:crypto'
 import { renderSchema } from '@/lib/visualizer/schemas'
 import { getColor } from '@/lib/visualizer/palette'
 import { buildPrompt } from '@/lib/visualizer/prompt'
-import { getEngine } from '@/lib/visualizer/engine'
+import { getEngine, EngineBlockedError } from '@/lib/visualizer/engine'
 import { classifyImage } from '@/lib/visualizer/moderation'
+import { solidSwatchPng } from '@/lib/visualizer/swatch'
+import { closestAspectRatio, jpegDimensions } from '@/lib/visualizer/imageMeta'
 import { downloadAsBase64, uploadResult, signReadUrl } from '@/lib/visualizer/storage'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -48,6 +50,10 @@ export async function POST(request: Request) {
 
   const supabase = createAdminClient()
 
+  // Built before the cache lookup: matching on the prompt text means any
+  // prompt-engineering change automatically invalidates stale cached renders.
+  const prompt = buildPrompt(service, color, finish)
+
   // 1) Cache: reuse a prior successful render for identical inputs (session-scoped).
   //    Instant, free, and does not consume quota.
   {
@@ -58,6 +64,7 @@ export async function POST(request: Request) {
       .eq('source_path', sourcePath)
       .eq('service', service)
       .eq('color_hex', color.hex)
+      .eq('prompt', prompt)
       .eq('status', 'done')
       .not('result_path', 'is', null)
       .order('created_at', { ascending: false })
@@ -70,6 +77,65 @@ export async function POST(request: Request) {
         signReadUrl(cached.result_path),
       ])
       return NextResponse.json({ renderId: cached.id, beforeUrl, afterUrl, cached: true })
+    }
+  }
+
+  // 1.5) Same combo already rendering? Happens when the user cancels
+  //      client-side (the server keeps going) and immediately retries — the
+  //      retry must not pay for a second render of work that's already in
+  //      flight. Wait briefly for the running one and serve it as a cache hit.
+  {
+    let inflightQuery = supabase
+      .from('visualizer_renders')
+      .select('id')
+      .eq('session_id', sessionId)
+      .eq('source_path', sourcePath)
+      .eq('service', service)
+      .eq('color_hex', color.hex)
+      .eq('prompt', prompt)
+      .eq('status', 'processing')
+      .gte('created_at', new Date(Date.now() - 90_000).toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+    inflightQuery = finish ? inflightQuery.eq('finish', finish) : inflightQuery.is('finish', null)
+    const { data: inflight } = await inflightQuery.maybeSingle()
+    if (inflight) {
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+      const waitStart = Date.now()
+      let settled: 'done' | 'failed' | null = null
+      let resultPath: string | null = null
+      while (Date.now() - waitStart < 25_000) {
+        await sleep(2_000)
+        const { data: row } = await supabase
+          .from('visualizer_renders')
+          .select('status, result_path')
+          .eq('id', inflight.id)
+          .single()
+        if (row?.status === 'done' && row.result_path) {
+          settled = 'done'
+          resultPath = row.result_path
+          break
+        }
+        if (row?.status === 'failed') {
+          settled = 'failed'
+          break
+        }
+      }
+      if (settled === 'done' && resultPath) {
+        const [beforeUrl, afterUrl] = await Promise.all([
+          signReadUrl(sourcePath),
+          signReadUrl(resultPath),
+        ])
+        return NextResponse.json({ renderId: inflight.id, beforeUrl, afterUrl, cached: true })
+      }
+      // Only fall through to a fresh render when the in-flight one failed
+      // FAST — a long wait plus a full render would blow the 60s maxDuration.
+      if (!(settled === 'failed' && Date.now() - waitStart <= 8_000)) {
+        return NextResponse.json(
+          { error: 'That look is still being rendered — give it a few seconds and try again.' },
+          { status: 503 },
+        )
+      }
     }
   }
 
@@ -154,7 +220,6 @@ export async function POST(request: Request) {
   }
 
   // 7) Record the attempt, then render.
-  const prompt = buildPrompt(service, color, finish)
   const { data: row, error: insErr } = await supabase
     .from('visualizer_renders')
     .insert({
@@ -178,10 +243,18 @@ export async function POST(request: Request) {
 
   try {
     const engine = getEngine()
+    // Colour fidelity: the exact target colour rides along as a rendered
+    // swatch image — hex-as-text alone is the weakest link for a paint brand.
+    const swatch = solidSwatchPng(color.hex)
+    // Pin the output to the source's shape so the before/after slider
+    // compares like with like (dropped gracefully if the API rejects it).
+    const dims = jpegDimensions(Buffer.from(src.base64, 'base64'))
     const result = await engine.editImage({
       imageBase64: src.base64,
       mimeType: src.mimeType,
       prompt,
+      references: [{ imageBase64: swatch.toString('base64'), mimeType: 'image/png' }],
+      aspectRatio: dims ? closestAspectRatio(dims.width, dims.height) : undefined,
     })
 
     const ext = result.mimeType.includes('png') ? 'png' : 'jpg'
@@ -201,7 +274,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ renderId: row.id, beforeUrl, afterUrl })
   } catch (error) {
     console.error('visualizer render failed:', error)
-    await supabase.from('visualizer_renders').update({ status: 'failed' }).eq('id', row.id)
+    // cost_pence: 0 — a failed render spent (almost) nothing, so it must not
+    // eat into the monthly cap. (The per-session/IP day quota still counts;
+    // refunding that needs a DB function that doesn't exist yet.)
+    await supabase
+      .from('visualizer_renders')
+      .update({ status: 'failed', cost_pence: 0 })
+      .eq('id', row.id)
+    if (error instanceof EngineBlockedError) {
+      // Permanent for this photo — same friendly copy as the moderation gate,
+      // and a 422 so the client doesn't invite quota-burning retries.
+      return NextResponse.json(
+        {
+          error:
+            'Please upload a clear photo of a room or a building exterior so we can visualise it.',
+        },
+        { status: 422 },
+      )
+    }
     return NextResponse.json({ error: 'Render failed. Please try again.' }, { status: 502 })
   }
 }

@@ -15,7 +15,11 @@ export async function signUploadUrl(path: string) {
   return data // { signedUrl, token, path }
 }
 
-export async function signReadUrl(path: string, expiresIn = 600): Promise<string> {
+// 24h: users linger, compare colours, then share — a 10-minute URL was
+// silently failing the share/download that happens 12 minutes later. Paths
+// are unguessable UUIDs and downloads are watermarked, so the longer window
+// costs nothing.
+export async function signReadUrl(path: string, expiresIn = 86_400): Promise<string> {
   const supabase = createAdminClient()
   const { data, error } = await supabase.storage
     .from(VISUALIZER_BUCKET)

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please check your details.' }, { status: 400 })
   }
-  const { name, email, phone, renderIds, message, company } = parsed.data
+  const { sessionId, name, email, phone, renderIds, message, company } = parsed.data
 
   // Honeypot filled → silently accept, store nothing.
   if (company && company.length > 0) {
@@ -53,10 +53,13 @@ export async function POST(request: Request) {
       .single()
     if (error) console.error('visualizer lead insert failed:', error)
     if (lead && renderIds && renderIds.length > 0) {
+      // Session scoping: without it, any caller could claim another visitor's
+      // renders onto their lead and staff would see the wrong photos.
       await supabase
         .from('visualizer_renders')
         .update({ lead_id: lead.id })
         .in('id', renderIds)
+        .eq('session_id', sessionId)
     }
   } catch (error) {
     console.error('visualizer lead insert failed:', error)
