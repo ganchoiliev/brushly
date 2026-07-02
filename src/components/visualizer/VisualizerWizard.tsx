@@ -67,15 +67,41 @@ const fade = {
 }
 
 // Renders are cached per exact combination — a Gloss request must never
-// silently serve the Matt render of the same colour.
-const keyOf = (service: VisualizerService, colorId: string, finish: string) =>
-  `${service}|${colorId}|${finish}`
+// silently serve the Matt render of the same colour, and two different
+// custom wallpapers must never collide.
+const keyOf = (
+  service: VisualizerService,
+  colorId: string,
+  finish: string,
+  wallpaperPath = '',
+) => `${service}|${colorId}|${finish}|${wallpaperPath}`
+
+// Colour is irrelevant when a custom wallpaper drives the render, but the
+// API requires a valid palette id — a neutral stands in silently.
+const WALLPAPER_FALLBACK_COLOR = 'wimborne-white'
+
+// A custom wallpaper fully determines the render — the prompt ignores colour
+// and finish. Collapse them to fixed values so two swatch picks over the same
+// wallpaper share one cache key (no duplicate paid renders) and the result
+// isn't mislabelled with a colour the user never chose. Only the wallpaper
+// service carries a wallpaper; every other service passes through unchanged.
+function normalizeSelection(
+  service: VisualizerService,
+  colorId: string,
+  finish: string,
+  wallpaperPath: string,
+): { colorId: string; finish: string; wallpaperPath: string } {
+  return service === 'wallpaper' && wallpaperPath
+    ? { colorId: WALLPAPER_FALLBACK_COLOR, finish: '', wallpaperPath }
+    : { colorId, finish, wallpaperPath: '' }
+}
 
 interface StoredRender {
   result: RenderResult
   service: VisualizerService
   colorId: string
   finish: string
+  wallpaperPath?: string
 }
 
 const preloadImage = (url: string) =>
@@ -98,6 +124,14 @@ export default function VisualizerWizard() {
   const [service, setService] = useState<VisualizerService>('interior')
   const [colorId, setColorId] = useState<string>()
   const [finish, setFinish] = useState<string>(FINISHES.interior[0])
+
+  // Customer-supplied wallpaper (service 'wallpaper'): uploaded like the room
+  // photo, referenced by storage path in the render request.
+  const [wallpaperPath, setWallpaperPath] = useState('')
+  const [wallpaperPreview, setWallpaperPreview] = useState('')
+  const [wallpaperBusy, setWallpaperBusy] = useState(false)
+  const [wallpaperError, setWallpaperError] = useState('')
+  const wallpaperInputRef = useRef<HTMLInputElement>(null)
 
   const [rendering, setRendering] = useState(false)
   const [renderError, setRenderError] = useState('')
@@ -163,14 +197,55 @@ export default function VisualizerWizard() {
   }, [rendering, instantPreviewUrl])
 
   // Unmount: object URLs outlive React state — revoke whatever is still held.
+  const prevWallpaperUrl = useRef('')
   useEffect(
     () => () => {
       instantGen.current += 1 // discard any still-computing instant preview
       if (prevUrl.current) URL.revokeObjectURL(prevUrl.current)
       if (instantUrlRef.current) URL.revokeObjectURL(instantUrlRef.current)
+      if (prevWallpaperUrl.current) URL.revokeObjectURL(prevWallpaperUrl.current)
     },
     [],
   )
+
+  // Upload a wallpaper photo/screenshot; smaller than the room photo — it's a
+  // pattern reference, not the render source.
+  const onWallpaperFile = async (file: File) => {
+    if (wallpaperBusy) return
+    setWallpaperError('')
+    setWallpaperBusy(true)
+    try {
+      const sid = sessionId || getSessionId()
+      if (!sessionId) setSessionId(sid)
+      const blob = await processImage(file, 1024)
+      const path = await uploadPhoto(sid, blob)
+      const url = URL.createObjectURL(blob)
+      if (prevWallpaperUrl.current) URL.revokeObjectURL(prevWallpaperUrl.current)
+      prevWallpaperUrl.current = url
+      setWallpaperPreview(url)
+      setWallpaperPath(path)
+      trackEvent('visualizer_wallpaper_added')
+    } catch (e) {
+      setWallpaperError(
+        e instanceof DOMException
+          ? 'That file didn’t work — try a JPG or PNG image.'
+          : e instanceof Error && e.message
+            ? e.message
+            : 'Upload failed. Please try again.',
+      )
+    } finally {
+      setWallpaperBusy(false)
+    }
+  }
+
+  const clearWallpaper = () => {
+    setWallpaperPath('')
+    setWallpaperPreview('')
+    if (prevWallpaperUrl.current) {
+      URL.revokeObjectURL(prevWallpaperUrl.current)
+      prevWallpaperUrl.current = ''
+    }
+  }
 
   const openGate = (intent: 'continue' | 'save') => {
     trackEvent('visualizer_gate_shown')
@@ -249,11 +324,20 @@ export default function VisualizerWizard() {
   const doRender = async (
     cid: string,
     fin: string,
-    opts?: { service?: VisualizerService; sourcePath?: string },
+    opts?: { service?: VisualizerService; sourcePath?: string; wallpaperPath?: string },
   ) => {
     const src = opts?.sourcePath ?? sourcePath
     const svc = opts?.service ?? service
-    if (!cid || !src || renderInFlight.current) return
+    // AR passes wallpaperPath:'' explicitly (it only previews colours, never a
+    // custom wallpaper); the UI path falls back to current wizard state.
+    const wpState = opts?.wallpaperPath !== undefined ? opts.wallpaperPath : wallpaperPath
+    // Normalise so colour/finish don't split the cache for a wallpaper render.
+    const {
+      colorId: renderCid,
+      finish: renderFin,
+      wallpaperPath: wp,
+    } = normalizeSelection(svc, cid, fin, wpState)
+    if (!renderCid || !src || renderInFlight.current) return
     renderInFlight.current = true
     // A late instant preview from an older capture must not decorate this
     // render's progress screen (AR renders set their own gen at capture).
@@ -269,8 +353,9 @@ export default function VisualizerWizard() {
           sessionId,
           sourcePath: src,
           service: svc,
-          colorId: cid,
-          finish: fin,
+          colorId: renderCid,
+          finish: renderFin || undefined,
+          wallpaperPath: wp || undefined,
         },
         { signal: ctrl.signal },
       )
@@ -285,10 +370,16 @@ export default function VisualizerWizard() {
         Promise.all([preloadImage(r.beforeUrl), preloadImage(r.afterUrl)]),
         new Promise((resolve) => setTimeout(resolve, 6000)),
       ])
-      const key = keyOf(svc, cid, fin)
+      const key = keyOf(svc, renderCid, renderFin, wp)
       setResults((prev) => ({
         ...prev,
-        [key]: { result: r, service: svc, colorId: cid, finish: fin },
+        [key]: {
+          result: r,
+          service: svc,
+          colorId: renderCid,
+          finish: renderFin,
+          wallpaperPath: wp || undefined,
+        },
       }))
       setActiveKey(key)
       setRenderIds((prev) => (prev.includes(r.renderId) ? prev : [...prev, r.renderId]))
@@ -331,9 +422,11 @@ export default function VisualizerWizard() {
     renderSource.current = 'ui'
     setColorId(cid)
     setFinish(fin)
-    const cached = results[keyOf(service, cid, fin)]
+    const norm = normalizeSelection(service, cid, fin, wallpaperPath)
+    const key = keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath)
+    const cached = results[key]
     if (cached) {
-      setActiveKey(keyOf(service, cid, fin))
+      setActiveKey(key)
       setStep('result')
       return
     }
@@ -353,6 +446,10 @@ export default function VisualizerWizard() {
     setService(sel.service)
     setColorId(sel.colorId)
     setFinish(sel.finish)
+    // AR is a live COLOUR preview — it has no custom-wallpaper input. Drop any
+    // wallpaper left over from an earlier design-step visit so a wallpaper-pill
+    // capture renders the previewed colour, not a stale uploaded pattern.
+    clearWallpaper()
     renderSource.current = 'ar'
     // Show the render progress screen through the upload phase too, so the
     // design step doesn't flash between camera and render.
@@ -360,7 +457,12 @@ export default function VisualizerWizard() {
     // In parallel with upload+render: recolour the capture on-device and show
     // it while the photoreal render cooks. Best-effort — null on any failure.
     const gen = ++instantGen.current
-    void makeInstantPreview(file, getColor(sel.colorId)?.hex ?? '#888888', sel.finish).then(
+    void makeInstantPreview(
+      file,
+      getColor(sel.colorId)?.hex ?? '#888888',
+      sel.finish,
+      sel.service,
+    ).then(
       (url) => {
         if (!url) return
         // Stale (a newer render context started, or we unmounted): discard.
@@ -389,7 +491,11 @@ export default function VisualizerWizard() {
       openGate('continue')
       return
     }
-    await doRender(sel.colorId, sel.finish, { service: sel.service, sourcePath: path })
+    await doRender(sel.colorId, sel.finish, {
+      service: sel.service,
+      sourcePath: path,
+      wallpaperPath: '', // AR never carries a custom wallpaper
+    })
   }
 
   // One-tap Look → clamp its finish to the current service, then render.
@@ -420,9 +526,10 @@ export default function VisualizerWizard() {
     trackEvent('visualizer_lead_captured')
     trackConversion(CONV_LABELS.form)
     if (intent === 'continue' && colorId) {
-      const cached = results[keyOf(service, colorId, finish)]
-      if (cached) {
-        setActiveKey(keyOf(service, colorId, finish))
+      const norm = normalizeSelection(service, colorId, finish, wallpaperPath)
+      const key = keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath)
+      if (results[key]) {
+        setActiveKey(key)
         setStep('result')
       } else {
         void doRender(colorId, finish)
@@ -466,7 +573,17 @@ export default function VisualizerWizard() {
 
   const selectedColor = colorId ? getColor(colorId) : undefined
   const renderedKeys = Object.keys(results)
-  const currentComboCached = Boolean(colorId && results[keyOf(service, colorId, finish)])
+  // A custom wallpaper renders without an explicit colour pick — a neutral
+  // palette id stands in to satisfy the API.
+  const effectiveColorId =
+    colorId ?? (service === 'wallpaper' && wallpaperPath ? WALLPAPER_FALLBACK_COLOR : undefined)
+  const currentComboCached = Boolean(
+    effectiveColorId &&
+      (() => {
+        const norm = normalizeSelection(service, effectiveColorId, finish, wallpaperPath)
+        return results[keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath)]
+      })(),
+  )
 
   return (
     <div className="relative">
@@ -478,9 +595,11 @@ export default function VisualizerWizard() {
               previewUrl={previewUrl}
               instantPreviewUrl={instantPreviewUrl}
               serviceLabel={SERVICE_LABELS[service]}
-              colorLabel={selectedColor?.label}
-              colorHex={selectedColor?.hex}
-              finish={finish}
+              // A custom-wallpaper render has no meaningful paint colour — don't
+              // caption it with the fallback swatch the API needs internally.
+              colorLabel={service === 'wallpaper' && wallpaperPath ? undefined : selectedColor?.label}
+              colorHex={service === 'wallpaper' && wallpaperPath ? undefined : selectedColor?.hex}
+              finish={service === 'wallpaper' && wallpaperPath ? undefined : finish}
               onCancel={cancellable ? () => renderAbort.current?.abort() : undefined}
             />
           </motion.div>
@@ -642,6 +761,65 @@ export default function VisualizerWizard() {
               <ColorChooser colorId={colorId} onColor={setColorId} onLook={applyLook} />
             </div>
 
+            {service === 'wallpaper' && (
+              <div>
+                <p className="mb-3 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
+                  Your own wallpaper
+                </p>
+                {wallpaperPath ? (
+                  <div className="flex items-center gap-3 border border-brushly-gold/30 bg-brushly-gold/5 p-3">
+                    {wallpaperPreview && (
+                      <img
+                        src={wallpaperPreview}
+                        alt="Your wallpaper"
+                        className="h-14 w-14 rounded-sm object-cover"
+                      />
+                    )}
+                    <p className="flex-1 font-body text-[13px] text-brushly-cream/70">
+                      We’ll apply this wallpaper to your feature wall.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearWallpaper}
+                      className="font-body text-[12px] uppercase tracking-[0.15em] text-brushly-cream/50 underline-offset-4 hover:text-brushly-cream hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={wallpaperBusy}
+                    onClick={() => wallpaperInputRef.current?.click()}
+                    className="flex w-full items-center justify-center gap-3 border border-dashed border-brushly-gold/30 px-6 py-4 font-body text-[13px] text-brushly-cream/70 transition-colors duration-300 hover:border-brushly-gold/60 hover:text-brushly-cream disabled:opacity-50"
+                  >
+                    {wallpaperBusy ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-brushly-gold/30 border-t-brushly-gold" />
+                        Uploading your wallpaper…
+                      </>
+                    ) : (
+                      'Upload a photo or screenshot of a wallpaper you like — we’ll show it on your wall'
+                    )}
+                  </button>
+                )}
+                <input
+                  ref={wallpaperInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) void onWallpaperFile(f)
+                    e.target.value = ''
+                  }}
+                />
+                {wallpaperError && (
+                  <p className="mt-2 font-body text-[13px] text-red-400">{wallpaperError}</p>
+                )}
+              </div>
+            )}
+
             <div>
               <p className="mb-3 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
                 Finish
@@ -695,8 +873,8 @@ export default function VisualizerWizard() {
             <div className="flex flex-wrap items-center gap-4">
               <button
                 type="button"
-                onClick={() => colorId && startRender(colorId, finish)}
-                disabled={!colorId}
+                onClick={() => effectiveColorId && startRender(effectiveColorId, finish)}
+                disabled={!effectiveColorId}
                 className="bg-brushly-gold px-10 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {currentComboCached ? 'See it again' : 'See it'}
@@ -713,9 +891,11 @@ export default function VisualizerWizard() {
                   View my {renderedKeys.length} render{renderedKeys.length > 1 ? 's' : ''}
                 </button>
               )}
-              {!colorId && (
+              {!effectiveColorId && (
                 <span className="font-body text-[12px] text-brushly-cream/40">
-                  Tap a look, or pick a colour
+                  {service === 'wallpaper'
+                    ? 'Pick a colour, or upload your own wallpaper'
+                    : 'Tap a look, or pick a colour'}
                 </span>
               )}
             </div>
@@ -741,7 +921,9 @@ export default function VisualizerWizard() {
                   const sr = results[key]
                   const c = getColor(sr.colorId)
                   if (!c) return null
-                  const label = `${c.label} · ${sr.finish}`
+                  const label = sr.wallpaperPath
+                    ? 'Your wallpaper'
+                    : `${c.label} · ${sr.finish}`
                   return (
                     <button
                       key={key}
@@ -766,8 +948,10 @@ export default function VisualizerWizard() {
                 selection — they can differ after browsing other combos. */}
             <p className="font-body text-[13px] text-brushly-cream/60">
               {SERVICE_LABELS[active.service]}
-              {` · ${getColor(active.colorId)?.label ?? active.colorId}`}
-              {active.finish ? ` · ${active.finish}` : ''}
+              {active.wallpaperPath
+                ? ' · Your wallpaper'
+                : ` · ${getColor(active.colorId)?.label ?? active.colorId}`}
+              {active.finish && !active.wallpaperPath ? ` · ${active.finish}` : ''}
               <span className="mt-1 block text-[11px] text-brushly-cream/35">
                 AI visualisation — we confirm exact colours at survey.
               </span>

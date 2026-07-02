@@ -8,22 +8,37 @@ export function buildPrompt(
   service: VisualizerService,
   color: PaintColor,
   finish?: string,
+  opts?: {
+    /** A customer-supplied wallpaper image rides along as the second image
+        part instead of the colour swatch. */
+    customWallpaper?: boolean
+  },
 ): string {
   const surfaces = SERVICE_SURFACES[service]
+  const customWallpaper = Boolean(opts?.customWallpaper) && service === 'wallpaper'
 
   let action: string
-  if (service === 'wallpaper') {
-    action = `Apply ${finish ? finish.toLowerCase() + ' ' : ''}wallpaper in the colour "${color.label}" (${color.hex}) to ${surfaces}.`
-  } else if (service === 'finish') {
-    action = `Apply a ${finish ? finish.toLowerCase() : 'specialist decorative'} finish in the colour "${color.label}" (${color.hex}) to ${surfaces}.`
+  let reference: string
+  if (customWallpaper) {
+    action = `Apply the wallpaper shown in the second image to ${surfaces}.`
+    reference =
+      'The second image in this message is the customer’s chosen wallpaper — reproduce its pattern, colours and texture faithfully, hung at a realistic physical scale for a wall, with pattern repeats and lighting that follow the wall’s perspective.'
   } else {
-    const finishText = finish ? ` in a ${finish.toLowerCase()} finish` : ''
-    action = `Repaint ONLY ${surfaces} to the colour "${color.label}" (${color.hex})${finishText}.`
+    if (service === 'wallpaper') {
+      action = `Apply ${finish ? finish.toLowerCase() + ' ' : ''}wallpaper in the colour "${color.label}" (${color.hex}) to ${surfaces}.`
+    } else if (service === 'finish') {
+      action = `Apply a ${finish ? finish.toLowerCase() : 'specialist decorative'} finish in the colour "${color.label}" (${color.hex}) to ${surfaces}.`
+    } else {
+      const finishText = finish ? ` in a ${finish.toLowerCase()} finish` : ''
+      action = `Repaint ONLY ${surfaces} to the colour "${color.label}" (${color.hex})${finishText}.`
+    }
+    reference =
+      'The second image in this message is a solid swatch of the exact target colour — match the redecorated surfaces to that swatch precisely, adjusted only for the room’s own lighting and shadows.'
   }
 
   return [
     action,
-    'The second image in this message is a solid swatch of the exact target colour — match the redecorated surfaces to that swatch precisely, adjusted only for the room’s own lighting and shadows.',
+    reference,
     'Preserve everything else EXACTLY as in the original photograph: furniture, flooring, rugs, windows, doors, skirting where not being painted, radiators, decor, personal belongings, clutter, room layout and camera perspective.',
     'Keep all natural lighting, reflections and shadows physically consistent with the original. Do not add, remove, move or restyle any objects. Do not alter the floor.',
     'Do not crop, zoom, rotate or change the aspect ratio or framing of the photograph.',

@@ -73,6 +73,28 @@ async function getAccessToken(sa: ServiceAccount): Promise<string> {
   return data.access_token
 }
 
+/**
+ * Regional endpoint + auth header for an arbitrary Vertex model. Lets the
+ * moderation classifier ride the same EU-resident plumbing as the renders —
+ * a Vertex-only deployment has no GEMINI_API_KEY, and without this the
+ * pre-spend gate would be silently disabled.
+ */
+export async function vertexRequestContext(
+  model: string,
+): Promise<{ url: string; headers: Record<string, string> }> {
+  const sa = loadServiceAccount()
+  const project = process.env.GCP_PROJECT_ID || sa.project_id
+  const location = process.env.GCP_LOCATION || 'europe-west3'
+  if (!project) throw new Error('GCP_PROJECT_ID not set')
+  const token = await getAccessToken(sa)
+  return {
+    url:
+      `https://${location}-aiplatform.googleapis.com/v1/projects/${project}` +
+      `/locations/${location}/publishers/google/models/${model}:generateContent`,
+    headers: { Authorization: `Bearer ${token}` },
+  }
+}
+
 export class VertexEngine implements ImageEngine {
   readonly name = 'vertex'
 

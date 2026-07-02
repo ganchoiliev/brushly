@@ -24,6 +24,15 @@ export const renderSchema = z.object({
   service: z.enum(['interior', 'exterior', 'wallpaper', 'finish']),
   colorId: z.string().min(1).max(64).regex(/^[a-z0-9-]+$/, 'Invalid colour'),
   finish: z.string().min(1).max(64).optional(),
+  // Customer-supplied wallpaper reference (service 'wallpaper' only): an
+  // uploaded photo/screenshot of the wallpaper to apply, session-scoped like
+  // sourcePath.
+  wallpaperPath: z
+    .string()
+    .min(1)
+    .max(300)
+    .regex(/^[A-Za-z0-9/_.-]+$/, 'Invalid path')
+    .optional(),
 })
 
 /* Staff (native app) attaching a finished render to a CRM lead. */

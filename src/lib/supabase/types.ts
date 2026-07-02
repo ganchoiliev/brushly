@@ -569,6 +569,15 @@ export type Database = {
           ip_count?: number
         }
       }
+      /* Refund a failed render's quota + estimated spend (migration 0008). */
+      visualizer_refund: {
+        Args: {
+          p_session: string
+          p_ip_hash: string | null
+          p_est_cost_pence: number
+        }
+        Returns: undefined
+      }
       /* Public quote read: token in, one assembled quote out (or null).
          SECURITY DEFINER — the only keyhole anon can reach. */
       get_public_quote: {

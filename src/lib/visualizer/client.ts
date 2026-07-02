@@ -101,6 +101,8 @@ export async function requestRender(
     service: VisualizerService
     colorId: string
     finish?: string
+    /** Customer-supplied wallpaper reference (service 'wallpaper' only). */
+    wallpaperPath?: string
   },
   opts?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<RenderResult> {

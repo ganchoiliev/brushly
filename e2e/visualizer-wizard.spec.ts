@@ -9,8 +9,11 @@ import { test, expect, type Page } from '@playwright/test'
  */
 
 const mockRenderApis = async (page: Page, opts?: { renderDelayMs?: number }) => {
+  // Distinct path per upload so a test can tell the room photo from the
+  // wallpaper (and catch a sourcePath/wallpaperPath swap regression).
+  let uploadN = 0
   await page.route('**/api/visualizer/upload-url', (route) =>
-    route.fulfill({ json: { path: 'test-session/photo.jpg', token: 'tok' } }),
+    route.fulfill({ json: { path: `test-session/photo-${++uploadN}.jpg`, token: 'tok' } }),
   )
   // supabase-js uploadToSignedUrl PUTs to /storage/v1/object/upload/sign/…
   await page.route('**/object/upload/sign/**', (route) =>
@@ -65,6 +68,39 @@ test('sample → design → render → result, with a finish-aware cache', async
   // …but a different finish is a different render, not a silent cache hit.
   await page.getByRole('button', { name: 'Gloss', exact: true }).click()
   await expect(page.getByRole('button', { name: 'See it', exact: true })).toBeVisible()
+})
+
+test('custom wallpaper: upload enables render without a colour and rides in the request', async ({
+  page,
+}) => {
+  await mockRenderApis(page)
+  const captured: { body?: Record<string, unknown> } = {}
+  await page.route('**/api/visualizer/render', async (route) => {
+    captured.body = route.request().postDataJSON() as Record<string, unknown>
+    await route.fulfill({
+      json: { renderId: 'render-wp', beforeUrl: '/img/interior.webp', afterUrl: '/img/hallway.webp' },
+    })
+  })
+  await openDesignStep(page)
+
+  await page.getByRole('button', { name: /wallpaper feature walls/i }).click()
+  await expect(page.getByText('Your own wallpaper', { exact: true })).toBeVisible()
+
+  // Upload a wallpaper image; no colour is picked at any point.
+  await page
+    .locator('input[type="file"]')
+    .last()
+    .setInputFiles('public/img/finishes.jpg')
+  await expect(page.getByText('We’ll apply this wallpaper')).toBeVisible({ timeout: 20_000 })
+
+  await page.getByRole('button', { name: 'See it', exact: true }).click()
+  await expect(page.getByRole('slider', { name: /compare/i })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByText(/wallpapering · your wallpaper/i)).toBeVisible()
+  // Room photo = upload #1, wallpaper = upload #2 — they must be distinct and
+  // in the right fields (a swap would send the room as the wallpaper).
+  expect(captured.body?.sourcePath).toBe('test-session/photo-1.jpg')
+  expect(captured.body?.wallpaperPath).toBe('test-session/photo-2.jpg')
+  expect(captured.body?.service).toBe('wallpaper')
 })
 
 test('an in-flight render can be cancelled back to the design step', async ({ page }) => {

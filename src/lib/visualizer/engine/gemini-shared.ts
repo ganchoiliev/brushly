@@ -78,7 +78,12 @@ export async function callGenerateContent(
     if (remaining < 1_000) throw new Error(`${label} generateContent timed out`)
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), Math.min(ATTEMPT_TIMEOUT_MS, remaining))
+    // The abort must stay armed until the FULL body is read: fetch resolves on
+    // response headers, and the body here is a multi-MB base64 image — a
+    // stalled body would otherwise ride past the budget into the route's 60s
+    // kill, stranding a paid 'processing' row. Cleared in finally.
     let res: Response
+    let data: GenerateContentResponse
     try {
       res = await fetch(url, {
         method: 'POST',
@@ -86,34 +91,35 @@ export async function callGenerateContent(
         body: JSON.stringify(buildBody(input, withImageConfig)),
         signal: ctrl.signal,
       })
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        // imageConfig is newer than some model revisions — drop it and retry
+        // rather than failing a paid render over an optional nicety.
+        if (res.status === 400 && withImageConfig) {
+          withImageConfig = false
+          continue
+        }
+        if (
+          RETRYABLE.has(res.status) &&
+          !retriedTransient &&
+          Date.now() - started < RETRY_IF_FAILED_WITHIN_MS
+        ) {
+          retriedTransient = true
+          await sleep(500 + Math.random() * 1000)
+          continue
+        }
+        throw new Error(`${label} generateContent failed: ${res.status} ${text}`)
+      }
+
+      data = (await res.json()) as GenerateContentResponse
     } catch (e) {
-      clearTimeout(timer)
       if (ctrl.signal.aborted) throw new Error(`${label} generateContent timed out`)
       throw e
-    }
-    clearTimeout(timer)
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      // imageConfig is newer than some model revisions — drop it and retry
-      // rather than failing a paid render over an optional nicety.
-      if (res.status === 400 && withImageConfig) {
-        withImageConfig = false
-        continue
-      }
-      if (
-        RETRYABLE.has(res.status) &&
-        !retriedTransient &&
-        Date.now() - started < RETRY_IF_FAILED_WITHIN_MS
-      ) {
-        retriedTransient = true
-        await sleep(500 + Math.random() * 1000)
-        continue
-      }
-      throw new Error(`${label} generateContent failed: ${res.status} ${text}`)
+    } finally {
+      clearTimeout(timer)
     }
 
-    const data = (await res.json()) as GenerateContentResponse
     const blockReason = data.promptFeedback?.blockReason
     const finishReason = data.candidates?.[0]?.finishReason
     const parts = data.candidates?.[0]?.content?.parts ?? []
