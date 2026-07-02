@@ -1,0 +1,19 @@
+{
+  "name": "wall-calibration-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone wall segmentation + render calibration for the native AR calibrated shader (onnxruntime-node is too large for Vercel serverless).",
+  "scripts": {
+    "start": "tsx server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "onnxruntime-node": "^1.27.0",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0"
+  }
+}

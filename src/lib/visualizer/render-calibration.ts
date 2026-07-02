@@ -21,7 +21,6 @@ import {
 } from './segmentation.server'
 import { DEFAULT_TUNING, smoothMargin, upsampleAlphaBilinear } from './liveMath'
 import { extractWallCalibration, type WallCalibration } from './calibration'
-import type { VisualizerService } from '@/lib/supabase/types'
 
 // Working resolution for the median extraction — enough wall pixels for a
 // stable albedo without decoding full-res render output.
@@ -33,7 +32,10 @@ async function decodeRgba(image: Buffer, w: number, h: number): Promise<Uint8Cla
   return new Uint8ClampedArray(data)
 }
 
-function targetsFor(service: VisualizerService): readonly number[] {
+// `service` is a plain string (the app's VisualizerService union) so this module
+// stays free of Next path aliases and runs as-is in the standalone calibration
+// service. Only interior-vs-exterior changes the target ADE20K classes.
+function targetsFor(service: string): readonly number[] {
   return service === 'exterior' ? EXTERIOR_CLASSES : INTERIOR_CLASSES
 }
 
@@ -55,7 +57,7 @@ async function workingSize(before: Buffer): Promise<{ w: number; h: number }> {
 export async function calibrateRender(
   before: Buffer,
   after: Buffer,
-  service: VisualizerService = 'interior',
+  service = 'interior',
 ): Promise<WallCalibration | null> {
   // Wall geometry comes from the ORIGINAL photo (the render can drift a few px).
   const { margin, width: mw, height: mh } = await segmentWallServerMargin(before, targetsFor(service))
