@@ -24,6 +24,10 @@ export default function ResultScreen() {
     afterUrl: string;
     colorId: string;
     finish: string;
+    // Present when the render route ran the calibration step — enables the
+    // "See it live on your wall" AR re-entry in the render's achieved colour.
+    calPaint?: string;
+    calWallLum?: string;
   }>();
 
   const color = getColor(params.colorId ?? '');
@@ -178,6 +182,22 @@ export default function ResultScreen() {
       {notice && <Text style={styles.notice}>{notice}</Text>}
 
       <View style={styles.actions}>
+        {params.calPaint ? (
+          <GoldButton
+            label="See it live on your wall"
+            onPress={() =>
+              router.push({
+                pathname: '/ar',
+                params: {
+                  calPaint: String(params.calPaint),
+                  calWallLum: String(params.calWallLum ?? ''),
+                  calColorId: String(params.colorId ?? ''),
+                  calFinish: String(params.finish ?? ''),
+                },
+              })
+            }
+          />
+        ) : null}
         <GoldButton
           label={busy === 'save' ? 'Saving…' : 'Save to Photos'}
           onPress={handleSave}

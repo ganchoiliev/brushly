@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Dimensions } from 'react-native';
 import {
   ViroAmbientLight,
   ViroARPlane,
@@ -12,13 +13,29 @@ import {
   type ViroTrackingState,
 } from '@reactvision/react-viro';
 
+import { getColor } from '@/lib/palette';
 import { WALL_MATERIALS, wallMaterialName, type Sheen } from '@/lib/materials';
+import {
+  CALIBRATED_WALL_MATERIAL,
+  hexToLinearRgb,
+  pushWallViewportUniforms,
+  registerCalibratedWallMaterial,
+  rgb255ToLinear,
+  specPreserveForSheen,
+  updateWallLook,
+} from '@/lib/wall-shader';
 
-/* One material per (colour, sheen) pair — switching colour or finish
-   re-materials every wall quad instantly. Registered once at module load. */
+/* Register both wall materials once at module load:
+   - the calibrated shader (single material; colour/finish/calibration live in
+     uniforms) — the primary, camera-sampling luminance-transfer recolour;
+   - the flat per-(colour,sheen) PBR materials — kept as an on-device fallback.
+   DEVICE-QA: if the shader quad renders black/blank on an EAS build, flip
+   USE_CALIBRATED_SHADER to false to A/B against the known-good flat quad. */
 ViroMaterials.createMaterials(WALL_MATERIALS);
+registerCalibratedWallMaterial();
 
-const WALL_OPACITY = 0.6;
+const USE_CALIBRATED_SHADER = true;
+const WALL_OPACITY = 0.6; // flat-fallback opacity; the shader path uses 1.0
 
 interface TrackedPlane {
   anchorId: string;
@@ -33,6 +50,11 @@ export interface WallSceneProps {
   /* True while the shutter grabs a frame — the tint quads drop to opacity 0
      so the render API receives the unpainted wall. */
   overlayHidden: boolean;
+  /* When set (returning to AR after a render), the shader paints this ACHIEVED
+     albedo (sRGB 0-255) + reference luminance instead of the raw swatch, so the
+     live wall matches the photoreal render. Cleared when a new look is picked. */
+  paintOverride?: [number, number, number];
+  wallLumOverride?: number;
   onWallCountChanged: (count: number) => void;
   onTrackingReady: (ready: boolean) => void;
 }
@@ -43,10 +65,18 @@ interface SceneNavigatorInjectedProps {
   sceneNavigator?: { viroAppProps?: WallSceneProps };
 }
 
+// ARKit plane classifications that are vertical but NOT paintable wall.
+const NON_WALL = new Set(['Window', 'Door']);
+
 function asTrackedPlane(anchor: ViroAnchor): TrackedPlane | null {
   // anchorDetectionTypes is PlanesVertical-only, so every plane anchor here
-  // is a wall; the alignment check guards against config drift.
+  // is a wall; the alignment check guards against config drift, and ARKit's ML
+  // classification (when present) lets us skip windows/doors. Unclassified
+  // ('None'/undefined — common on ARCore) is kept.
   if (anchor.type !== 'plane' || anchor.alignment?.startsWith('Horizontal')) {
+    return null;
+  }
+  if (anchor.classification && NON_WALL.has(anchor.classification)) {
     return null;
   }
   return {
@@ -65,6 +95,8 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
   const selectedColorId = appProps?.selectedColorId ?? 'green-smoke';
   const sheen = appProps?.sheen ?? 'matte';
   const overlayHidden = appProps?.overlayHidden ?? false;
+  const paintOverride = appProps?.paintOverride;
+  const wallLumOverride = appProps?.wallLumOverride;
   const onWallCountChanged = appProps?.onWallCountChanged;
   const onTrackingReady = appProps?.onTrackingReady;
 
@@ -107,7 +139,36 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
     onWallCountChanged?.(wallCount);
   }, [wallCount, onWallCountChanged]);
 
-  const material = wallMaterialName(selectedColorId, sheen);
+  // Push the physical-pixel viewport size so the shader's gl_FragCoord → screen
+  // UV → camera-texture sample is correct; refresh on orientation change.
+  useEffect(() => {
+    if (!USE_CALIBRATED_SHADER) return;
+    pushWallViewportUniforms();
+    const sub = Dimensions.addEventListener('change', pushWallViewportUniforms);
+    return () => sub.remove();
+  }, []);
+
+  // Live-update the wall look. Default albedo is the raw swatch; when the app
+  // returns from a render with `paintOverride`, use the render's ACHIEVED albedo
+  // (calibration.ts) so the live wall matches the photoreal result.
+  useEffect(() => {
+    if (!USE_CALIBRATED_SHADER) return;
+    const paintLinear = paintOverride
+      ? rgb255ToLinear(paintOverride)
+      : hexToLinearRgb(getColor(selectedColorId)?.hex ?? '#7A8778');
+    updateWallLook({
+      paintLinear,
+      // DEVICE-QA: a live wall-luminance estimate would track exposure better
+      // than either the calibration value or this constant.
+      wallLum: wallLumOverride ?? 0.3,
+      specPreserve: specPreserveForSheen(sheen),
+    });
+  }, [selectedColorId, sheen, paintOverride, wallLumOverride]);
+
+  const material = USE_CALIBRATED_SHADER
+    ? CALIBRATED_WALL_MATERIAL
+    : wallMaterialName(selectedColorId, sheen);
+  const shownOpacity = USE_CALIBRATED_SHADER ? 1 : WALL_OPACITY;
 
   return (
     <ViroARScene
@@ -138,7 +199,7 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
             width={plane.width}
             height={plane.height}
             materials={[material]}
-            opacity={overlayHidden ? 0 : WALL_OPACITY}
+            opacity={overlayHidden ? 0 : shownOpacity}
           />
         </ViroARPlane>
       ))}

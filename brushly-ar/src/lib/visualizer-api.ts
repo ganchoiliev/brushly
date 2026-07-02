@@ -21,6 +21,15 @@ export interface RenderResult {
   renderId: string
   beforeUrl: string
   afterUrl: string
+  /* Optional look calibration extracted server-side from the render (see
+     render-calibration.ts): the paint albedo the render actually achieved
+     (sRGB 0-255) + the wall's reference luminance. Present only once the
+     render route runs the calibration step; the app uses it to drive the live
+     AR shader in the render's exact colour. */
+  calibration?: {
+    paint: [number, number, number]
+    wallLum: number
+  }
 }
 
 /* RN's fetch rejects with a raw TypeError ('Network request failed') when

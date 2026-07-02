@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,12 +33,38 @@ export function WallPainter() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  // Set when re-entering AR from the result screen ("See it live on your wall"):
+  // the render's ACHIEVED albedo drives the shader so the live wall matches the
+  // photoreal render. Read once on mount.
+  const params = useLocalSearchParams<{
+    calPaint?: string;
+    calWallLum?: string;
+    calColorId?: string;
+    calFinish?: string;
+  }>();
+  const initialCal = useMemo(() => {
+    if (!params.calPaint) return null;
+    const paint = params.calPaint.split(',').map(Number);
+    if (paint.length !== 3 || paint.some((n) => Number.isNaN(n))) return null;
+    return {
+      paint: paint as [number, number, number],
+      wallLum: Number(params.calWallLum) || 0.3,
+      colorId: params.calColorId,
+      finish: params.calFinish,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [phase, setPhase] = useState<Phase>('checking');
   const [service, setService] = useState<VisualizerService>('interior');
-  const [finish, setFinish] = useState<string>(FINISHES.interior[0]);
+  const [finish, setFinish] = useState<string>(initialCal?.finish ?? FINISHES.interior[0]);
   // Mid-dark default so the first overlay reads clearly (web parity —
   // Sage Green at 0.6 alpha over a white wall barely registers).
-  const [colorId, setColorId] = useState('green-smoke');
+  const [colorId, setColorId] = useState(initialCal?.colorId ?? 'green-smoke');
+  // The render's achieved look, applied until the user picks a new colour/finish.
+  const [override, setOverride] = useState<{ paint: [number, number, number]; wallLum: number } | null>(
+    initialCal ? { paint: initialCal.paint, wallLum: initialCal.wallLum } : null,
+  );
   const [lookId, setLookId] = useState<string | null>(null);
   const [pickerMode, setPickerMode] = useState<PickerMode>('colours');
   const [trackingReady, setTrackingReady] = useState(false);
@@ -114,10 +140,12 @@ export function WallPainter() {
       selectedColorId: colorId,
       sheen: sheenForFinish(finish),
       overlayHidden,
+      paintOverride: override?.paint,
+      wallLumOverride: override?.wallLum,
       onWallCountChanged: setWallCount,
       onTrackingReady: setTrackingReady,
     }),
-    [colorId, finish, overlayHidden],
+    [colorId, finish, overlayHidden, override],
   );
 
   async function handleShutter() {
@@ -166,6 +194,15 @@ export function WallPainter() {
           afterUrl: result.afterUrl,
           colorId,
           finish,
+          // Forwarded so the result screen can offer "See it live on your wall"
+          // and re-enter AR in the render's achieved colour (present only when
+          // the server ran the calibration step).
+          ...(result.calibration
+            ? {
+                calPaint: result.calibration.paint.join(','),
+                calWallLum: String(result.calibration.wallLum),
+              }
+            : {}),
         },
       });
     } catch (error) {
@@ -226,6 +263,13 @@ export function WallPainter() {
         autofocus
         initialScene={{ scene: WallScene }}
         viroAppProps={viroAppProps}
+        // Hide the painted wall behind real objects in front of it (sofa, lamp).
+        // Viro auto-selects the depth source (LiDAR → ARCore Depth → monocular →
+        // plane fallback). DEVICE-QA: on non-depth devices confirm it degrades
+        // gracefully; if it costs FPS/thermals, gate via
+        // navigatorRef.current?.arSceneNavigator.isDepthOcclusionSupported() and
+        // fall back to "peopleOnly", and tune monocularDepthTargetFPS.
+        occlusionMode="depthBased"
         style={StyleSheet.absoluteFill}
       />
 
@@ -280,10 +324,12 @@ export function WallPainter() {
             setService(next);
             setFinish(FINISHES[next][0]);
             setLookId(null);
+            setOverride(null);
           }}
           onFinishChange={(next) => {
             setFinish(next);
             setLookId(null);
+            setOverride(null);
           }}
         />
 
@@ -312,6 +358,7 @@ export function WallPainter() {
             onSelect={(color) => {
               setColorId(color.id);
               setLookId(null);
+              setOverride(null);
             }}
           />
         ) : (
@@ -323,6 +370,7 @@ export function WallPainter() {
               setColorId(look.colorId);
               setFinish(look.finish);
               setLookId(look.id);
+              setOverride(null);
             }}
           />
         )}
