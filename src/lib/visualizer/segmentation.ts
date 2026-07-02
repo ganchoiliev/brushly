@@ -42,7 +42,11 @@ export interface WallMask {
 type Ort = typeof import('onnxruntime-web/all')
 export type ExecutionProvider = 'webgpu' | 'webgl' | 'wasm'
 
-const DEFAULT_PROVIDERS: ExecutionProvider[] = ['webgpu', 'webgl', 'wasm']
+// No 'webgl' in the default chain: ort-web's webgl EP can't execute this
+// model, and on software GL its warmup doesn't just fail — it stalls for
+// minutes in readPixels before the validation gate can reject it. It remains
+// selectable via an explicit lazyInit(['webgl']) / ?ep=webgl for debugging.
+const DEFAULT_PROVIDERS: ExecutionProvider[] = ['webgpu', 'wasm']
 
 let sessionPromise: Promise<InferenceSession> | null = null
 let requestedProviders: ExecutionProvider[] = DEFAULT_PROVIDERS
@@ -150,6 +154,23 @@ export function getActiveModel(): 'int8' | 'fp32' | null {
   return activeModel
 }
 
+// Consumer refcount: the live hook, the debug page and the instant-preview
+// one-shot can overlap on the singleton session (e.g. shutter → camera
+// reopened while the instant preview still computes). Each consumer brackets
+// its usage with acquireSession()/releaseSession(); the session is only
+// disposed when the LAST consumer leaves — an unconditional dispose() from
+// one consumer would release it out from under the others.
+let consumers = 0
+
+export function acquireSession(): void {
+  consumers += 1
+}
+
+export async function releaseSession(): Promise<void> {
+  consumers = Math.max(0, consumers - 1)
+  if (consumers === 0) await dispose()
+}
+
 /** Releases the ORT session, input scratch buffers and the model weights. */
 export async function dispose(): Promise<void> {
   const pending = sessionPromise
@@ -158,7 +179,15 @@ export async function dispose(): Promise<void> {
   activeModel = null
   scratch.clear() // drop cached input canvases + Float32 tensor buffers (~4 MB)
   if (!pending) return
-  await inFlightRuns
+  // Drain to quiescence: runs chain themselves synchronously at call time,
+  // but awaiting one batch can surface more (a queued run behind a slow
+  // warmup). Runs issued after sessionPromise was nulled use a NEW session,
+  // so once the chain is stable nothing else can touch `pending`'s session.
+  let chain: Promise<void>
+  do {
+    chain = inFlightRuns
+    await chain
+  } while (chain !== inFlightRuns)
   try {
     const session = await pending
     await session.release()
@@ -258,12 +287,15 @@ async function runMargin(
   source: HTMLCanvasElement | ImageData,
   inputSize: number,
 ): Promise<{ margin: Float32Array; outW: number; outH: number }> {
-  const session = await lazyInit()
-  const ort: Ort = await import('onnxruntime-web/all')
-
-  // Everything that touches the session runs inside a tracked promise so
-  // dispose() can wait for it before releasing.
+  // Everything — session acquisition INCLUDED — runs inside the tracked
+  // promise, and the chain is extended synchronously at call time. If any
+  // await sat between grabbing the session promise and registering the work,
+  // dispose() could snapshot the chain in that gap and release the session
+  // under a run that was about to start (a real hang: the AR-capture instant
+  // preview races the camera teardown's dispose() exactly like that).
   const work = (async () => {
+    const session = await lazyInit()
+    const ort: Ort = await import('onnxruntime-web/all')
     const input = new ort.Tensor('float32', toInputTensorData(source, inputSize), [
       1,
       3,

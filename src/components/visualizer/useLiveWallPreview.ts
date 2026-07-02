@@ -5,39 +5,70 @@
 // overlay <canvas>.
 //
 // Two independent loops:
-//  - model loop (~6–10fps): crop video frame → 256px input → wall margin at
-//    32×32 → temporal EMA + feathered alpha → small tint canvas. Sequential
-//    awaits; throttled; never more than one inference in flight.
-//  - compositor (rAF, display rate): draws the video crop into the overlay
-//    canvas, then the upscaled tint twice — 'color' transfers the paint's
-//    hue/saturation at the wall's own luminance, 'soft-light' pulls brightness
-//    toward the paint. Both preserve texture and shadows. Compositing happens
-//    IN the canvas because CSS mix-blend-mode over <video> silently no-ops on
-//    iOS Safari (video composites in its own layer).
+//  - model loop (~6–10fps): crop video frame → 256/320px input → wall margin
+//    at input/8 → motion-adaptive temporal EMA + feathered alpha → compositor
+//    mask update, plus wall-luminance and motion statistics from the same
+//    grabbed frame. Sequential awaits; throttled; never more than one
+//    inference in flight. Fast devices are stepped up to 320 input (40×40
+//    mask) for a visibly sharper edge.
+//  - compositor (rAF, display rate): WebGL2 when available — edge-aware mask
+//    upsampling + luminance-transfer recolour in linear light (dark paints
+//    actually read dark; texture, shadows and highlights survive; glossier
+//    finishes keep more specular). Falls back to the original 2D-canvas
+//    'color' + 'soft-light' recipe. Compositing happens IN the canvas because
+//    CSS mix-blend-mode over <video> silently no-ops on iOS Safari (video
+//    composites in its own layer).
 //
 // The video element must render object-cover (or exactly match the source
 // aspect) — coverCrop() mirrors that mapping so the mask lines up on screen.
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
-import { dispose, getActiveProvider, lazyInit, segmentWallMargin } from '@/lib/visualizer/segmentation'
+import {
+  acquireSession,
+  getActiveProvider,
+  lazyInit,
+  releaseSession,
+  segmentWallMargin,
+} from '@/lib/visualizer/segmentation'
+import {
+  DEFAULT_TUNING,
+  adaptInputSize,
+  hexToRgb,
+  maskedMeanLuminance,
+  motionBlend,
+  motionScore,
+  smoothMargin,
+  specPreserveForFinish,
+  type LiveTuning,
+  type SmoothedMask,
+} from '@/lib/visualizer/liveMath'
+import {
+  createLiveCompositor,
+  type CompositorMode,
+  type LiveCompositor,
+} from './liveCompositor'
 
 export type LivePreviewStatus = 'idle' | 'loading' | 'on' | 'unsupported'
 
 export interface LiveStats {
-  /** Wall time of the latest model pass (grab → margin → tint), ms. */
+  /** Wall time of the latest model pass (grab → margin → mask), ms. */
   inferMs: number
   /** Achievable model rate from the rolling average, fps. */
   fps: number
+  /** Current model input size (256 baseline, 320 on fast devices). */
+  inputSize: number
+  /** Which compositor is drawing ('webgl' preferred, '2d' fallback). */
+  compositor: 'webgl' | '2d' | null
+  /** Display-loop rate over the last second, fps. */
+  drawFps: number
 }
 
-const LIVE_INPUT = 256 // model input for live frames (still path stays at 512)
 const MIN_INTERVAL_MS = 100 // cap the model loop at ~10fps
 const FAIL_AVG_MS = 200 // sustained < 5fps ⇒ turn the overlay off
 const WARMUP_RUNS = 3 // first passes compile WebGPU shaders — don't judge them
 const WINDOW = 6 // rolling samples for the fps guard
-const TEMPORAL_BLEND = 0.45 // EMA weight of the newest mask (higher = snappier, more flicker)
-const FEATHER = 1.5 // logit-margin width of the soft mask edge
+const MOTION_STRIDE = 8 // sample grid for the frame-difference motion score
 const MAX_DPR = 2
 
 /**
@@ -89,21 +120,23 @@ export function coverCrop(
   return { sx, sy, sw, sh }
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  return [
-    parseInt(hex.slice(1, 3), 16) || 0,
-    parseInt(hex.slice(3, 5), 16) || 0,
-    parseInt(hex.slice(5, 7), 16) || 0,
-  ]
-}
-
 interface Options {
   videoRef: RefObject<HTMLVideoElement | null>
   canvasRef: RefObject<HTMLCanvasElement | null>
   /** True while the video is live and the overlay is wanted. */
   active: boolean
   colorHex: string
+  /** Paint finish label — drives specular preservation in the WebGL path. */
+  finish?: string
   onStats?: (stats: LiveStats) => void
+  /** Overrides for the smoothing/recolour constants (debug page sliders). */
+  tuning?: Partial<LiveTuning>
+  /** Force a compositor implementation (debug page A/B). */
+  compositorMode?: CompositorMode
+  /** Debug: run the live loop even on wasm (normally capture-only). */
+  debugAllowAnyProvider?: boolean
+  /** Debug: keep the loop alive past the FAIL_AVG_MS guard. */
+  debugDisableFpsGuard?: boolean
 }
 
 export default function useLiveWallPreview({
@@ -111,57 +144,33 @@ export default function useLiveWallPreview({
   canvasRef,
   active,
   colorHex,
+  finish,
   onStats,
+  tuning,
+  compositorMode = 'auto',
+  debugAllowAnyProvider = false,
+  debugDisableFpsGuard = false,
 }: Options): LivePreviewStatus {
   const [status, setStatus] = useState<LivePreviewStatus>('idle')
 
   // Smoothed wall alpha at model-output resolution, persisted across frames
-  // for the EMA and reused by instant colour switches.
-  const smoothRef = useRef<{ data: Float32Array; w: number; h: number } | null>(null)
-  const tintRef = useRef<HTMLCanvasElement | null>(null)
-  const tintDataRef = useRef<ImageData | null>(null)
+  // for the EMA.
+  const smoothRef = useRef<SmoothedMask | null>(null)
+  const compositorRef = useRef<LiveCompositor | null>(null)
   const colorRef = useRef<[number, number, number]>(hexToRgb(colorHex))
+  const finishRef = useRef(finish)
+  finishRef.current = finish
   const onStatsRef = useRef(onStats)
   onStatsRef.current = onStats
+  const tuningRef = useRef<LiveTuning>({ ...DEFAULT_TUNING, ...tuning })
+  tuningRef.current = { ...DEFAULT_TUNING, ...tuning }
+  const drawFpsRef = useRef(0)
 
-  /** Rewrites the small tint canvas from the smoothed alpha + current colour. */
-  const paintTint = useCallback(() => {
-    const s = smoothRef.current
-    if (!s) return
-    let tint = tintRef.current
-    if (!tint) {
-      tint = document.createElement('canvas')
-      tintRef.current = tint
-    }
-    if (tint.width !== s.w || tint.height !== s.h) {
-      tint.width = s.w
-      tint.height = s.h
-      tintDataRef.current = null
-    }
-    const ctx = tint.getContext('2d')
-    if (!ctx) return
-    let img = tintDataRef.current
-    if (!img) {
-      img = ctx.createImageData(s.w, s.h)
-      tintDataRef.current = img
-    }
-    const [r, g, b] = colorRef.current
-    const px = img.data
-    for (let i = 0; i < s.data.length; i++) {
-      const p = i * 4
-      px[p] = r
-      px[p + 1] = g
-      px[p + 2] = b
-      px[p + 3] = Math.round(s.data[i] * 255)
-    }
-    ctx.putImageData(img, 0, 0)
-  }, [])
-
-  // Colour switches re-tint the last mask immediately — no model pass needed.
+  // Colour switches re-tint instantly — no model pass needed.
   useEffect(() => {
     colorRef.current = hexToRgb(colorHex)
-    paintTint()
-  }, [colorHex, paintTint])
+    compositorRef.current?.setColor(colorRef.current)
+  }, [colorHex])
 
   useEffect(() => {
     if (!active) {
@@ -171,15 +180,26 @@ export default function useLiveWallPreview({
     let stopped = false
     let rafId = 0
     let sleepTimer: ReturnType<typeof setTimeout> | undefined
+    let inputSize = 256
+    acquireSession()
+    let downgraded = false // once 320 proves too slow, don't oscillate back
     const grab = document.createElement('canvas')
-    grab.width = LIVE_INPUT
-    grab.height = LIVE_INPUT
+    grab.width = inputSize
+    grab.height = inputSize
+    // Motion sampling grid at the largest input size (320/8 = 40 per side).
+    const prevLuma = new Float32Array(40 * 40)
+    let hasPrevLuma = false
+    let wallLum = 0.5
     setStatus('loading')
 
+    // Clearing goes through the compositor ONLY. A getContext('2d') fallback
+    // here would permanently claim the (still pristine) overlay canvas as 2D
+    // during the model-load window — before startCompositor ever ran — and
+    // silently lock the WebGL path out for every later activation. When no
+    // compositor exists nothing has drawn to the canvas, so there is nothing
+    // to clear anyway.
     const clearOverlay = () => {
-      const canvas = canvasRef.current
-      const ctx = canvas?.getContext('2d')
-      if (canvas && ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
+      compositorRef.current?.clear()
     }
 
     const fail = () => {
@@ -194,70 +214,36 @@ export default function useLiveWallPreview({
         sleepTimer = setTimeout(resolve, ms)
       })
 
-    // Feathered alpha from the raw margin, EMA-blended with the previous frame.
-    const applyMargin = (margin: Float32Array, w: number, h: number) => {
-      let s = smoothRef.current
-      let fresh = false
-      if (!s || s.w !== w || s.h !== h) {
-        s = { data: new Float32Array(w * h), w, h }
-        smoothRef.current = s
-        fresh = true
-      }
-      const data = s.data
-      for (let i = 0; i < margin.length; i++) {
-        const alpha = 1 / (1 + Math.exp(-margin[i] / FEATHER))
-        data[i] = fresh ? alpha : data[i] + (alpha - data[i]) * TEMPORAL_BLEND
-      }
-    }
-
-    // Canvas blend support is near-universal, but degrade to a plain alpha
-    // overlay rather than an invisible one if 'color'/'soft-light' are missing.
-    let blendOk = true
-    const startCompositor = () => {
-      const probe = canvasRef.current?.getContext('2d')
-      if (probe) {
-        probe.globalCompositeOperation = 'color'
-        blendOk = probe.globalCompositeOperation === 'color'
-        probe.globalCompositeOperation = 'source-over'
-      }
+    const startCompositor = (): boolean => {
+      const canvas = canvasRef.current
+      if (!canvas) return false
+      const compositor = createLiveCompositor(canvas, compositorMode)
+      if (!compositor) return false
+      compositorRef.current = compositor
+      compositor.setColor(colorRef.current)
+      let frames = 0
+      let windowStart = performance.now()
       const draw = () => {
         if (stopped) return
         const video = videoRef.current
-        const canvas = canvasRef.current
-        const tint = tintRef.current
-        if (video && canvas && tint && video.videoWidth) {
+        if (video && video.videoWidth) {
           const cw = video.clientWidth
           const ch = video.clientHeight
           const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR)
-          const w = Math.round(cw * dpr)
-          const h = Math.round(ch * dpr)
-          if (canvas.width !== w || canvas.height !== h) {
-            canvas.width = w
-            canvas.height = h
-          }
-          const ctx = canvas.getContext('2d')
-          if (ctx && w > 0 && h > 0) {
-            const { sx, sy, sw, sh } = coverCrop(video.videoWidth, video.videoHeight, cw, ch)
-            ctx.globalCompositeOperation = 'source-over'
-            ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h)
-            ctx.imageSmoothingEnabled = true
-            ctx.imageSmoothingQuality = 'high'
-            if (blendOk) {
-              ctx.globalCompositeOperation = 'color'
-              ctx.drawImage(tint, 0, 0, w, h)
-              ctx.globalCompositeOperation = 'soft-light'
-              ctx.drawImage(tint, 0, 0, w, h)
-              ctx.globalCompositeOperation = 'source-over'
-            } else {
-              ctx.globalAlpha = 0.55
-              ctx.drawImage(tint, 0, 0, w, h)
-              ctx.globalAlpha = 1
-            }
+          const crop = coverCrop(video.videoWidth, video.videoHeight, cw, ch)
+          compositor.render(video, crop, Math.round(cw * dpr), Math.round(ch * dpr))
+          frames += 1
+          const now = performance.now()
+          if (now - windowStart >= 1000) {
+            drawFpsRef.current = Math.round((frames * 1000) / (now - windowStart))
+            frames = 0
+            windowStart = now
           }
         }
         rafId = requestAnimationFrame(draw)
       }
       rafId = requestAnimationFrame(draw)
+      return true
     }
 
     const loop = async () => {
@@ -265,6 +251,11 @@ export default function useLiveWallPreview({
       let runs = 0
       let errors = 0
       let compositing = false
+      // A size change recompiles ort-web's shape-specialised WebGPU kernels,
+      // exactly like startup — judge the new size only on warm samples, or
+      // the compile spike of the first 320 pass reads as "too slow" and
+      // permanently locks the upgrade out (or worse, trips the fail guard).
+      let skipSamples = 0
       while (!stopped) {
         const video = videoRef.current
         if (!video || video.readyState < 2 || !video.videoWidth || document.hidden) {
@@ -273,32 +264,90 @@ export default function useLiveWallPreview({
         }
         const t0 = performance.now()
         try {
+          const tune = tuningRef.current
           const cw = video.clientWidth || video.videoWidth
           const ch = video.clientHeight || video.videoHeight
           const { sx, sy, sw, sh } = coverCrop(video.videoWidth, video.videoHeight, cw, ch)
-          const gctx = grab.getContext('2d')
+          const gctx = grab.getContext('2d', { willReadFrequently: true })
           if (!gctx) throw new Error('Canvas 2D is unavailable.')
-          gctx.drawImage(video, sx, sy, sw, sh, 0, 0, LIVE_INPUT, LIVE_INPUT)
-          const { margin, width, height } = await segmentWallMargin(grab, LIVE_INPUT)
+          gctx.drawImage(video, sx, sy, sw, sh, 0, 0, inputSize, inputSize)
+          // One read serves the motion score now and the wall-luminance
+          // estimate after the mask lands.
+          const frame = gctx.getImageData(0, 0, inputSize, inputSize)
+          const motion = motionScore(
+            frame.data,
+            inputSize,
+            inputSize,
+            MOTION_STRIDE,
+            prevLuma,
+            hasPrevLuma,
+          )
+          hasPrevLuma = true
+          const { margin, width, height } = await segmentWallMargin(grab, inputSize)
           if (stopped) return
-          applyMargin(margin, width, height)
-          paintTint()
+          const smooth = smoothMargin(
+            margin,
+            width,
+            height,
+            smoothRef.current,
+            tune.feather,
+            motionBlend(motion, tune),
+          )
+          smoothRef.current = smooth
+          wallLum =
+            maskedMeanLuminance(frame.data, inputSize, inputSize, smooth.data, width, height) ??
+            wallLum
           if (!compositing) {
+            if (!startCompositor()) {
+              fail()
+              return
+            }
             compositing = true
-            startCompositor()
             setStatus('on')
+          }
+          const compositor = compositorRef.current
+          if (compositor) {
+            compositor.setParams({
+              tintStrength: tune.tintStrength,
+              edgeSigma: tune.edgeSigma,
+              specPreserve: specPreserveForFinish(finishRef.current ?? ''),
+            })
+            compositor.updateMask(smooth.data, width, height)
+            compositor.setWallLuminance(wallLum)
           }
           errors = 0
           runs += 1
           const dt = performance.now() - t0
-          if (runs > WARMUP_RUNS) {
+          if (runs > WARMUP_RUNS && skipSamples > 0) {
+            skipSamples -= 1
+          } else if (runs > WARMUP_RUNS) {
             durations.push(dt)
             if (durations.length > WINDOW) durations.shift()
             const avg = durations.reduce((a, b) => a + b, 0) / durations.length
-            onStatsRef.current?.({ inferMs: Math.round(dt), fps: Math.round(10000 / avg) / 10 })
-            if (durations.length >= WINDOW && avg > FAIL_AVG_MS) {
-              fail()
-              return
+            onStatsRef.current?.({
+              inferMs: Math.round(dt),
+              fps: Math.round(10000 / avg) / 10,
+              inputSize,
+              compositor: compositorRef.current?.kind ?? null,
+              drawFps: drawFpsRef.current,
+            })
+            if (durations.length >= WINDOW) {
+              if (!debugDisableFpsGuard && avg > FAIL_AVG_MS) {
+                fail()
+                return
+              }
+              // Step the model input against the measured budget: 320 gives a
+              // 40×40 mask (sharper edges) but only while comfortably real-time.
+              const next = adaptInputSize(inputSize, avg)
+              if (next !== inputSize && !(next > inputSize && downgraded)) {
+                if (next < inputSize) downgraded = true
+                inputSize = next
+                grab.width = inputSize
+                grab.height = inputSize
+                hasPrevLuma = false // sample grid moved
+                durations.length = 0 // measure the new size fresh
+                skipSamples = 2 // …but not its shader-compile spike
+              }
             }
           }
         } catch {
@@ -319,7 +368,7 @@ export default function useLiveWallPreview({
       detectLiveCapability()
         .then((capable) => {
           if (stopped) return
-          if (!capable) {
+          if (!capable && !debugAllowAnyProvider) {
             // Don't fetch the model at all — capture-only fallback.
             setStatus('unsupported')
             return
@@ -329,7 +378,7 @@ export default function useLiveWallPreview({
             const ep = getActiveProvider()
             // wasm executes on the main thread (~hundreds of ms per frame) —
             // that's "no WebGL/WebGPU" for live purposes. Capture still works.
-            if (ep !== 'webgpu' && ep !== 'webgl') {
+            if (ep !== 'webgpu' && ep !== 'webgl' && !debugAllowAnyProvider) {
               setStatus('unsupported')
               return
             }
@@ -348,14 +397,21 @@ export default function useLiveWallPreview({
       cancelAnimationFrame(rafId)
       clearOverlay()
       // Release everything the live loop grew: the smoothed-mask buffer, the
-      // tint canvas + ImageData, and (via dispose) the ORT session, its input
-      // scratch buffers and the model weights.
+      // compositor's GPU resources and (when we're the last consumer) the ORT
+      // session, its input scratch buffers and the model weights.
+      compositorRef.current?.destroy()
+      compositorRef.current = null
       smoothRef.current = null
-      tintRef.current = null
-      tintDataRef.current = null
-      void dispose()
+      void releaseSession()
     }
-  }, [active, videoRef, canvasRef, paintTint])
+  }, [
+    active,
+    videoRef,
+    canvasRef,
+    compositorMode,
+    debugAllowAnyProvider,
+    debugDisableFpsGuard,
+  ])
 
   return status
 }

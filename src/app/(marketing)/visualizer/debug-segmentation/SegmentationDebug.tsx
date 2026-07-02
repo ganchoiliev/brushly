@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import {
   lazyInit,
   segmentWall,
-  dispose,
+  acquireSession,
+  releaseSession,
   getActiveProvider,
   getActiveModel,
   type ExecutionProvider,
 } from '@/lib/visualizer/segmentation'
-import { PALETTE_BY_SPECTRUM, getColor } from '@/lib/visualizer/palette'
+import { DEFAULT_TUNING } from '@/lib/visualizer/liveMath'
+import { FINISHES, PALETTE_BY_SPECTRUM, getColor } from '@/lib/visualizer/palette'
+import type { CompositorMode } from '@/components/visualizer/liveCompositor'
 import useLiveWallPreview, { type LiveStats } from '@/components/visualizer/useLiveWallPreview'
 
 // ?ep=wasm|webgl|webgpu forces a provider (debug page only).
@@ -32,30 +35,55 @@ interface Stats {
 
 const SIM_W = 800
 const SIM_H = 600
+const MODES: CompositorMode[] = ['auto', 'webgl', '2d']
 
 export default function SegmentationDebug() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const simFileRef = useRef<HTMLInputElement>(null)
   const initMs = useRef(0)
   const [status, setStatus] = useState<'loading' | 'ready' | 'running' | 'error'>('loading')
   const [error, setError] = useState('')
   const [stats, setStats] = useState<Stats | null>(null)
 
   // ---- Live AR loop simulation: canvas.captureStream stands in for the
-  // camera so the full useLiveWallPreview path runs without hardware. ----
+  // camera so the full useLiveWallPreview path runs without hardware. The
+  // debug flags keep the loop alive on wasm and past the fps guard, so the
+  // compositor is inspectable on machines without WebGPU. ----
   const simVideoRef = useRef<HTMLVideoElement>(null)
   const simOverlayRef = useRef<HTMLCanvasElement>(null)
   const [simOn, setSimOn] = useState(false)
   const [simColorId, setSimColorId] = useState('green-smoke')
   const [simStats, setSimStats] = useState<LiveStats | null>(null)
+  const [simSrc, setSimSrc] = useState<string>(SAMPLES[0])
+  const [mode, setMode] = useState<CompositorMode>('auto')
+  const [showMask, setShowMask] = useState(false)
+  const [simFinish, setSimFinish] = useState<string>(FINISHES.interior[0])
+  const [feather, setFeather] = useState(DEFAULT_TUNING.feather)
+  const [temporalBase, setTemporalBase] = useState(DEFAULT_TUNING.temporalBase)
+  const [tintStrength, setTintStrength] = useState(DEFAULT_TUNING.tintStrength)
+  const [edgeSigma, setEdgeSigma] = useState(DEFAULT_TUNING.edgeSigma)
 
   const simColor = getColor(simColorId) ?? PALETTE_BY_SPECTRUM[0]
   const simStatus = useLiveWallPreview({
     videoRef: simVideoRef,
     canvasRef: simOverlayRef,
     active: simOn,
-    colorHex: simColor.hex,
+    // Mask view: hot magenta at full strength shows exactly what the model +
+    // smoothing consider "wall", separating segmentation errors from
+    // compositing errors.
+    colorHex: showMask ? '#FF00FF' : simColor.hex,
+    finish: simFinish,
     onStats: setSimStats,
+    tuning: {
+      feather,
+      temporalBase,
+      tintStrength: showMask ? 1 : tintStrength,
+      edgeSigma,
+    },
+    compositorMode: mode,
+    debugAllowAnyProvider: true,
+    debugDisableFpsGuard: true,
   })
 
   useEffect(() => {
@@ -68,7 +96,7 @@ export default function SegmentationDebug() {
     let stream: MediaStream | null = null
     const setup = async () => {
       const img = new Image()
-      img.src = SAMPLES[0]
+      img.src = simSrc
       await img.decode()
       if (cancelled) return
       const source = document.createElement('canvas')
@@ -106,13 +134,14 @@ export default function SegmentationDebug() {
       if (video) video.srcObject = null
       setSimStats(null)
     }
-  }, [simOn])
+  }, [simOn, simSrc])
 
   // Model lifecycle == page lifecycle: load on enter, dispose on exit.
   // Init is deferred a tick so StrictMode's mount→cleanup→mount doesn't start
   // a doomed duplicate init (the cleanup clears the timer before it fires).
   useEffect(() => {
     let cancelled = false
+    acquireSession()
     const timer = setTimeout(() => {
       const t0 = performance.now()
       lazyInit(providerOverride())
@@ -130,7 +159,7 @@ export default function SegmentationDebug() {
     return () => {
       cancelled = true
       clearTimeout(timer)
-      void dispose()
+      void releaseSession()
     }
   }, [])
 
@@ -187,6 +216,11 @@ export default function SegmentationDebug() {
     } finally {
       if (typeof src !== 'string') URL.revokeObjectURL(url)
     }
+  }
+
+  const onSimUpload = (f: File) => {
+    if (simSrc.startsWith('blob:')) URL.revokeObjectURL(simSrc)
+    setSimSrc(URL.createObjectURL(f))
   }
 
   return (
@@ -258,7 +292,8 @@ export default function SegmentationDebug() {
         </h2>
         <p className="mt-1 font-body text-[12px] text-brushly-cream/50">
           Streams a panning sample photo through canvas.captureStream to exercise the live AR
-          loop (segment → smooth → tint → composite) without a camera.
+          loop (segment → smooth → recolour → composite) without a camera. Runs on any provider
+          with the fps guard off, so it works — slowly — even on wasm.
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
@@ -275,14 +310,122 @@ export default function SegmentationDebug() {
               <span data-testid="sim-stats">
                 {' '}
                 · last pass <b className="text-brushly-gold">{simStats.inferMs}ms</b> · model rate{' '}
-                <b className="text-brushly-gold">{simStats.fps}fps</b>
+                <b className="text-brushly-gold">{simStats.fps}fps</b> · input{' '}
+                <b className="text-brushly-gold">{simStats.inputSize}</b> · compositor{' '}
+                <b className="text-brushly-gold">{simStats.compositor ?? '—'}</b> · draw{' '}
+                <b className="text-brushly-gold">{simStats.drawFps}fps</b>
               </span>
             )}
           </span>
         </div>
 
+        {/* Compositor A/B + mask view. The overlay canvas is keyed by mode:
+            a canvas is permanently claimed by its first context type, so
+            switching webgl↔2d must mount a fresh element. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
+            Compositor
+          </span>
+          {MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              aria-pressed={mode === m}
+              className={`border px-3 py-1.5 font-body text-[12px] transition-colors duration-200 ${
+                mode === m
+                  ? 'border-brushly-gold bg-brushly-gold/10 text-brushly-cream'
+                  : 'border-brushly-gold/25 text-brushly-cream/60 hover:border-brushly-gold/60'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+          <label className="ml-4 flex items-center gap-2 font-body text-[12px] text-brushly-cream/70">
+            <input
+              type="checkbox"
+              checked={showMask}
+              onChange={(e) => setShowMask(e.target.checked)}
+            />
+            Mask view
+          </label>
+          <label className="ml-4 flex items-center gap-2 font-body text-[12px] text-brushly-cream/70">
+            Finish
+            <select
+              value={simFinish}
+              onChange={(e) => setSimFinish(e.target.value)}
+              className="border border-brushly-gold/25 bg-transparent px-2 py-1 text-brushly-cream"
+            >
+              {FINISHES.interior.map((f) => (
+                <option key={f} value={f} className="bg-brushly-charcoal">
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-3 grid max-w-xl grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+          {(
+            [
+              ['Feather', feather, 0.25, 4, 0.25, setFeather],
+              ['EMA base', temporalBase, 0.05, 0.9, 0.05, setTemporalBase],
+              ['Tint', tintStrength, 0, 1, 0.05, setTintStrength],
+              ['Edge σ', edgeSigma, 0.01, 0.3, 0.01, setEdgeSigma],
+            ] as const
+          ).map(([label, value, min, max, step, set]) => (
+            <label key={label} className="font-body text-[11px] text-brushly-cream/60">
+              {label} <b className="text-brushly-gold">{value}</b>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(e) => set(Number(e.target.value))}
+                className="mt-1 w-full accent-[#C8A96E]"
+              />
+            </label>
+          ))}
+        </div>
+
         {simOn && (
           <>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {SAMPLES.map((s, i) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSimSrc(s)}
+                  aria-pressed={simSrc === s}
+                  className={`border transition-colors duration-200 ${
+                    simSrc === s ? 'border-brushly-gold' : 'border-brushly-gold/25'
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- local debug thumbnails */}
+                  <img src={s} alt={`Sim sample ${i + 1}`} className="h-10 w-16 object-cover" />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => simFileRef.current?.click()}
+                className="border border-brushly-gold/25 px-3 py-2 font-body text-[11px] uppercase tracking-[0.15em] text-brushly-cream/70 hover:border-brushly-gold/60"
+              >
+                Upload
+              </button>
+              <input
+                ref={simFileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) onSimUpload(f)
+                  e.target.value = ''
+                }}
+              />
+            </div>
+
             <div className="relative mt-4 aspect-[4/3] w-full max-w-xl overflow-hidden rounded-sm border border-brushly-gold/15">
               <video
                 ref={simVideoRef}
@@ -292,6 +435,7 @@ export default function SegmentationDebug() {
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <canvas
+                key={mode}
                 ref={simOverlayRef}
                 data-testid="sim-overlay"
                 className={`pointer-events-none absolute inset-0 h-full w-full transition-opacity duration-500 ${

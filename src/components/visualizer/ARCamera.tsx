@@ -53,6 +53,7 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
     canvasRef: overlayRef,
     active: state === 'live',
     colorHex: liveColor.hex,
+    finish,
   })
 
   useEffect(() => {
@@ -78,13 +79,19 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
   // belonging to an unmounted instance) must not touch state or keep tracks.
   const camGen = useRef(0)
 
+  // Camera failure states are funnel drop-offs — instrument them.
+  const setFailState = useCallback((s: 'denied' | 'unavailable' | 'busy') => {
+    setState(s)
+    trackEvent(`ar_camera_${s}`)
+  }, [])
+
   const startCamera = useCallback(async () => {
     const gen = ++camGen.current
     stopStream()
     setState('starting')
     // getUserMedia needs a secure context; also absent on very old browsers.
     if (!navigator.mediaDevices?.getUserMedia) {
-      setState('unavailable')
+      setFailState('unavailable')
       return
     }
     try {
@@ -134,7 +141,7 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
     } catch (e) {
       if (gen !== camGen.current) return
       const name = e instanceof DOMException ? e.name : ''
-      setState(
+      setFailState(
         name === 'NotAllowedError' || name === 'SecurityError'
           ? 'denied'
           : name === 'NotReadableError' || name === 'AbortError'
@@ -142,7 +149,7 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
             : 'unavailable',
       )
     }
-  }, [stopStream])
+  }, [stopStream, setFailState])
 
   useEffect(() => {
     void startCamera()
