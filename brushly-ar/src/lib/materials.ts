@@ -31,22 +31,33 @@ export function wallMaterialName(colorId: string, sheen: Sheen): string {
   return `wall-${colorId}-${sheen}`
 }
 
-const SHEEN_PROPS: Record<Sheen, { lightingModel: 'Lambert' | 'Blinn' | 'Phong'; shininess?: number }> = {
-  matte: { lightingModel: 'Lambert' },
-  satin: { lightingModel: 'Blinn', shininess: 4 },
-  gloss: { lightingModel: 'Phong', shininess: 16 },
+/* PBR, not Blinn/Phong: the scene's only directional light points nearly
+   straight down — parallel to vertical walls — so specular shininess never
+   produced a visible highlight and matte/satin/gloss looked identical.
+   Roughness under PBR responds to the ambient estimate instead.
+   DEVICE-QA: verify quads aren't rendered dark under PBR with only
+   ViroAmbientLight (no lighting environment is set). */
+const SHEEN_PROPS: Record<Sheen, { roughness: number }> = {
+  matte: { roughness: 0.95 },
+  satin: { roughness: 0.55 },
+  gloss: { roughness: 0.25 },
 }
 
 /* All (colour × sheen) material definitions — registered once by the
    AR scene module via ViroMaterials.createMaterials(WALL_MATERIALS). */
 export const WALL_MATERIALS: Record<
   string,
-  { diffuseColor: string; lightingModel: 'Lambert' | 'Blinn' | 'Phong'; shininess?: number }
+  { diffuseColor: string; lightingModel: 'PBR'; roughness: number; metalness: number }
 > = Object.fromEntries(
   PALETTE.flatMap((color) =>
     (Object.keys(SHEEN_PROPS) as Sheen[]).map((sheen) => [
       wallMaterialName(color.id, sheen),
-      { diffuseColor: color.hex, ...SHEEN_PROPS[sheen] },
+      {
+        diffuseColor: color.hex,
+        lightingModel: 'PBR' as const,
+        metalness: 0,
+        ...SHEEN_PROPS[sheen],
+      },
     ]),
   ),
 )

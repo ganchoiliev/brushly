@@ -62,7 +62,7 @@ function asTrackedPlane(anchor: ViroAnchor): TrackedPlane | null {
 export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
   const appProps =
     props.arSceneNavigator?.viroAppProps ?? props.sceneNavigator?.viroAppProps;
-  const selectedColorId = appProps?.selectedColorId ?? 'sage-green';
+  const selectedColorId = appProps?.selectedColorId ?? 'green-smoke';
   const sheen = appProps?.sheen ?? 'matte';
   const overlayHidden = appProps?.overlayHidden ?? false;
   const onWallCountChanged = appProps?.onWallCountChanged;

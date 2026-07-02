@@ -5,12 +5,30 @@
 export type VisualizerService = 'interior' | 'exterior' | 'wallpaper' | 'finish'
 
 export type PaletteGroup =
-  | 'Neutrals & Whites'
+  | 'Whites'
+  | 'Neutrals'
+  | 'Greys'
+  | 'Blacks & Darks'
   | 'Greens'
   | 'Blues'
-  | 'Warm & Earth'
-  | 'Greys & Darks'
+  | 'Reds & Pinks'
+  | 'Yellows'
+  | 'Earth & Terracotta'
   | 'Exterior'
+
+/** Chip order in colour choosers — light to dark, then by hue. */
+export const PALETTE_GROUPS: PaletteGroup[] = [
+  'Whites',
+  'Neutrals',
+  'Greys',
+  'Blacks & Darks',
+  'Greens',
+  'Blues',
+  'Reds & Pinks',
+  'Yellows',
+  'Earth & Terracotta',
+  'Exterior',
+]
 
 export interface PaintColor {
   id: string
@@ -21,39 +39,79 @@ export interface PaintColor {
 }
 
 export const PALETTE: PaintColor[] = [
-  // Neutrals & Whites
-  { id: 'wimborne-white', label: 'Wimborne White', hex: '#F0EBDA', brand: 'Farrow & Ball', group: 'Neutrals & Whites' },
-  { id: 'cornforth-white', label: 'Cornforth White', hex: '#CFC9BE', brand: 'Farrow & Ball', group: 'Neutrals & Whites' },
-  { id: 'elephants-breath', label: "Elephant's Breath", hex: '#CDC0B0', brand: 'Farrow & Ball', group: 'Neutrals & Whites' },
-  { id: 'timeless', label: 'Timeless', hex: '#E6DDCF', brand: 'Dulux Trade', group: 'Neutrals & Whites' },
-  { id: 'purbeck-stone', label: 'Purbeck Stone', hex: '#B7AE9F', brand: 'Farrow & Ball', group: 'Neutrals & Whites' },
+  // Whites
+  { id: 'all-white', label: 'All White', hex: '#FAF9EF', brand: 'Farrow & Ball', group: 'Whites' },
+  { id: 'wimborne-white', label: 'Wimborne White', hex: '#F0EBDA', brand: 'Farrow & Ball', group: 'Whites' },
+  { id: 'pointing', label: 'Pointing', hex: '#F7F0DF', brand: 'Farrow & Ball', group: 'Whites' },
+  { id: 'strong-white', label: 'Strong White', hex: '#EDECE4', brand: 'Farrow & Ball', group: 'Whites' },
+  { id: 'timeless', label: 'Timeless', hex: '#E6DDCF', brand: 'Dulux Trade', group: 'Whites' },
+
+  // Neutrals
+  { id: 'cornforth-white', label: 'Cornforth White', hex: '#CFC9BE', brand: 'Farrow & Ball', group: 'Neutrals' },
+  { id: 'elephants-breath', label: "Elephant's Breath", hex: '#CDC0B0', brand: 'Farrow & Ball', group: 'Neutrals' },
+  { id: 'skimming-stone', label: 'Skimming Stone', hex: '#D8CFC2', brand: 'Farrow & Ball', group: 'Neutrals' },
+  { id: 'purbeck-stone', label: 'Purbeck Stone', hex: '#B7AE9F', brand: 'Farrow & Ball', group: 'Neutrals' },
+  { id: 'oxford-stone', label: 'Oxford Stone', hex: '#DFCCA9', brand: 'Farrow & Ball', group: 'Neutrals' },
+
+  // Greys
+  { id: 'ammonite', label: 'Ammonite', hex: '#D5D0C6', brand: 'Farrow & Ball', group: 'Greys' },
+  { id: 'pavilion-gray', label: 'Pavilion Gray', hex: '#C0C1BA', brand: 'Farrow & Ball', group: 'Greys' },
+  { id: 'manor-house-gray', label: 'Manor House Gray', hex: '#A5A9A4', brand: 'Farrow & Ball', group: 'Greys' },
+  { id: 'plummett', label: 'Plummett', hex: '#7A7E80', brand: 'Farrow & Ball', group: 'Greys' },
+
+  // Blacks & Darks
+  { id: 'downpipe', label: 'Downpipe', hex: '#5B5E5B', brand: 'Farrow & Ball', group: 'Blacks & Darks' },
+  { id: 'railings', label: 'Railings', hex: '#45484D', brand: 'Farrow & Ball', group: 'Blacks & Darks' },
+  { id: 'pitch-black', label: 'Pitch Black', hex: '#313437', brand: 'Farrow & Ball', group: 'Blacks & Darks' },
+  { id: 'lamp-black', label: 'Lamp Black', hex: '#3B4042', brand: 'Little Greene', group: 'Blacks & Darks' },
+  { id: 'off-black', label: 'Off-Black', hex: '#24262A', brand: 'Brushly', group: 'Blacks & Darks' },
 
   // Greens
+  { id: 'vert-de-terre', label: 'Vert de Terre', hex: '#B5BCA4', brand: 'Farrow & Ball', group: 'Greens' },
+  { id: 'breakfast-room-green', label: 'Breakfast Room Green', hex: '#94A386', brand: 'Farrow & Ball', group: 'Greens' },
+  { id: 'sage-green', label: 'Sage Green', hex: '#9AA089', brand: 'Little Greene', group: 'Greens' },
   { id: 'green-smoke', label: 'Green Smoke', hex: '#6C7267', brand: 'Farrow & Ball', group: 'Greens' },
   { id: 'card-room-green', label: 'Card Room Green', hex: '#6A6D5D', brand: 'Farrow & Ball', group: 'Greens' },
-  { id: 'sage-green', label: 'Sage Green', hex: '#9AA089', brand: 'Little Greene', group: 'Greens' },
+  { id: 'calke-green', label: 'Calke Green', hex: '#77855C', brand: 'Farrow & Ball', group: 'Greens' },
   { id: 'overtly-olive', label: 'Overtly Olive', hex: '#7C7A52', brand: 'Dulux Trade', group: 'Greens' },
+  { id: 'studio-green', label: 'Studio Green', hex: '#2E3B34', brand: 'Farrow & Ball', group: 'Greens' },
 
   // Blues
-  { id: 'hague-blue', label: 'Hague Blue', hex: '#313E43', brand: 'Farrow & Ball', group: 'Blues' },
-  { id: 'stiffkey-blue', label: 'Stiffkey Blue', hex: '#3B4657', brand: 'Farrow & Ball', group: 'Blues' },
-  { id: 'denim-drift', label: 'Denim Drift', hex: '#8E9CA6', brand: 'Dulux Trade', group: 'Blues' },
+  { id: 'borrowed-light', label: 'Borrowed Light', hex: '#DCE2DF', brand: 'Farrow & Ball', group: 'Blues' },
   { id: 'bone-china-blue', label: 'Bone China Blue', hex: '#B7C4C3', brand: 'Little Greene', group: 'Blues' },
+  { id: 'denim-drift', label: 'Denim Drift', hex: '#8E9CA6', brand: 'Dulux Trade', group: 'Blues' },
+  { id: 'oval-room-blue', label: 'Oval Room Blue', hex: '#85929A', brand: 'Farrow & Ball', group: 'Blues' },
+  { id: 'de-nimes', label: 'De Nimes', hex: '#768388', brand: 'Farrow & Ball', group: 'Blues' },
+  { id: 'hicks-blue', label: "Hicks' Blue", hex: '#33526B', brand: 'Little Greene', group: 'Blues' },
+  { id: 'stiffkey-blue', label: 'Stiffkey Blue', hex: '#3B4657', brand: 'Farrow & Ball', group: 'Blues' },
+  { id: 'hague-blue', label: 'Hague Blue', hex: '#313E43', brand: 'Farrow & Ball', group: 'Blues' },
 
-  // Warm & Earth
-  { id: 'setting-plaster', label: 'Setting Plaster', hex: '#E3C6B8', brand: 'Farrow & Ball', group: 'Warm & Earth' },
-  { id: 'red-earth', label: 'Red Earth', hex: '#B06A50', brand: 'Farrow & Ball', group: 'Warm & Earth' },
-  { id: 'terracotta', label: 'Terracotta', hex: '#B5623F', brand: 'Little Greene', group: 'Warm & Earth' },
+  // Reds & Pinks
+  { id: 'pink-ground', label: 'Pink Ground', hex: '#EBD5C8', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
+  { id: 'setting-plaster', label: 'Setting Plaster', hex: '#E3C6B8', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
+  { id: 'sulking-room-pink', label: 'Sulking Room Pink', hex: '#9F7D76', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
+  { id: 'picture-gallery-red', label: 'Picture Gallery Red', hex: '#9A5A4B', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
+  { id: 'eating-room-red', label: 'Eating Room Red', hex: '#7C3B39', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
+  { id: 'rectory-red', label: 'Rectory Red', hex: '#97393B', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
 
-  // Greys & Darks
-  { id: 'downpipe', label: 'Downpipe', hex: '#5B5E5B', brand: 'Farrow & Ball', group: 'Greys & Darks' },
-  { id: 'railings', label: 'Railings', hex: '#45484D', brand: 'Farrow & Ball', group: 'Greys & Darks' },
-  { id: 'off-black', label: 'Off-Black', hex: '#24262A', brand: 'Brushly', group: 'Greys & Darks' },
+  // Yellows
+  { id: 'dayroom-yellow', label: 'Dayroom Yellow', hex: '#F3E3B2', brand: 'Farrow & Ball', group: 'Yellows' },
+  { id: 'hay', label: 'Hay', hex: '#DBC48A', brand: 'Farrow & Ball', group: 'Yellows' },
+  { id: 'babouche', label: 'Babouche', hex: '#EAC363', brand: 'Farrow & Ball', group: 'Yellows' },
+  { id: 'india-yellow', label: 'India Yellow', hex: '#C39143', brand: 'Farrow & Ball', group: 'Yellows' },
+
+  // Earth & Terracotta
+  { id: 'dead-salmon', label: 'Dead Salmon', hex: '#C3A088', brand: 'Farrow & Ball', group: 'Earth & Terracotta' },
+  { id: 'red-earth', label: 'Red Earth', hex: '#B06A50', brand: 'Farrow & Ball', group: 'Earth & Terracotta' },
+  { id: 'terracotta', label: 'Terracotta', hex: '#B5623F', brand: 'Little Greene', group: 'Earth & Terracotta' },
+  { id: 'london-clay', label: 'London Clay', hex: '#75685D', brand: 'Farrow & Ball', group: 'Earth & Terracotta' },
 
   // Exterior
   { id: 'classic-white-masonry', label: 'Classic White', hex: '#EFEAE0', brand: 'Brushly', group: 'Exterior' },
-  { id: 'heritage-green', label: 'Heritage Green', hex: '#5E6B54', brand: 'Brushly', group: 'Exterior' },
+  { id: 'sandstone', label: 'Sandstone', hex: '#D2C3A3', brand: 'Brushly', group: 'Exterior' },
   { id: 'stone-render', label: 'Stone', hex: '#C9BFA9', brand: 'Brushly', group: 'Exterior' },
+  { id: 'heritage-green', label: 'Heritage Green', hex: '#5E6B54', brand: 'Brushly', group: 'Exterior' },
+  { id: 'slate-grey-masonry', label: 'Slate Grey', hex: '#6A6E71', brand: 'Brushly', group: 'Exterior' },
 ]
 
 const BY_ID = new Map(PALETTE.map((c) => [c.id, c]))

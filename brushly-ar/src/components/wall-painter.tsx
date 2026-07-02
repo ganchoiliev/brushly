@@ -36,7 +36,9 @@ export function WallPainter() {
   const [phase, setPhase] = useState<Phase>('checking');
   const [service, setService] = useState<VisualizerService>('interior');
   const [finish, setFinish] = useState<string>(FINISHES.interior[0]);
-  const [colorId, setColorId] = useState('sage-green');
+  // Mid-dark default so the first overlay reads clearly (web parity —
+  // Sage Green at 0.6 alpha over a white wall barely registers).
+  const [colorId, setColorId] = useState('green-smoke');
   const [lookId, setLookId] = useState<string | null>(null);
   const [pickerMode, setPickerMode] = useState<PickerMode>('colours');
   const [trackingReady, setTrackingReady] = useState(false);
@@ -126,9 +128,11 @@ export function WallPainter() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       // Drop the tint quads for a beat so the API gets the unpainted wall —
-      // Gemini must repaint the original, not our overlay.
+      // Gemini must repaint the original, not our overlay. 500ms: the clean
+      // frame must actually reach the GL swapchain before the screenshot on
+      // slower devices; the RenderProgress overlay masks the pause anyway.
       setOverlayHidden(true);
-      await delay(300);
+      await delay(500);
       const shot = await navigatorRef.current?.arSceneNavigator.takeScreenshot(
         `brushly-${Date.now()}`,
         false,

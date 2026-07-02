@@ -71,10 +71,15 @@ export default function ResultScreen() {
   }
 
   /* Prefetch on mount so save/share still work if the client and staff
-     linger past the URL's TTL. Fire-and-forget; the tap paths retry. */
+     linger past the URL's TTL — and swap the on-screen image to the local
+     copy, so the comparison view survives a cache eviction after the signed
+     URL has expired (a lingering demo would otherwise go blank). */
+  const [localAfterUri, setLocalAfterUri] = useState<string | null>(null);
   useEffect(() => {
     if (Platform.OS === 'web' || !params.renderId) return;
-    downloadAfter().catch(() => {});
+    downloadAfter()
+      .then(setLocalAfterUri)
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per render result
   }, [params.renderId]);
 
@@ -138,7 +143,7 @@ export default function ResultScreen() {
         >
           {/* After fills the frame; Before sits on top, clipped by width. */}
           <Image
-            source={{ uri: String(params.afterUrl) }}
+            source={{ uri: localAfterUri ?? String(params.afterUrl) }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             transition={200}
