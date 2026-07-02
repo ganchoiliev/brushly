@@ -1,5 +1,6 @@
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -10,12 +11,17 @@ import {
 
 import { GoldButton } from '@/components/gold-button';
 import { LooksRow } from '@/components/looks-row';
+import { RenderProgress } from '@/components/render-progress';
 import { ServiceFinishBar } from '@/components/service-finish-bar';
 import { SwatchRow } from '@/components/swatch-row';
 import WallScene, { type WallSceneProps } from '@/components/wall-scene';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { toUploadJpeg } from '@/lib/capture';
 import { sheenForFinish } from '@/lib/materials';
-import { FINISHES, type VisualizerService } from '@/lib/palette';
+import { FINISHES, getColor, type VisualizerService } from '@/lib/palette';
+import { getSessionId, requestRender, uploadPhoto } from '@/lib/visualizer-api';
+
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 type Phase = 'checking' | 'unsupported' | 'denied' | 'ready';
 type PickerMode = 'colours' | 'looks';
@@ -35,6 +41,14 @@ export function WallPainter() {
   const [pickerMode, setPickerMode] = useState<PickerMode>('colours');
   const [trackingReady, setTrackingReady] = useState(false);
   const [wallCount, setWallCount] = useState(0);
+  const [overlayHidden, setOverlayHidden] = useState(false);
+  const [rendering, setRendering] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+
+  const navigatorRef = useRef<ViroARSceneNavigator>(null);
+  // In-flight guard must be a ref, not state — the shutter Pressable can
+  // fire from a stale closure while a render is already running.
+  const captureInFlight = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,11 +78,71 @@ export function WallPainter() {
     () => ({
       selectedColorId: colorId,
       sheen: sheenForFinish(finish),
+      overlayHidden,
       onWallCountChanged: setWallCount,
       onTrackingReady: setTrackingReady,
     }),
-    [colorId, finish],
+    [colorId, finish, overlayHidden],
   );
+
+  async function handleShutter() {
+    if (captureInFlight.current) return;
+    captureInFlight.current = true;
+    setRenderError(null);
+    setRendering(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      // Drop the tint quads for a beat so the API gets the unpainted wall —
+      // Gemini must repaint the original, not our overlay.
+      setOverlayHidden(true);
+      await delay(300);
+      const shot = await navigatorRef.current?.arSceneNavigator.takeScreenshot(
+        `brushly-${Date.now()}`,
+        false,
+      );
+      setOverlayHidden(false);
+      if (!shot?.success || !shot.url) {
+        throw new Error('Could not capture the photo. Please try again.');
+      }
+      const localUri = String(shot.url).startsWith('file://')
+        ? String(shot.url)
+        : `file://${shot.url}`;
+
+      const jpegUri = await toUploadJpeg(localUri);
+      const session = getSessionId();
+      const sourcePath = await uploadPhoto(session, jpegUri);
+      const result = await requestRender({
+        sessionId: session,
+        sourcePath,
+        service,
+        colorId,
+        finish,
+      });
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.push({
+        pathname: '/result',
+        params: {
+          renderId: result.renderId,
+          beforeUrl: result.beforeUrl,
+          afterUrl: result.afterUrl,
+          colorId,
+          finish,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      setRenderError(
+        message === 'limit_reached'
+          ? 'You’ve reached today’s preview limit — try again tomorrow.'
+          : message || 'Something went wrong. Please try again.',
+      );
+    } finally {
+      setOverlayHidden(false);
+      setRendering(false);
+      captureInFlight.current = false;
+    }
+  }
 
   if (phase === 'checking') {
     return (
@@ -105,6 +179,7 @@ export function WallPainter() {
   return (
     <View style={styles.screen}>
       <ViroARSceneNavigator
+        ref={navigatorRef}
         autofocus
         initialScene={{ scene: WallScene }}
         viroAppProps={viroAppProps}
@@ -128,6 +203,32 @@ export function WallPainter() {
             <Text style={styles.hintText}>{hint}</Text>
           </View>
         )}
+        {renderError && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss error"
+            onPress={() => setRenderError(null)}
+            style={styles.errorPill}
+          >
+            <Text style={styles.errorText}>{renderError}</Text>
+          </Pressable>
+        )}
+
+        <View style={styles.shutterRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Capture and render this wall"
+            disabled={rendering}
+            onPress={handleShutter}
+            style={({ pressed }) => [
+              styles.shutter,
+              pressed && styles.shutterPressed,
+              rendering && styles.shutterDisabled,
+            ]}
+          >
+            <View style={styles.shutterInner} />
+          </Pressable>
+        </View>
 
         <ServiceFinishBar
           service={service}
@@ -183,6 +284,10 @@ export function WallPainter() {
           />
         )}
       </View>
+
+      {rendering && (
+        <RenderProgress colorLabel={getColor(colorId)?.label ?? 'Your colour'} />
+      )}
     </View>
   );
 }
@@ -251,6 +356,46 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     fontSize: 13,
     color: Colors.cream,
+  },
+  errorPill: {
+    alignSelf: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: 'rgba(176, 106, 80, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(176, 106, 80, 0.6)',
+    maxWidth: 320,
+  },
+  errorText: {
+    fontFamily: Fonts.body,
+    fontSize: 13,
+    color: Colors.cream,
+    textAlign: 'center',
+  },
+  shutterRow: {
+    alignItems: 'center',
+  },
+  shutter: {
+    width: 68,
+    height: 68,
+    borderRadius: Radius.pill,
+    borderWidth: 3,
+    borderColor: Colors.cream,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shutterPressed: {
+    transform: [{ scale: 0.94 }],
+  },
+  shutterDisabled: {
+    opacity: 0.4,
+  },
+  shutterInner: {
+    width: 54,
+    height: 54,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.gold,
   },
   modeRow: {
     flexDirection: 'row',

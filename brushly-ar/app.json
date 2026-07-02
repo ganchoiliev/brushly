@@ -29,7 +29,11 @@
       [
         "@reactvision/react-viro",
         {
-          "android": { "xRMode": ["AR"] },
+          "android": {
+            "xRMode": [
+              "AR"
+            ]
+          },
           "ios": {
             "cameraUsagePermission": "Brushly uses your camera to show paint colours on your walls in augmented reality.",
             "microphoneUsagePermission": "Brushly does not record audio; this permission is required by the AR engine.",
@@ -50,7 +54,15 @@
       ],
       "expo-font",
       "expo-image",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-sharing",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Brushly saves your before/after renders to your photo library when you choose to download them.",
+          "savePhotosPermission": "Brushly saves your before/after renders to your photo library when you choose to download them."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

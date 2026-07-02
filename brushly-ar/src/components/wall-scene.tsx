@@ -29,6 +29,9 @@ interface TrackedPlane {
 export interface WallSceneProps {
   selectedColorId: string;
   sheen: Sheen;
+  /* True while the shutter grabs a frame — the tint quads drop to opacity 0
+     so the render API receives the unpainted wall. */
+  overlayHidden: boolean;
   onWallCountChanged: (count: number) => void;
   onTrackingReady: (ready: boolean) => void;
 }
@@ -60,6 +63,7 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
     props.arSceneNavigator?.viroAppProps ?? props.sceneNavigator?.viroAppProps;
   const selectedColorId = appProps?.selectedColorId ?? 'sage-green';
   const sheen = appProps?.sheen ?? 'matte';
+  const overlayHidden = appProps?.overlayHidden ?? false;
   const onWallCountChanged = appProps?.onWallCountChanged;
   const onTrackingReady = appProps?.onTrackingReady;
 
@@ -129,7 +133,7 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
             width={plane.width}
             height={plane.height}
             materials={[material]}
-            opacity={WALL_OPACITY}
+            opacity={overlayHidden ? 0 : WALL_OPACITY}
           />
         </ViroARPlane>
       ))}
