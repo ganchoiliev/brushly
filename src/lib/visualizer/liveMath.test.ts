@@ -8,6 +8,7 @@ import {
   motionBlend,
   motionScore,
   recolorPixels,
+  recolorPixelsFast,
   relativeLuminance,
   smoothMargin,
   specPreserveForFinish,
@@ -198,6 +199,45 @@ describe('recolorPixels', () => {
     recolorPixels(px, 1, 1, fullAlpha(1), [181, 98, 63], 0.15)
     expect(px[1]).toBeGreaterThan(180) // green still washed up, not pegged low
     expect(px[0] - px[2]).toBeLessThan(70) // channels stay close — no neon
+  })
+
+  it('recolorPixelsFast matches recolorPixels within ±1 LSB across a sweep', () => {
+    const paints: [number, number, number][] = [
+      [26, 26, 26],
+      [176, 106, 80],
+      [181, 98, 63],
+      [40, 70, 150],
+      [235, 230, 220],
+      [108, 114, 103],
+    ]
+    const wallLums = [0.05, 0.15, 0.35, 0.55, 0.85]
+    const finishes = [0, 0.2, 0.85]
+    let maxDiff = 0
+    for (const paint of paints) {
+      for (const wallLum of wallLums) {
+        for (const spec of finishes) {
+          // A gradient of wall pixels from near-black to near-white, varied alpha.
+          const n = 64
+          const ref = new Uint8ClampedArray(n * 4)
+          const fast = new Uint8ClampedArray(n * 4)
+          const alpha = new Float32Array(n)
+          for (let i = 0; i < n; i++) {
+            const v = Math.round((i / (n - 1)) * 255)
+            ref[i * 4] = fast[i * 4] = v
+            ref[i * 4 + 1] = fast[i * 4 + 1] = Math.min(255, v + 8)
+            ref[i * 4 + 2] = fast[i * 4 + 2] = Math.max(0, v - 8)
+            ref[i * 4 + 3] = fast[i * 4 + 3] = 255
+            alpha[i] = (i % 5) / 4 // 0, .25, .5, .75, 1 repeating
+          }
+          recolorPixels(ref, n, 1, alpha, paint, wallLum, { specPreserve: spec })
+          recolorPixelsFast(fast, n, 1, alpha, paint, wallLum, { specPreserve: spec })
+          for (let k = 0; k < ref.length; k++) {
+            maxDiff = Math.max(maxDiff, Math.abs(ref[k] - fast[k]))
+          }
+        }
+      }
+    }
+    expect(maxDiff).toBeLessThanOrEqual(1)
   })
 
   it('gloss finishes keep more of a specular highlight than matte', () => {

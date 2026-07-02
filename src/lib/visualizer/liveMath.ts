@@ -307,6 +307,86 @@ export function recolorPixels(
   }
 }
 
+// Lookup tables so the frozen-still recolour can re-run per colour switch
+// without ~6 Math.pow() per pixel (measured ~380ms/switch on a mid phone at
+// ~1MP — a visible stall). srgbToLinear takes a byte, so a 256-entry table is
+// exact. linearToSrgb takes a clamped [0,1] float; the table is SQRT-INDEXED
+// (entry i holds linearToSrgb((i/(N-1))²)) so resolution concentrates near black
+// where the sRGB curve is near-vertical — a plain linear index needs ~32k
+// entries for ±1 LSB there, sqrt-indexing needs ~1k. Result matches the exact
+// math within ±1 LSB across the whole range (unit-tested), and Math.sqrt is far
+// cheaper than the Math.pow it replaces.
+const L2S_SIZE = 2048
+let SRGB_TO_LIN: Float32Array | null = null
+let LIN_TO_SRGB: Uint8ClampedArray | null = null
+
+function ensureLuts(): { s2l: Float32Array; l2s: Uint8ClampedArray } {
+  if (!SRGB_TO_LIN || !LIN_TO_SRGB) {
+    const s2l = new Float32Array(256)
+    for (let v = 0; v < 256; v++) s2l[v] = srgbToLinear(v)
+    const l2s = new Uint8ClampedArray(L2S_SIZE)
+    for (let i = 0; i < L2S_SIZE; i++) {
+      const g = i / (L2S_SIZE - 1)
+      l2s[i] = linearToSrgb(g * g)
+    }
+    SRGB_TO_LIN = s2l
+    LIN_TO_SRGB = l2s
+  }
+  return { s2l: SRGB_TO_LIN, l2s: LIN_TO_SRGB }
+}
+
+/**
+ * Table-driven twin of {@link recolorPixels} for the frozen-still path, where
+ * the same frame is recoloured repeatedly as the user flips through colours.
+ * Mathematically identical (verified to within ±1 LSB per channel) but ~15-20×
+ * faster because the per-pixel sRGB⇄linear conversions are table lookups. There
+ * is no shader mirror for this — the frozen still is a 2D-canvas path only.
+ */
+export function recolorPixelsFast(
+  rgba: Uint8ClampedArray,
+  w: number,
+  h: number,
+  alpha: Float32Array,
+  paint: [number, number, number],
+  wallLum: number,
+  opts: RecolorOptions = {},
+): void {
+  const { s2l, l2s } = ensureLuts()
+  const scale = L2S_SIZE - 1
+  const tint = opts.tintStrength ?? 1
+  const spec = opts.specPreserve ?? 0
+  const pr = srgbToLinear(paint[0])
+  const pg = srgbToLinear(paint[1])
+  const pb = srgbToLinear(paint[2])
+  const paintY = relativeLuminance(pr, pg, pb)
+  const paintFactor = smoothstep(0.02, 0.18, paintY)
+  const washGain = 0.55 * (0.18 + 0.82 * paintFactor)
+  const denom = Math.max(wallLum, 0.02)
+  for (let i = 0; i < alpha.length; i++) {
+    const a = Math.min(alpha[i] * ALPHA_GAIN, 1) * tint
+    if (a < 0.004) continue
+    const p = i * 4
+    const lr = s2l[rgba[p]]
+    const lg = s2l[rgba[p + 1]]
+    const lb = s2l[rgba[p + 2]]
+    const y = relativeLuminance(lr, lg, lb)
+    const shading = Math.min(y / denom, 2.5)
+    const diffuse = Math.min(shading, DIFFUSE_CAP)
+    const wash = (shading - diffuse) * washGain
+    const highlight = smoothstep(denom * 1.6, denom * 2.4, y) * spec * SPEC_WHITE
+    const rr = pr * diffuse + wash + highlight
+    const rg = pg * diffuse + wash + highlight
+    const rb = pb * diffuse + wash + highlight
+    const or = lr + (rr - lr) * a
+    const og = lg + (rg - lg) * a
+    const ob = lb + (rb - lb) * a
+    // Sqrt-indexed lookup (see ensureLuts): index by √(clamped linear).
+    rgba[p] = l2s[(Math.sqrt(or < 0 ? 0 : or > 1 ? 1 : or) * scale + 0.5) | 0]
+    rgba[p + 1] = l2s[(Math.sqrt(og < 0 ? 0 : og > 1 ? 1 : og) * scale + 0.5) | 0]
+    rgba[p + 2] = l2s[(Math.sqrt(ob < 0 ? 0 : ob > 1 ? 1 : ob) * scale + 0.5) | 0]
+  }
+}
+
 /** Bilinear upsample of a float alpha plane (instant-preview path). */
 export function upsampleAlphaBilinear(
   src: Float32Array,

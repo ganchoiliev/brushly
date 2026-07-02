@@ -5,9 +5,15 @@ import { motion } from 'framer-motion'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import type { VisualizerService } from '@/lib/supabase/types'
 import { FINISHES, PALETTE_BY_SPECTRUM, SERVICE_LABELS, getColor } from '@/lib/visualizer/palette'
-import { EXTERIOR_CLASSES, INTERIOR_CLASSES } from '@/lib/visualizer/segmentation'
+import {
+  EXTERIOR_CLASSES,
+  INTERIOR_CLASSES,
+  acquireSession,
+  releaseSession,
+} from '@/lib/visualizer/segmentation'
 import { trackEvent } from '@/lib/gtag'
 import useLiveWallPreview, { coverCrop } from './useLiveWallPreview'
+import { freezeFrame, type FrozenPreview } from './refinePreview'
 
 export interface ARSelection {
   service: VisualizerService
@@ -60,11 +66,20 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
   const [finish, setFinish] = useState<string>(FINISHES.interior[0])
   const reducedMotion = useReducedMotion()
 
+  // "Freeze & refine": a frozen, matted, high-quality still. While one exists the
+  // live loop is paused and the frozen canvas covers the viewfinder.
+  const [frozen, setFrozen] = useState<FrozenPreview | null>(null)
+  const frozenRef = useRef<FrozenPreview | null>(null)
+  const [refining, setRefining] = useState(false)
+
   const liveColor = getColor(colorId) ?? PALETTE_BY_SPECTRUM[0]
   const liveStatus = useLiveWallPreview({
     videoRef,
     canvasRef: overlayRef,
-    active: state === 'live',
+    // Pause the live model loop + WebGL compositor while a frozen preview is up:
+    // it would otherwise fight the refine pass for the shared ORT session and
+    // keep burning GPU under a covered viewfinder.
+    active: state === 'live' && !frozen,
     colorHex: liveColor.hex,
     finish,
     // Exterior mode paints the building facade, not interior walls — the
@@ -79,6 +94,17 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
       trackEvent('ar_overlay_shown')
     }
   }, [liveStatus])
+
+  // Hold the ORT session for the whole dialog lifetime, alongside the live
+  // hook's own per-active bracket (refcounted). This guarantees the session
+  // survives while the live loop is paused for a freeze — so refine() never runs
+  // against a disposed session, and freeze→retake→freeze can't churn the model.
+  useEffect(() => {
+    acquireSession()
+    return () => {
+      void releaseSession()
+    }
+  }, [])
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -174,8 +200,37 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
       camGen.current += 1
       if (flashTimer.current) clearTimeout(flashTimer.current)
       stopStream()
+      frozenRef.current?.dispose()
+      frozenRef.current = null
     }
   }, [startCamera, stopStream])
+
+  // Freeze the current frame and kick off the high-quality on-device refine.
+  const triggerFreeze = useCallback(() => {
+    const video = videoRef.current
+    if (!video || state !== 'live' || !video.videoWidth || frozenRef.current) return
+    const crop = coverCrop(video.videoWidth, video.videoHeight, video.clientWidth, video.clientHeight)
+    const f = freezeFrame(video, crop, service)
+    frozenRef.current = f
+    setFrozen(f)
+    setRefining(true)
+    // Colour/finish at freeze time; later taps call f.recolor() directly.
+    void f.refine(liveColor.hex, finish).finally(() => setRefining(false))
+    trackEvent('ar_freeze')
+  }, [state, service, liveColor.hex, finish])
+
+  // Discard the frozen preview and return to live aiming.
+  const retake = useCallback(() => {
+    frozenRef.current?.dispose()
+    frozenRef.current = null
+    setFrozen(null)
+    setRefining(false)
+  }, [])
+
+  // Re-recolour the frozen still instantly when the look changes (no re-segment).
+  const applyToFrozen = useCallback((colorHex: string, finishLabel: string) => {
+    frozenRef.current?.recolor(colorHex, finishLabel)
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -240,24 +295,32 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
     }
     // Export exactly what the object-cover viewfinder shows: crop the source
     // frame to the container's aspect ratio, centred, before scaling. The
-    // capture is the CLEAN frame — the live overlay is preview-only; the
-    // photoreal recolour comes from the render pipeline.
-    const vw = video.videoWidth
-    const vh = video.videoHeight
-    const { sx, sy, sw, sh } = coverCrop(vw, vh, video.clientWidth, video.clientHeight)
-    const scale = Math.min(1, MAX_DIM / Math.max(sw, sh))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.round(sw * scale)
-    canvas.height = Math.round(sh * scale)
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      capturing.current = false
-      return
+    // capture is the CLEAN frame — the live overlay / frozen recolour are
+    // preview-only; the photoreal recolour comes from the render pipeline. When
+    // a frozen preview is up we export its stored clean frame (the exact frame
+    // the user refined, already cropped and full-res) so the render matches it.
+    let blob: Blob | null = null
+    const frozenClean = frozenRef.current?.clean
+    if (frozenClean && frozenClean.width > 0) {
+      blob = await new Promise<Blob | null>((resolve) =>
+        frozenClean.toBlob(resolve, 'image/jpeg', 0.9),
+      )
+    } else {
+      const vw = video.videoWidth
+      const vh = video.videoHeight
+      const { sx, sy, sw, sh } = coverCrop(vw, vh, video.clientWidth, video.clientHeight)
+      const scale = Math.min(1, MAX_DIM / Math.max(sw, sh))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(sw * scale)
+      canvas.height = Math.round(sh * scale)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        capturing.current = false
+        return
+      }
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+      blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9))
     }
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/jpeg', 0.9),
-    )
     if (!blob) {
       capturing.current = false
       return
@@ -302,11 +365,53 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
         }`}
       />
 
+      {/* Frozen high-quality preview — a detached 2D canvas (from refinePreview)
+          stacked ABOVE the WebGL overlay so the live canvas is never re-claimed.
+          Shows the plain frozen photo instantly, then the matted recolour. */}
+      {frozen && (
+        <div
+          className="absolute inset-0 z-[15]"
+          ref={(el) => {
+            if (el && el.firstChild !== frozen.out) {
+              frozen.out.className = 'absolute inset-0 h-full w-full object-cover'
+              el.replaceChildren(frozen.out)
+            }
+          }}
+        />
+      )}
+      {frozen && refining && (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(1.5rem,env(safe-area-inset-top))] z-20 flex justify-center">
+          <span className="flex items-center gap-2 rounded-full bg-brushly-black/55 px-4 py-2 font-body text-[12px] text-brushly-cream/85 backdrop-blur-sm">
+            <span
+              className={`h-3.5 w-3.5 rounded-full border-2 border-brushly-gold/30 border-t-brushly-gold ${
+                reducedMotion ? '' : 'animate-spin'
+              }`}
+            />
+            Refining…
+          </span>
+        </div>
+      )}
+
       {/* Shutter flash */}
-      {flash && <div className="absolute inset-0 z-10 bg-white/70" />}
+      {flash && <div className="absolute inset-0 z-[18] bg-white/70" />}
 
       {/* Top bar */}
-      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-end bg-gradient-to-b from-brushly-black/70 to-transparent p-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between bg-gradient-to-b from-brushly-black/70 to-transparent p-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+        {frozen ? (
+          <button
+            type="button"
+            onClick={retake}
+            className="flex items-center gap-1.5 rounded-full bg-brushly-black/40 px-4 py-2.5 font-body text-[12px] font-medium text-brushly-cream/85 backdrop-blur-sm transition-colors hover:text-brushly-cream"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M3 3v5h5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Retake
+          </button>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           onClick={handleClose}
@@ -321,32 +426,34 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
 
       {state === 'live' && (
         <>
-          <div
-            role="status"
-            className="pointer-events-none absolute inset-x-0 top-[max(1.5rem,env(safe-area-inset-top))] z-10 flex flex-col items-center gap-2 px-10"
-          >
-            {liveStatus === 'unsupported' ? (
-              <span className="max-w-[340px] rounded-2xl bg-brushly-black/50 px-4 py-2 text-center font-body text-[12px] leading-relaxed text-brushly-cream/80 backdrop-blur-sm">
-                Live preview isn&rsquo;t supported on this device — tap to capture and we&rsquo;ll
-                render it
-              </span>
-            ) : (
-              <>
-                <span className="rounded-full bg-brushly-black/50 px-4 py-2 text-center font-body text-[12px] text-brushly-cream/80 backdrop-blur-sm">
-                  {AIM_HINT[service]}
+          {!frozen && (
+            <div
+              role="status"
+              className="pointer-events-none absolute inset-x-0 top-[max(1.5rem,env(safe-area-inset-top))] z-10 flex flex-col items-center gap-2 px-10"
+            >
+              {liveStatus === 'unsupported' ? (
+                <span className="max-w-[340px] rounded-2xl bg-brushly-black/50 px-4 py-2 text-center font-body text-[12px] leading-relaxed text-brushly-cream/80 backdrop-blur-sm">
+                  Live preview isn&rsquo;t supported on this device — tap to capture and we&rsquo;ll
+                  render it
                 </span>
-                {liveStatus === 'loading' && (
-                  <span className="rounded-full bg-brushly-black/40 px-3 py-1 font-body text-[11px] text-brushly-cream/50 backdrop-blur-sm">
-                    Preparing live preview…
+              ) : (
+                <>
+                  <span className="rounded-full bg-brushly-black/50 px-4 py-2 text-center font-body text-[12px] text-brushly-cream/80 backdrop-blur-sm">
+                    {AIM_HINT[service]}
                   </span>
-                )}
-              </>
-            )}
-          </div>
+                  {liveStatus === 'loading' && (
+                    <span className="rounded-full bg-brushly-black/40 px-3 py-1 font-body text-[11px] text-brushly-cream/50 backdrop-blur-sm">
+                      Preparing live preview…
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
           {/* Aiming reticle — corner brackets, gently breathing. Anchored at
               38% height: the control stack covers the lower half on phones. */}
-          {liveStatus !== 'unsupported' && (
+          {!frozen && liveStatus !== 'unsupported' && (
             <motion.svg
               aria-hidden="true"
               width="120"
@@ -375,8 +482,27 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: reducedMotion ? 0 : 0.45, ease: [0.22, 1, 0.36, 1] }}
           >
+            {/* Freeze the frame for a high-quality, matted on-device preview.
+                Hidden once frozen (Retake returns to live) and when the model
+                can't run here. */}
+            {!frozen && liveStatus !== 'unsupported' && (
+              <button
+                type="button"
+                onClick={triggerFreeze}
+                className="flex items-center gap-2 rounded-full border border-brushly-gold/50 bg-brushly-black/40 px-5 py-2.5 font-body text-[12px] font-medium uppercase tracking-[0.15em] text-brushly-gold backdrop-blur-sm transition-colors duration-200 hover:bg-brushly-gold hover:text-brushly-black"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="3.2" />
+                </svg>
+                See it perfectly
+              </button>
+            )}
+
             {/* Service + finish drive the photoreal render (and stay useful even
-                when the live overlay is unsupported). */}
+                when the live overlay is unsupported). Service is a pre-freeze
+                choice — it changes what's segmented, so it's hidden once frozen. */}
+            {!frozen && (
             <div
               role="group"
               aria-label="Service"
@@ -404,6 +530,7 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
                 )
               })}
             </div>
+            )}
             <div
               role="group"
               aria-label="Finish"
@@ -415,7 +542,10 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
                   <button
                     key={f}
                     type="button"
-                    onClick={() => setFinish(f)}
+                    onClick={() => {
+                      setFinish(f)
+                      applyToFrozen(liveColor.hex, f)
+                    }}
                     aria-pressed={active}
                     className={`shrink-0 rounded-full px-3.5 py-2 font-body text-[10px] backdrop-blur-sm transition-colors duration-200 ${
                       active
@@ -444,7 +574,10 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setColorId(c.id)}
+                      onClick={() => {
+                        setColorId(c.id)
+                        applyToFrozen(getColor(c.id)?.hex ?? c.hex, finish)
+                      }}
                       aria-label={`${c.label} — ${c.brand}`}
                       aria-pressed={active}
                       className={`h-10 w-10 shrink-0 rounded-full transition-all duration-150 ${
