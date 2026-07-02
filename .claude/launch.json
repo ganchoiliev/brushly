@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "-p", "3412"],
       "port": 3412
+    },
+    {
+      "name": "brushly-ar-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd brushly-ar && npx expo start --web --port 8085"],
+      "port": 8085
     }
   ]
 }

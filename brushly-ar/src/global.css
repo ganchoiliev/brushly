@@ -1,0 +1,12 @@
+:root {
+  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-body: 'DM Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Web preview only — native ignores this file. */
+html,
+body,
+#root {
+  background: #151515;
+  color: #f5f0eb;
+}
