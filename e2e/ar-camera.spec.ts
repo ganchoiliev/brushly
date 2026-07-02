@@ -33,7 +33,7 @@ test('AR entry: no WebGPU degrades to capture-only without fetching the model', 
     `Object.defineProperty(navigator, 'gpu', { get: () => undefined });` + FAKE_CAMERA,
   )
   await page.goto('/visualizer')
-  await page.getByRole('button', { name: /use my camera/i }).click()
+  await page.getByRole('button', { name: /see colours live/i }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Camera' })
   await expect(dialog).toBeVisible({ timeout: 20_000 })
@@ -53,6 +53,48 @@ test('AR entry: no WebGPU degrades to capture-only without fetching the model', 
   expect(modelRequests).toHaveLength(0)
 })
 
+test('shutter: clean capture → instant on-device preview → mocked render result', async ({
+  page,
+}) => {
+  // No WebGPU: live overlay falls back to capture-only, and the instant
+  // preview after the shutter exercises the real wasm/int8 model.
+  await page.addInitScript(
+    `Object.defineProperty(navigator, 'gpu', { get: () => undefined });` + FAKE_CAMERA,
+  )
+  await page.route('**/api/visualizer/upload-url', (route) =>
+    route.fulfill({ json: { path: 'test-session/photo.jpg', token: 'tok' } }),
+  )
+  await page.route('**/object/upload/sign/**', (route) =>
+    route.fulfill({ json: { Key: 'visualizer/test-session/photo.jpg' } }),
+  )
+  // Slow mocked render so the progress screen (and the on-device instant
+  // preview that races it) is observable.
+  await page.route('**/api/visualizer/render', async (route) => {
+    await new Promise((r) => setTimeout(r, 25_000))
+    await route.fulfill({
+      json: {
+        renderId: 'render-ar-1',
+        beforeUrl: '/img/interior.webp',
+        afterUrl: '/img/hallway.webp',
+      },
+    })
+  })
+
+  await page.goto('/visualizer')
+  await page.getByRole('button', { name: /see colours live/i }).click()
+  const dialog = page.getByRole('dialog', { name: 'Camera' })
+  const shutter = dialog.getByRole('button', { name: 'Capture and render this look' })
+  await expect(shutter).toBeVisible({ timeout: 20_000 })
+  await shutter.click()
+
+  // The progress screen carries the flow through upload + render…
+  await expect(page.getByText('Painting your room…')).toBeVisible({ timeout: 15_000 })
+  // …and the on-device recolour lands while the photoreal render cooks.
+  await expect(page.getByText('Instant preview')).toBeVisible({ timeout: 45_000 })
+  // The mocked render then resolves into the before/after reveal.
+  await expect(page.getByRole('slider', { name: /compare/i })).toBeVisible({ timeout: 60_000 })
+})
+
 test('permission denied shows the recovery card and returns to upload', async ({ page }) => {
   await page.addInitScript(`
     navigator.mediaDevices.getUserMedia = async () => {
@@ -60,7 +102,7 @@ test('permission denied shows the recovery card and returns to upload', async ({
     };
   `)
   await page.goto('/visualizer')
-  await page.getByRole('button', { name: /use my camera/i }).click()
+  await page.getByRole('button', { name: /see colours live/i }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Camera' })
   await expect(dialog.getByRole('alert')).toContainText('Camera access needed', {
@@ -70,7 +112,7 @@ test('permission denied shows the recovery card and returns to upload', async ({
 
   await dialog.getByRole('button', { name: /upload a photo instead/i }).click()
   await expect(dialog).not.toBeVisible()
-  await expect(page.getByRole('button', { name: /use my camera/i })).toBeVisible()
+  await expect(page.getByRole('button', { name: /see colours live/i })).toBeVisible()
 })
 
 test('camera-in-use (NotReadableError) shows the busy card with retry', async ({ page }) => {
@@ -80,7 +122,7 @@ test('camera-in-use (NotReadableError) shows the busy card with retry', async ({
     };
   `)
   await page.goto('/visualizer')
-  await page.getByRole('button', { name: /use my camera/i }).click()
+  await page.getByRole('button', { name: /see colours live/i }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Camera' })
   await expect(dialog.getByRole('alert')).toContainText('Camera is in use', { timeout: 20_000 })

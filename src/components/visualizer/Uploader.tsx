@@ -12,9 +12,18 @@ interface Props {
 export default function Uploader({ onSelect, busy, busyLabel, error }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [drag, setDrag] = useState(false)
+  const [rejected, setRejected] = useState('')
 
   const handleFiles = (files: FileList | null) => {
-    if (files && files[0]) onSelect(files[0])
+    const file = files?.[0]
+    if (!file) return
+    // accept="image/*" only filters the picker — dropped files land here raw.
+    if (!file.type.startsWith('image/')) {
+      setRejected("That file type didn't work — try a JPG or PNG photo.")
+      return
+    }
+    setRejected('')
+    onSelect(file)
   }
 
   return (
@@ -71,16 +80,20 @@ export default function Uploader({ onSelect, busy, busyLabel, error }: Props) {
         )}
       </button>
 
+      {/* No `capture` attribute: with it, mobile browsers jump straight to the
+          camera and never offer the photo library — the camera path has its own
+          dedicated button in the wizard. */}
       <input
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
 
-      {error && <p className="font-body text-[13px] text-red-400">{error}</p>}
+      {(error || rejected) && (
+        <p className="font-body text-[13px] text-red-400">{error || rejected}</p>
+      )}
     </div>
   )
 }

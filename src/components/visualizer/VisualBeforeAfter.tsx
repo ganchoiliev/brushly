@@ -16,6 +16,8 @@ export default function VisualBeforeAfter({ beforeSrc, afterSrc, className = '' 
   const containerRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState(50)
   const [isDragging, setIsDragging] = useState(false)
+  // The reveal is the wow moment — hint until the user finds it.
+  const [touched, setTouched] = useState(false)
 
   const update = useCallback((clientX: number) => {
     const el = containerRef.current
@@ -44,14 +46,34 @@ export default function VisualBeforeAfter({ beforeSrc, afterSrc, className = '' 
   return (
     <div
       ref={containerRef}
-      className={`relative select-none overflow-hidden rounded-sm ${className}`}
+      role="slider"
+      aria-label="Compare before and after"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(position)}
+      tabIndex={0}
+      className={`relative select-none overflow-hidden rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-brushly-gold ${className}`}
       style={{
         aspectRatio: '4/3',
         cursor: isDragging ? 'grabbing' : 'grab',
         touchAction: 'none',
       }}
-      onMouseDown={() => setIsDragging(true)}
-      onTouchStart={() => setIsDragging(true)}
+      onMouseDown={(e) => {
+        setIsDragging(true)
+        setTouched(true)
+        update(e.clientX) // jump to the press point — a tap alone must respond
+      }}
+      onTouchStart={(e) => {
+        setIsDragging(true)
+        setTouched(true)
+        update(e.touches[0].clientX)
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+        e.preventDefault()
+        setTouched(true)
+        setPosition((p) => Math.max(2, Math.min(98, p + (e.key === 'ArrowRight' ? 5 : -5))))
+      }}
     >
       <img
         src={afterSrc}
@@ -90,6 +112,14 @@ export default function VisualBeforeAfter({ beforeSrc, afterSrc, className = '' 
       <div className="absolute right-3 top-3 z-10 rounded bg-brushly-black/60 px-2.5 py-1 font-body text-[10px] uppercase tracking-[0.2em] text-brushly-cream/80 backdrop-blur-sm">
         After
       </div>
+
+      {!touched && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+          <span className="animate-pulse rounded-full bg-brushly-black/60 px-3 py-1.5 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/90 backdrop-blur-sm">
+            Drag to compare
+          </span>
+        </div>
+      )}
     </div>
   )
 }

@@ -14,12 +14,14 @@ import {
   uploadPhoto,
   requestRender,
   submitLead,
+  RENDER_CANCELLED,
   type RenderResult,
 } from '@/lib/visualizer/client'
 import { downloadRender, shareRender } from '@/lib/visualizer/share'
 import { trackEvent, trackConversion, CONV_LABELS } from '@/lib/gtag'
 import dynamic from 'next/dynamic'
 import Uploader from './Uploader'
+import { makeInstantPreview } from './instantPreview'
 import type { ARSelection } from './ARCamera'
 
 // AR mode (camera + on-device segmentation) stays out of the /visualizer
@@ -64,6 +66,26 @@ const fade = {
   transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
 }
 
+// Renders are cached per exact combination — a Gloss request must never
+// silently serve the Matt render of the same colour.
+const keyOf = (service: VisualizerService, colorId: string, finish: string) =>
+  `${service}|${colorId}|${finish}`
+
+interface StoredRender {
+  result: RenderResult
+  service: VisualizerService
+  colorId: string
+  finish: string
+}
+
+const preloadImage = (url: string) =>
+  new Promise<void>((resolve) => {
+    const img = new Image()
+    img.onload = () => resolve()
+    img.onerror = () => resolve()
+    img.src = url
+  })
+
 export default function VisualizerWizard() {
   const [step, setStep] = useState<Step>('upload')
   const [sessionId, setSessionId] = useState('')
@@ -79,11 +101,17 @@ export default function VisualizerWizard() {
 
   const [rendering, setRendering] = useState(false)
   const [renderError, setRenderError] = useState('')
+  // True only while a render request is actually in flight (not during the AR
+  // upload phase) — gates the Cancel affordance on the progress screen.
+  const [cancellable, setCancellable] = useState(false)
+  // On-device recolour of the AR capture, shown while the photoreal render
+  // generates. Object URL — revoked when the render finishes.
+  const [instantPreviewUrl, setInstantPreviewUrl] = useState<string | null>(null)
 
-  // Multi-colour: keep every render this session, keyed by colour id, so flipping
-  // between already-rendered colours is instant (and free).
-  const [results, setResults] = useState<Record<string, RenderResult>>({})
-  const [activeColorId, setActiveColorId] = useState<string | null>(null)
+  // Every render this session, keyed by service|colour|finish, so flipping
+  // between already-rendered combinations is instant (and free).
+  const [results, setResults] = useState<Record<string, StoredRender>>({})
+  const [activeKey, setActiveKey] = useState<string | null>(null)
   const [renderIds, setRenderIds] = useState<string[]>([])
 
   const [freeUsed, setFreeUsed] = useState(false)
@@ -92,8 +120,12 @@ export default function VisualizerWizard() {
     open: false,
     intent: 'continue',
   })
+  // The gate was dismissed without submitting — explain the value exchange
+  // inline instead of silently re-modal-ing on every tap.
+  const [gateDismissed, setGateDismissed] = useState(false)
   const [saved, setSaved] = useState(false)
   const [busyAction, setBusyAction] = useState<'' | 'download' | 'share'>('')
+  const [busySample, setBusySample] = useState<string | null>(null)
   const [zoomUrl, setZoomUrl] = useState<string | null>(null)
 
   const prevUrl = useRef('')
@@ -107,11 +139,43 @@ export default function VisualizerWizard() {
   // design step clickable with frozen closures for its 0.5s fade, so a
   // double-tap on "See it"/a Look would otherwise POST two paid renders.
   const renderInFlight = useRef(false)
+  const renderAbort = useRef<AbortController | null>(null)
+  // Staleness guard for the async instant preview: a slow preview from an
+  // earlier (cancelled) capture must not surface over a later render's
+  // progress screen. Bumped whenever a new render context begins.
+  const instantGen = useRef(0)
+  // Mirrors instantPreviewUrl for unmount cleanup + late-resolve revocation.
+  const instantUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     setSessionId(getSessionId())
     trackEvent('visualizer_open')
   }, [])
+
+  // The instant preview only belongs to the progress screen; drop it (and its
+  // object URL) as soon as the render settles either way.
+  useEffect(() => {
+    instantUrlRef.current = instantPreviewUrl
+    if (!rendering && instantPreviewUrl) {
+      URL.revokeObjectURL(instantPreviewUrl)
+      setInstantPreviewUrl(null)
+    }
+  }, [rendering, instantPreviewUrl])
+
+  // Unmount: object URLs outlive React state — revoke whatever is still held.
+  useEffect(
+    () => () => {
+      instantGen.current += 1 // discard any still-computing instant preview
+      if (prevUrl.current) URL.revokeObjectURL(prevUrl.current)
+      if (instantUrlRef.current) URL.revokeObjectURL(instantUrlRef.current)
+    },
+    [],
+  )
+
+  const openGate = (intent: 'continue' | 'save') => {
+    trackEvent('visualizer_gate_shown')
+    setGate({ open: true, intent })
+  }
 
   // Process + upload a photo; returns the storage path (null on failure, with
   // the error left in uploadError). Step handling is up to the caller.
@@ -130,10 +194,26 @@ export default function VisualizerWizard() {
       const path = await uploadPhoto(sid, blob)
       setSourcePath(path)
       setResults({})
-      setActiveColorId(null)
+      setActiveKey(null)
       return path
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Upload failed. Please try again.')
+      // previewUrl already shows the NEW photo (swapped before the upload),
+      // but sourcePath/results still belong to the OLD one — a paid render
+      // would fire against a photo the user isn't looking at. Clear the old
+      // photo's state so the flow is coherent: no active photo until a
+      // successful upload.
+      setSourcePath('')
+      setResults({})
+      setActiveKey(null)
+      // Raw DOMException text ("The source image could not be decoded") means
+      // nothing to a visitor — map decode failures to actionable copy.
+      setUploadError(
+        e instanceof DOMException
+          ? 'That file didn’t work — try a JPG or PNG photo.'
+          : e instanceof Error && e.message
+            ? e.message
+            : 'Upload failed. Please try again.',
+      )
       return null
     } finally {
       setUploading(false)
@@ -150,6 +230,7 @@ export default function VisualizerWizard() {
   // Instant demo: load an existing room photo through the same pipeline.
   const onSample = async (src: string) => {
     if (uploading) return
+    setBusySample(src)
     try {
       const resp = await fetch(src)
       const blob = await resp.blob()
@@ -158,6 +239,8 @@ export default function VisualizerWizard() {
       await onFile(file)
     } catch {
       setUploadError('Could not load the sample — please upload your own photo.')
+    } finally {
+      setBusySample(null)
     }
   }
 
@@ -169,20 +252,45 @@ export default function VisualizerWizard() {
     opts?: { service?: VisualizerService; sourcePath?: string },
   ) => {
     const src = opts?.sourcePath ?? sourcePath
+    const svc = opts?.service ?? service
     if (!cid || !src || renderInFlight.current) return
     renderInFlight.current = true
+    // A late instant preview from an older capture must not decorate this
+    // render's progress screen (AR renders set their own gen at capture).
+    if (renderSource.current !== 'ar') instantGen.current += 1
     setRendering(true)
     setRenderError('')
+    const ctrl = new AbortController()
+    renderAbort.current = ctrl
+    setCancellable(true)
     try {
-      const r = await requestRender({
-        sessionId,
-        sourcePath: src,
-        service: opts?.service ?? service,
-        colorId: cid,
-        finish: fin,
-      })
-      setResults((prev) => ({ ...prev, [cid]: r }))
-      setActiveColorId(cid)
+      const r = await requestRender(
+        {
+          sessionId,
+          sourcePath: src,
+          service: svc,
+          colorId: cid,
+          finish: fin,
+        },
+        { signal: ctrl.signal },
+      )
+      // The paid call is done — Cancel can no longer do anything real, so
+      // hide it rather than leave a button that silently no-ops.
+      setCancellable(false)
+      if (ctrl.signal.aborted) throw new Error(RENDER_CANCELLED)
+      // Decode both halves before the reveal so the slider isn't half-blank
+      // on slow connections — the progress screen is still up and buys the
+      // time. Capped so a broken image can't strand the user here.
+      await Promise.race([
+        Promise.all([preloadImage(r.beforeUrl), preloadImage(r.afterUrl)]),
+        new Promise((resolve) => setTimeout(resolve, 6000)),
+      ])
+      const key = keyOf(svc, cid, fin)
+      setResults((prev) => ({
+        ...prev,
+        [key]: { result: r, service: svc, colorId: cid, finish: fin },
+      }))
+      setActiveKey(key)
       setRenderIds((prev) => (prev.includes(r.renderId) ? prev : [...prev, r.renderId]))
       setFreeUsed(true)
       setStep('result')
@@ -190,13 +298,28 @@ export default function VisualizerWizard() {
       if (renderSource.current === 'ar') trackEvent('ar_render_success')
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Render failed.'
-      setRenderError(
-        msg === 'limit_reached'
-          ? 'That’s the free limit for now — leave your details and we’ll send you more.'
-          : msg,
-      )
-      if (msg === 'limit_reached') setGate({ open: true, intent: 'save' })
+      if (msg === RENDER_CANCELLED) {
+        // User backed out — return to the design step quietly.
+        trackEvent('visualizer_render_cancelled')
+      } else if (msg === 'limit_reached') {
+        trackEvent('visualizer_render_failed')
+        if (leadCaptured) {
+          setRenderError(
+            'That’s the free limit for this session — we have your details and we’ll be in touch with more.',
+          )
+        } else {
+          setRenderError(
+            'That’s the free limit for now — leave your details and we’ll send you more.',
+          )
+          openGate('save')
+        }
+      } else {
+        trackEvent('visualizer_render_failed')
+        setRenderError(msg)
+      }
     } finally {
+      renderAbort.current = null
+      setCancellable(false)
       renderInFlight.current = false
       setRendering(false)
     }
@@ -208,14 +331,15 @@ export default function VisualizerWizard() {
     renderSource.current = 'ui'
     setColorId(cid)
     setFinish(fin)
-    if (results[cid]) {
-      setActiveColorId(cid)
+    const cached = results[keyOf(service, cid, fin)]
+    if (cached) {
+      setActiveKey(keyOf(service, cid, fin))
       setStep('result')
       return
     }
     trackEvent('visualizer_render_requested')
     if (freeUsed && !leadCaptured) {
-      setGate({ open: true, intent: 'continue' })
+      openGate('continue')
       return
     }
     void doRender(cid, fin)
@@ -233,6 +357,24 @@ export default function VisualizerWizard() {
     // Show the render progress screen through the upload phase too, so the
     // design step doesn't flash between camera and render.
     setRendering(true)
+    // In parallel with upload+render: recolour the capture on-device and show
+    // it while the photoreal render cooks. Best-effort — null on any failure.
+    const gen = ++instantGen.current
+    void makeInstantPreview(file, getColor(sel.colorId)?.hex ?? '#888888', sel.finish).then(
+      (url) => {
+        if (!url) return
+        // Stale (a newer render context started, or we unmounted): discard.
+        if (instantGen.current !== gen) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        setInstantPreviewUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev)
+          return url
+        })
+        trackEvent('ar_instant_preview_shown')
+      },
+    )
     const path = await uploadForRender(file)
     if (!path) {
       // Upload error stays visible on the upload step (camera opens from there).
@@ -244,7 +386,7 @@ export default function VisualizerWizard() {
     trackEvent('visualizer_render_requested')
     if (freeUsed && !leadCaptured) {
       setRendering(false)
-      setGate({ open: true, intent: 'continue' })
+      openGate('continue')
       return
     }
     await doRender(sel.colorId, sel.finish, { service: sel.service, sourcePath: path })
@@ -273,11 +415,19 @@ export default function VisualizerWizard() {
     })
     const intent = gate.intent
     setLeadCaptured(true)
+    setGateDismissed(false)
     setGate({ open: false, intent: 'continue' })
     trackEvent('visualizer_lead_captured')
     trackConversion(CONV_LABELS.form)
-    if (intent === 'continue' && colorId) void doRender(colorId, finish)
-    else if (intent === 'save') {
+    if (intent === 'continue' && colorId) {
+      const cached = results[keyOf(service, colorId, finish)]
+      if (cached) {
+        setActiveKey(keyOf(service, colorId, finish))
+        setStep('result')
+      } else {
+        void doRender(colorId, finish)
+      }
+    } else if (intent === 'save') {
       // The save gate can be submitted from the design step (limit_reached):
       // clear the "leave your details" error it answered, and let the design
       // step show the confirmation the result step already has.
@@ -286,12 +436,13 @@ export default function VisualizerWizard() {
     }
   }
 
+  const active = activeKey ? results[activeKey] : null
+
   const onDownload = async () => {
-    const r = activeColorId ? results[activeColorId] : null
-    if (!r) return
+    if (!active) return
     setBusyAction('download')
     try {
-      await downloadRender(r.afterUrl)
+      await downloadRender(active.result.afterUrl)
       trackEvent('visualizer_download')
     } catch {
       /* ignore */
@@ -301,12 +452,11 @@ export default function VisualizerWizard() {
   }
 
   const onShare = async () => {
-    const r = activeColorId ? results[activeColorId] : null
-    if (!r) return
+    if (!active) return
     setBusyAction('share')
     try {
-      await shareRender(r.afterUrl)
-      trackEvent('visualizer_share')
+      const outcome = await shareRender(active.result.afterUrl)
+      trackEvent(outcome === 'shared' ? 'visualizer_share' : 'visualizer_share_fallback_download')
     } catch {
       /* ignore */
     } finally {
@@ -315,8 +465,8 @@ export default function VisualizerWizard() {
   }
 
   const selectedColor = colorId ? getColor(colorId) : undefined
-  const activeResult = activeColorId ? results[activeColorId] : null
-  const renderedIds = Object.keys(results)
+  const renderedKeys = Object.keys(results)
+  const currentComboCached = Boolean(colorId && results[keyOf(service, colorId, finish)])
 
   return (
     <div className="relative">
@@ -326,10 +476,12 @@ export default function VisualizerWizard() {
           <motion.div key="rendering" {...fade}>
             <RenderProgress
               previewUrl={previewUrl}
+              instantPreviewUrl={instantPreviewUrl}
               serviceLabel={SERVICE_LABELS[service]}
               colorLabel={selectedColor?.label}
               colorHex={selectedColor?.hex}
               finish={finish}
+              onCancel={cancellable ? () => renderAbort.current?.abort() : undefined}
             />
           </motion.div>
         )}
@@ -383,11 +535,21 @@ export default function VisualizerWizard() {
                 <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
                 <circle cx="12" cy="13" r="3.5" />
               </svg>
-              Use my camera
+              See colours live on your wall
             </button>
             <p className="mt-3 font-body text-[12px] text-brushly-cream/40">
               Tip: natural light and the whole wall in frame give the best results.
             </p>
+
+            {sourcePath && (
+              <button
+                type="button"
+                onClick={() => setStep('design')}
+                className="mt-4 font-body text-[12px] uppercase tracking-[0.15em] text-brushly-gold/80 underline-offset-4 hover:underline"
+              >
+                ← Back to your design
+              </button>
+            )}
 
             <div className="mt-6">
               <p className="mb-3 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
@@ -403,6 +565,11 @@ export default function VisualizerWizard() {
                     className="group relative overflow-hidden rounded-sm border border-brushly-gold/15 transition-colors duration-300 hover:border-brushly-gold/50 disabled:opacity-50"
                   >
                     <img src={s.src} alt={s.label} className="h-20 w-full object-cover" />
+                    {busySample === s.src && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-brushly-black/50">
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-brushly-gold/30 border-t-brushly-gold" />
+                      </span>
+                    )}
                     <span className="absolute inset-x-0 bottom-0 bg-brushly-black/60 px-2 py-1 font-body text-[11px] text-brushly-cream/80 backdrop-blur-sm">
                       {s.label}
                     </span>
@@ -424,11 +591,20 @@ export default function VisualizerWizard() {
             <StepLabel n={2} total={3} title="Choose your look" />
 
             {previewUrl && (
-              <img
-                src={previewUrl}
-                alt="Your room"
-                className="max-h-56 w-full rounded-sm object-cover"
-              />
+              <div>
+                <img
+                  src={previewUrl}
+                  alt="Your room"
+                  className="max-h-56 w-full rounded-sm object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setStep('upload')}
+                  className="mt-2 font-body text-[12px] uppercase tracking-[0.15em] text-brushly-gold/80 underline-offset-4 hover:underline"
+                >
+                  Use a different photo
+                </button>
+              </div>
             )}
 
             <div>
@@ -490,6 +666,21 @@ export default function VisualizerWizard() {
 
             {renderError && <p className="font-body text-[13px] text-red-400">{renderError}</p>}
 
+            {gateDismissed && freeUsed && !leadCaptured && !saved && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border border-brushly-gold/30 bg-brushly-gold/5 p-4">
+                <p className="font-body text-[13px] text-brushly-cream/70">
+                  Your free preview is used — add your details to keep trying colours.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openGate('continue')}
+                  className="font-body text-[12px] font-medium uppercase tracking-[0.15em] text-brushly-gold underline-offset-4 hover:underline"
+                >
+                  Unlock more colours
+                </button>
+              </div>
+            )}
+
             {saved && (
               <div role="status" className="border border-brushly-gold/30 bg-brushly-gold/5 p-5">
                 <p className="font-display text-xl font-light text-brushly-cream">
@@ -508,18 +699,18 @@ export default function VisualizerWizard() {
                 disabled={!colorId}
                 className="bg-brushly-gold px-10 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {colorId && results[colorId] ? 'See it again' : 'See it'}
+                {currentComboCached ? 'See it again' : 'See it'}
               </button>
-              {renderedIds.length > 0 && (
+              {renderedKeys.length > 0 && (
                 <button
                   type="button"
                   onClick={() => {
-                    if (!activeColorId && renderedIds[0]) setActiveColorId(renderedIds[0])
+                    if (!activeKey && renderedKeys[0]) setActiveKey(renderedKeys[0])
                     setStep('result')
                   }}
                   className="font-body text-[12px] uppercase tracking-[0.15em] text-brushly-gold/80 underline-offset-4 hover:underline"
                 >
-                  View my {renderedIds.length} render{renderedIds.length > 1 ? 's' : ''}
+                  View my {renderedKeys.length} render{renderedKeys.length > 1 ? 's' : ''}
                 </button>
               )}
               {!colorId && (
@@ -532,28 +723,35 @@ export default function VisualizerWizard() {
         )}
 
         {/* STEP 3 — RESULT */}
-        {step === 'result' && activeResult && !rendering && (
+        {step === 'result' && active && !rendering && (
           <motion.div key="result" {...fade} className="flex flex-col gap-6">
             <StepLabel n={3} total={3} title="Your room, reimagined" />
 
-            <VisualBeforeAfter beforeSrc={activeResult.beforeUrl} afterSrc={activeResult.afterUrl} />
+            <VisualBeforeAfter
+              beforeSrc={active.result.beforeUrl}
+              afterSrc={active.result.afterUrl}
+            />
 
-            {renderedIds.length > 1 && (
+            {renderedKeys.length > 1 && (
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
                   Compare
                 </span>
-                {renderedIds.map((cid) => {
-                  const c = getColor(cid)
+                {renderedKeys.map((key) => {
+                  const sr = results[key]
+                  const c = getColor(sr.colorId)
                   if (!c) return null
+                  const label = `${c.label} · ${sr.finish}`
                   return (
                     <button
-                      key={cid}
+                      key={key}
                       type="button"
-                      onClick={() => setActiveColorId(cid)}
-                      title={c.label}
+                      onClick={() => setActiveKey(key)}
+                      title={label}
+                      aria-label={label}
+                      aria-pressed={activeKey === key}
                       className={`h-9 w-9 rounded-full border transition-all ${
-                        activeColorId === cid
+                        activeKey === key
                           ? 'scale-110 border-transparent ring-2 ring-brushly-gold ring-offset-2 ring-offset-brushly-charcoal'
                           : 'border-white/10 hover:scale-105'
                       }`}
@@ -564,10 +762,12 @@ export default function VisualizerWizard() {
               </div>
             )}
 
+            {/* Describe the render actually on screen, not the design-step
+                selection — they can differ after browsing other combos. */}
             <p className="font-body text-[13px] text-brushly-cream/60">
-              {SERVICE_LABELS[service]}
-              {selectedColor ? ` · ${selectedColor.label}` : ''}
-              {finish ? ` · ${finish}` : ''}
+              {SERVICE_LABELS[active.service]}
+              {` · ${getColor(active.colorId)?.label ?? active.colorId}`}
+              {active.finish ? ` · ${active.finish}` : ''}
               <span className="mt-1 block text-[11px] text-brushly-cream/35">
                 AI visualisation — we confirm exact colours at survey.
               </span>
@@ -592,7 +792,7 @@ export default function VisualizerWizard() {
               </button>
               <button
                 type="button"
-                onClick={() => activeResult && setZoomUrl(activeResult.afterUrl)}
+                onClick={() => setZoomUrl(active.result.afterUrl)}
                 className="border border-brushly-gold/40 px-6 py-3 font-body text-[12px] font-medium uppercase tracking-[0.15em] text-brushly-cream transition-colors duration-300 hover:bg-brushly-gold hover:text-brushly-black"
               >
                 Full size
@@ -619,9 +819,7 @@ export default function VisualizerWizard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    leadCaptured ? setSaved(true) : setGate({ open: true, intent: 'save' })
-                  }
+                  onClick={() => (leadCaptured ? setSaved(true) : openGate('save'))}
                   className="bg-brushly-gold px-8 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light"
                 >
                   Save &amp; get my free quote
@@ -647,7 +845,11 @@ export default function VisualizerWizard() {
           <SoftGate
             intent={gate.intent}
             onSubmit={onGateSubmit}
-            onClose={() => setGate((g) => ({ ...g, open: false }))}
+            onClose={() => {
+              trackEvent('visualizer_gate_dismissed')
+              if (gate.intent === 'continue') setGateDismissed(true)
+              setGate((g) => ({ ...g, open: false }))
+            }}
           />
         )}
       </AnimatePresence>

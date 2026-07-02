@@ -33,13 +33,19 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
 
   const handle = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    const f = e.currentTarget
+    const phone = (f.elements.namedItem('phone') as HTMLInputElement).value
+    // Minimal sanity check — a fat-fingered number is a silently lost lead.
+    if (phone.replace(/\D/g, '').length < 8) {
+      setError('That phone number looks too short — please double-check it.')
+      return
+    }
     setSending(true)
     setError('')
-    const f = e.currentTarget
     try {
       await onSubmit({
         name: (f.elements.namedItem('name') as HTMLInputElement).value,
-        phone: (f.elements.namedItem('phone') as HTMLInputElement).value,
+        phone,
         email: (f.elements.namedItem('email') as HTMLInputElement).value,
         company: (f.elements.namedItem('company') as HTMLInputElement).value,
       })
@@ -50,10 +56,11 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
   }
 
   const heading = intent === 'save' ? 'Send me my visualisation' : 'Keep experimenting'
+  // "send", not "email" — email is optional; we can reach people by phone/SMS.
   const blurb =
     intent === 'save'
-      ? 'Pop in your details and we’ll email your visualisation and a free, no-obligation quote for this exact look.'
-      : 'Add your details to try more colours and finishes — we’ll email your visualisations and a free quote whenever you’re ready.'
+      ? 'Pop in your details and we’ll send you your visualisation and a free, no-obligation quote for this exact look.'
+      : 'Add your details to try more colours and finishes — we’ll send your visualisations and a free quote whenever you’re ready.'
 
   return (
     <motion.div
@@ -97,10 +104,25 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
             type="text"
             placeholder="Your name"
             required
+            autoComplete="name"
             className={inputStyles}
           />
-          <input name="phone" type="tel" placeholder="Phone number" required className={inputStyles} />
-          <input name="email" type="email" placeholder="Email address (optional)" className={inputStyles} />
+          <input
+            name="phone"
+            type="tel"
+            placeholder="Phone number"
+            required
+            autoComplete="tel"
+            inputMode="tel"
+            className={inputStyles}
+          />
+          <input
+            name="email"
+            type="email"
+            placeholder="Email address (optional)"
+            autoComplete="email"
+            className={inputStyles}
+          />
 
           {/* Honeypot — hidden from humans, bots fill it. */}
           <input

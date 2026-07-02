@@ -9,10 +9,14 @@ import useReducedMotion from '@/hooks/useReducedMotion'
 
 interface Props {
   previewUrl: string
+  /** On-device recolour of the AR capture — shown instead of the plain photo. */
+  instantPreviewUrl?: string | null
   serviceLabel: string
   colorLabel?: string
   colorHex?: string
   finish?: string
+  /** Abort the in-flight render and return to the design step. */
+  onCancel?: () => void
 }
 
 const MESSAGES = [
@@ -26,10 +30,12 @@ const MESSAGES = [
 
 export default function RenderProgress({
   previewUrl,
+  instantPreviewUrl,
   serviceLabel,
   colorLabel,
   colorHex,
   finish,
+  onCancel,
 }: Props) {
   const reduced = useReducedMotion()
   const [msgIdx, setMsgIdx] = useState(0)
@@ -71,20 +77,29 @@ export default function RenderProgress({
         style={{ aspectRatio: '4/3' }}
       >
         {/* Empty during the AR upload phase (progress shows before the photo
-            is processed); the room fades in as soon as the preview exists. */}
-        {previewUrl && (
+            is processed); the room fades in as soon as the preview exists.
+            When the on-device recolour lands, it replaces the plain photo —
+            already painted, so no darkening scrim or colour wash on top. */}
+        {(instantPreviewUrl || previewUrl) && (
           <img
-            src={previewUrl}
+            src={instantPreviewUrl || previewUrl}
             alt="Your room"
             className="absolute inset-0 h-full w-full object-cover"
           />
         )}
-        <div className="absolute inset-0 bg-brushly-black/45" />
-        {colorHex && (
+        <div
+          className={`absolute inset-0 ${instantPreviewUrl ? 'bg-brushly-black/15' : 'bg-brushly-black/45'}`}
+        />
+        {colorHex && !instantPreviewUrl && (
           <div
             className="absolute inset-0 opacity-30 mix-blend-multiply"
             style={{ background: colorHex }}
           />
+        )}
+        {instantPreviewUrl && (
+          <span className="absolute left-3 top-3 rounded-full bg-brushly-black/60 px-2.5 py-1 font-body text-[10px] uppercase tracking-[0.2em] text-brushly-cream/85 backdrop-blur-sm">
+            Instant preview
+          </span>
         )}
 
         {!reduced && (
@@ -135,6 +150,15 @@ export default function RenderProgress({
           </motion.span>
           <span className="shrink-0 font-body text-[11px] text-brushly-cream/35">usually ~15s</span>
         </div>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mt-4 font-body text-[12px] uppercase tracking-[0.15em] text-brushly-cream/50 underline-offset-4 transition-colors hover:text-brushly-cream hover:underline"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </div>
   )
