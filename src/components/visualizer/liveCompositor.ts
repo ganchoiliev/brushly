@@ -84,6 +84,14 @@ in vec2 vUv;
 out vec4 outColor;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+// Keep in sync with liveMath.ts. DIFFUSE_CAP: how far the paint hue scales into
+// a lit patch before the achromatic wash takes over (raised to hold colour on
+// bright walls instead of washing them white). SPEC_WHITE: the only near-white
+// source, gated by finish. BRIGHT_RELAX: bright-side widening of the mask
+// edge-detector so lit wall next to a light keeps its paint (no old-colour rim).
+const float DIFFUSE_CAP = 1.5;
+const float SPEC_WHITE = 0.9;
+const float BRIGHT_RELAX = 2.5;
 
 float lumaAt(vec2 screenUv, float lod) {
   vec3 srgb = textureLod(uVideo, uCropOff + screenUv * uCropScale, lod).rgb;
@@ -101,10 +109,18 @@ void main() {
   // the continuous distance to each mask texel (smooth as the pixel slides
   // between cells). Range term: similarity between this pixel's luma and the
   // video luma AT that mask cell (low-LOD mip) — a neighbour across an image
-  // edge contributes almost nothing, so the paint boundary hugs the edge.
+  // edge contributes almost nothing, so the paint boundary hugs the edge. The
+  // range term is asymmetric (see below): a pixel brighter than the wall (lit by
+  // a nearby lamp/window) is still treated as wall, so the paint reaches the
+  // boundary instead of leaving a rim of the original colour.
   vec2 maskPos = suv * uMaskSize - 0.5;
   vec2 nearest = floor(maskPos + 0.5);
   float twoSigma2 = 2.0 * uEdgeSigma * uEdgeSigma;
+  // Nearest cell's wall confidence. The bright-side range widening below is
+  // scaled by it, so it only fires where we're already confidently on the wall
+  // — a lamp/window/object cell has mCenter≈0 and stays un-widened (not rescued).
+  float mCenter = texture(uMask, (clamp(nearest, vec2(0.0), uMaskSize - 1.0) + 0.5) / uMaskSize).r;
+  float relax = 1.0 + (BRIGHT_RELAX - 1.0) * mCenter;
   float alpha = 0.0;
   float wsum = 0.0;
   for (int dy = -1; dy <= 1; dy++) {
@@ -116,7 +132,14 @@ void main() {
       float ws = exp(-dot(d, d) / 1.125); // spatial sigma 0.75 texels
       float gy = lumaAt(tuv, uGuideLod);
       float dyl = y - gy;
-      float wr = exp(-(dyl * dyl) / twoSigma2);
+      // Asymmetric range term. A pixel BRIGHTER than its guide cell next to a
+      // light is same-wall (a lit gradient), not an edge: widen the sigma so it
+      // keeps mask weight and the paint reaches the boundary — no rim of old
+      // wall around lamps/windows. A DARKER pixel may be a real occluder/shadow
+      // edge, so keep the tight sigma — paint never bleeds onto furniture or the
+      // fixture. (JBU is compositor-only; there is no CPU mirror of this.)
+      float s2 = dyl > 0.0 ? twoSigma2 * (relax * relax) : twoSigma2;
+      float wr = exp(-(dyl * dyl) / s2);
       float w = ws * (wr + 0.02); // floor keeps flat regions bilinear-smooth
       alpha += m * w;
       wsum += w;
@@ -125,22 +148,23 @@ void main() {
   alpha = wsum > 1e-5 ? alpha / wsum : texture(uMask, suv).r;
   alpha = min(alpha * 1.06, 1.0); // confidence gain — keep in sync with liveMath.ALPHA_GAIN
 
-  // Luminance-transfer recolour (see liveMath.recolorPixels). Diffuse is
-  // capped at ~1.25× the wall average — beyond that, brightness is light
-  // washing over the surface and is added as near-white, or saturated paints
-  // (reds especially) scale into neon. The wash/specular add are scaled by the
-  // paint's own reflectance so a dark colour absorbs the excess light instead
-  // of leaving a pale ghost of the old wall on blown-out patches; the window
-  // tops out by ~0.18 so saturated mid-tones keep the full anti-neon wash.
+  // Luminance-transfer recolour (see liveMath.recolorPixels). The paint colour
+  // scales with the wall's shading up to DIFFUSE_CAP× the wall average; that cap
+  // sets how far the HUE carries into a lit/overexposed patch before the excess
+  // brightness spills into an achromatic wash (scaled by the paint's own
+  // reflectance, so a dark colour absorbs the excess instead of leaving a pale
+  // ghost, and the window tops out by ~0.18 so saturated mid-tones keep the full
+  // anti-neon wash). The near-white specular is separate and finish-gated
+  // (SPEC_WHITE), so a matte wall never grows a white blob on a bright patch.
   float denom = max(uWallLum, 0.02);
   float shading = min(y / denom, 2.5);
-  float diffuse = min(shading, 1.25);
+  float diffuse = min(shading, DIFFUSE_CAP);
   float paintY = dot(uPaint, LUMA);
   float paintFactor = smoothstep(0.02, 0.18, paintY);
   float washGain = 0.55 * (0.18 + 0.82 * paintFactor);
-  float specGain = 0.35 * (0.34 + 0.66 * paintFactor);
   float wash = (shading - diffuse) * washGain;
-  float highlight = smoothstep(denom * 1.6, denom * 2.4, y) * uSpec * specGain;
+  // Achromatic specular, gated only by finish (matte uSpec=0 → none).
+  float highlight = smoothstep(denom * 1.6, denom * 2.4, y) * uSpec * SPEC_WHITE;
   vec3 recol = uPaint * diffuse + vec3(wash + highlight);
   vec3 outLin = mix(lin, recol, clamp(alpha * uTint, 0.0, 1.0));
   outColor = vec4(pow(outLin, vec3(1.0 / 2.2)), 1.0);

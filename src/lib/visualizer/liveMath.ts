@@ -48,6 +48,29 @@ export const DEFAULT_TUNING: LiveTuning = {
  */
 export const ALPHA_GAIN = 1.06
 
+/**
+ * Diffuse cap: the paint's own colour scales with the wall's shading up to this
+ * multiple of the wall average; brightness beyond it becomes an achromatic
+ * "wash" (see recolorPixels). 1.5, not the original 1.25: on an ordinarily
+ * lit/overexposed wall the lower cap clipped the paint HUE too early, so a
+ * lamp- or window-lit patch washed out to a desaturated near-white spot. At 1.5
+ * the paint colour carries further into the lit range — a matte wall stays the
+ * paint colour, just brighter — while the anti-neon wash still engages on the
+ * genuinely blown-out overshoot above the cap. Don't exceed ~1.7 or the most
+ * saturated warm paints start to read neon on the brightest patches. Keep in
+ * sync with DIFFUSE_CAP in the WebGL FRAG shader.
+ */
+export const DIFFUSE_CAP = 1.5
+
+/**
+ * Achromatic specular ceiling at full gloss (specPreserve = 1). Replaces the
+ * old reflectance-scaled specular gain and is now the ONLY source of near-white
+ * on the paint, gated purely by finish: a matte wall (specPreserve = 0) shows
+ * none — so a bright patch on matte paint no longer grows a white blob — while a
+ * gloss finish keeps a real, visible highlight. Keep in sync with the FRAG shader.
+ */
+export const SPEC_WHITE = 0.9
+
 /* ---------------- colour primitives ---------------- */
 
 export function hexToRgb(hex: string): [number, number, number] {
@@ -242,17 +265,18 @@ export function recolorPixels(
   const pr = srgbToLinear(paint[0])
   const pg = srgbToLinear(paint[1])
   const pb = srgbToLinear(paint[2])
-  // Dark paints absorb the excess light that lands on a bright/overexposed
-  // patch; only light paints scatter it back as near-white. The neutral wash
-  // and specular add below are therefore scaled by the paint's own reflectance
-  // — without this, a near-black colour over a blown-out wall highlight leaves
-  // a pale grey ghost of the old wall ("white spot"). The window tops out by
-  // ~0.18 luminance so saturated mid-tones (Red Earth, terracotta…) keep the
-  // full anti-neon wash they were tuned against. Keep in sync with FRAG.
+  // Above the diffuse cap, the excess brightness is light washing over the
+  // surface — added as an achromatic wash whose strength is scaled by the
+  // paint's own reflectance: a dark paint absorbs the excess (no pale grey
+  // ghost of the old wall on a blown-out patch — the reported "white spot"),
+  // while a light paint scatters it back. The window tops out by ~0.18
+  // luminance so saturated mid-tones (Red Earth, terracotta…) keep the full
+  // anti-neon wash they were tuned against. The near-white SPECULAR add is now
+  // separate and gated only by finish (SPEC_WHITE below), so a matte wall shows
+  // no white blob regardless of colour. Keep in sync with FRAG.
   const paintY = relativeLuminance(pr, pg, pb)
   const paintFactor = smoothstep(0.02, 0.18, paintY)
   const washGain = 0.55 * (0.18 + 0.82 * paintFactor)
-  const specGain = 0.35 * (0.34 + 0.66 * paintFactor)
   const denom = Math.max(wallLum, 0.02)
   for (let i = 0; i < alpha.length; i++) {
     const a = Math.min(alpha[i] * ALPHA_GAIN, 1) * tint
@@ -263,15 +287,17 @@ export function recolorPixels(
     const lb = srgbToLinear(rgba[p + 2])
     const y = relativeLuminance(lr, lg, lb)
     const shading = Math.min(y / denom, 2.5)
-    // Diffuse reflection is capped by the paint's albedo: scaling chroma past
-    // ~1.25× the wall average turns saturated paints (reds especially) neon.
-    // Brightness beyond the cap is light washing over the surface — added as
-    // near-white, but only as much as the paint's own lightness would reflect.
-    const diffuse = Math.min(shading, 1.25)
+    // Diffuse reflection is capped by the paint's albedo: scaling chroma too far
+    // past the wall average turns saturated paints (reds especially) neon. The
+    // cap also decides how far the paint HUE carries into a lit patch before the
+    // achromatic wash takes over — DIFFUSE_CAP is raised to hold the colour on
+    // bright/overexposed wall instead of washing it white.
+    const diffuse = Math.min(shading, DIFFUSE_CAP)
     const wash = (shading - diffuse) * washGain
-    // Specular preservation: luminance well above the wall average is a
-    // highlight — glossier finishes keep more of it on top of the paint.
-    const highlight = smoothstep(denom * 1.6, denom * 2.4, y) * spec * specGain
+    // Specular: luminance well above the wall average reads as a highlight.
+    // Achromatic and finish-gated only (matte spec = 0 → none), so it never
+    // desaturates a matte wall's paint on a bright patch.
+    const highlight = smoothstep(denom * 1.6, denom * 2.4, y) * spec * SPEC_WHITE
     const rr = pr * diffuse + wash + highlight
     const rg = pg * diffuse + wash + highlight
     const rb = pb * diffuse + wash + highlight
