@@ -55,7 +55,9 @@ export default function RenderProgress({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="mb-2">
+      {/* role=status announces the render starting to screen readers — after
+          the AR shutter the camera dialog unmounts and focus lands on body. */}
+      <div className="mb-2" role="status">
         <span className="font-body text-[11px] uppercase tracking-[0.3em] text-brushly-gold/70">
           Creating your visualisation
         </span>
@@ -64,12 +66,19 @@ export default function RenderProgress({
         </h2>
       </div>
 
-      <div className="relative overflow-hidden rounded-sm" style={{ aspectRatio: '4/3' }}>
-        <img
-          src={previewUrl}
-          alt="Your room"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
+      <div
+        className="relative overflow-hidden rounded-sm bg-brushly-black/40"
+        style={{ aspectRatio: '4/3' }}
+      >
+        {/* Empty during the AR upload phase (progress shows before the photo
+            is processed); the room fades in as soon as the preview exists. */}
+        {previewUrl && (
+          <img
+            src={previewUrl}
+            alt="Your room"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        )}
         <div className="absolute inset-0 bg-brushly-black/45" />
         {colorHex && (
           <div

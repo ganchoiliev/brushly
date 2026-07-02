@@ -46,3 +46,10 @@ node_modules
 .email-proof/
 # keep your personal room photo out of git
 real-wall.JPG
+
+# onnxruntime-web wasm runtimes (copied from node_modules on postinstall)
+/public/ort/
+
+# test artifacts
+/test-results/
+/playwright-report/

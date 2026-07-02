@@ -19,12 +19,17 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
 
   useEffect(() => {
     firstRef.current?.focus()
+  }, [])
+
+  // Dismissal is blocked while the lead is submitting: the pending onSubmit
+  // continuation would otherwise fire into a dismissed (or re-opened) gate.
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !sending) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, sending])
 
   const handle = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -56,7 +61,9 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
+      onClick={() => {
+        if (!sending) onClose()
+      }}
     >
       <motion.div
         className="w-full max-w-md border border-brushly-gold/20 bg-brushly-charcoal p-8 shadow-2xl sm:rounded-sm"
@@ -71,8 +78,9 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
           <button
             type="button"
             onClick={onClose}
+            disabled={sending}
             aria-label="Close"
-            className="text-brushly-cream/40 transition-colors hover:text-brushly-cream"
+            className="text-brushly-cream/40 transition-colors hover:text-brushly-cream disabled:cursor-not-allowed disabled:opacity-40"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />

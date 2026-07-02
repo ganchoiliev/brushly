@@ -18,7 +18,18 @@ import {
 } from '@/lib/visualizer/client'
 import { downloadRender, shareRender } from '@/lib/visualizer/share'
 import { trackEvent, trackConversion, CONV_LABELS } from '@/lib/gtag'
+import dynamic from 'next/dynamic'
 import Uploader from './Uploader'
+import type { ARSelection } from './ARCamera'
+
+// AR mode (camera + on-device segmentation) stays out of the /visualizer
+// bundle: the component chunk loads when the camera is opened, and the ORT
+// runtime + model only when the live preview actually initialises. The
+// loading fallback matches ARCamera's own opening frame (black, fading in).
+const ARCamera = dynamic(() => import('./ARCamera'), {
+  ssr: false,
+  loading: () => <div aria-busy="true" className="fixed inset-0 z-[80] bg-brushly-black" />,
+})
 import ColorChooser from './ColorChooser'
 import VisualBeforeAfter from './VisualBeforeAfter'
 import SoftGate from './SoftGate'
@@ -60,6 +71,7 @@ export default function VisualizerWizard() {
   const [sourcePath, setSourcePath] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [cameraOpen, setCameraOpen] = useState(false)
 
   const [service, setService] = useState<VisualizerService>('interior')
   const [colorId, setColorId] = useState<string>()
@@ -85,13 +97,26 @@ export default function VisualizerWizard() {
   const [zoomUrl, setZoomUrl] = useState<string | null>(null)
 
   const prevUrl = useRef('')
+  // Bump per open so a quick reopen during the exit fade mounts a fresh camera
+  // instead of reviving the exiting instance (whose stream is already stopped).
+  const cameraKey = useRef(0)
+  // Where the in-flight render was initiated from, for AR funnel analytics.
+  // A gate-deferred render keeps the value set at capture time.
+  const renderSource = useRef<'ui' | 'ar'>('ui')
+  // In-flight guard as a REF, not state: AnimatePresence keeps the exiting
+  // design step clickable with frozen closures for its 0.5s fade, so a
+  // double-tap on "See it"/a Look would otherwise POST two paid renders.
+  const renderInFlight = useRef(false)
 
   useEffect(() => {
     setSessionId(getSessionId())
     trackEvent('visualizer_open')
   }, [])
 
-  const onFile = async (file: File) => {
+  // Process + upload a photo; returns the storage path (null on failure, with
+  // the error left in uploadError). Step handling is up to the caller.
+  const uploadForRender = async (file: File): Promise<string | null> => {
+    if (uploading) return null
     setUploadError('')
     setUploading(true)
     try {
@@ -106,13 +131,20 @@ export default function VisualizerWizard() {
       setSourcePath(path)
       setResults({})
       setActiveColorId(null)
-      setStep('design')
-      trackEvent('visualizer_photo_added')
+      return path
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload failed. Please try again.')
+      return null
     } finally {
       setUploading(false)
     }
+  }
+
+  const onFile = async (file: File) => {
+    const path = await uploadForRender(file)
+    if (!path) return
+    setStep('design')
+    trackEvent('visualizer_photo_added')
   }
 
   // Instant demo: load an existing room photo through the same pipeline.
@@ -129,18 +161,33 @@ export default function VisualizerWizard() {
     }
   }
 
-  const doRender = async (cid: string, fin: string) => {
-    if (!cid || !sourcePath) return
+  // opts carry just-created values (fresh upload path / AR selection) that
+  // React state wouldn't reflect yet inside the same async flow.
+  const doRender = async (
+    cid: string,
+    fin: string,
+    opts?: { service?: VisualizerService; sourcePath?: string },
+  ) => {
+    const src = opts?.sourcePath ?? sourcePath
+    if (!cid || !src || renderInFlight.current) return
+    renderInFlight.current = true
     setRendering(true)
     setRenderError('')
     try {
-      const r = await requestRender({ sessionId, sourcePath, service, colorId: cid, finish: fin })
+      const r = await requestRender({
+        sessionId,
+        sourcePath: src,
+        service: opts?.service ?? service,
+        colorId: cid,
+        finish: fin,
+      })
       setResults((prev) => ({ ...prev, [cid]: r }))
       setActiveColorId(cid)
       setRenderIds((prev) => (prev.includes(r.renderId) ? prev : [...prev, r.renderId]))
       setFreeUsed(true)
       setStep('result')
       trackEvent('visualizer_render_success')
+      if (renderSource.current === 'ar') trackEvent('ar_render_success')
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Render failed.'
       setRenderError(
@@ -150,12 +197,15 @@ export default function VisualizerWizard() {
       )
       if (msg === 'limit_reached') setGate({ open: true, intent: 'save' })
     } finally {
+      renderInFlight.current = false
       setRendering(false)
     }
   }
 
   // Central entry: sets selection, then flips instantly (cached), gates, or renders.
   const startRender = (cid: string, fin: string) => {
+    if (renderInFlight.current) return
+    renderSource.current = 'ui'
     setColorId(cid)
     setFinish(fin)
     if (results[cid]) {
@@ -169,6 +219,35 @@ export default function VisualizerWizard() {
       return
     }
     void doRender(cid, fin)
+  }
+
+  // AR shutter: captured frame + AR-selected look → the exact same pipeline
+  // (upload → gate check → render → result). The live overlay was the preview;
+  // this is the payoff.
+  const onARCaptureRender = async (file: File, sel: ARSelection) => {
+    setCameraOpen(false)
+    setService(sel.service)
+    setColorId(sel.colorId)
+    setFinish(sel.finish)
+    renderSource.current = 'ar'
+    // Show the render progress screen through the upload phase too, so the
+    // design step doesn't flash between camera and render.
+    setRendering(true)
+    const path = await uploadForRender(file)
+    if (!path) {
+      // Upload error stays visible on the upload step (camera opens from there).
+      setRendering(false)
+      return
+    }
+    setStep('design') // backdrop for the gate now + error/result fallback later
+    trackEvent('visualizer_photo_added')
+    trackEvent('visualizer_render_requested')
+    if (freeUsed && !leadCaptured) {
+      setRendering(false)
+      setGate({ open: true, intent: 'continue' })
+      return
+    }
+    await doRender(sel.colorId, sel.finish, { service: sel.service, sourcePath: path })
   }
 
   // One-tap Look → clamp its finish to the current service, then render.
@@ -198,7 +277,13 @@ export default function VisualizerWizard() {
     trackEvent('visualizer_lead_captured')
     trackConversion(CONV_LABELS.form)
     if (intent === 'continue' && colorId) void doRender(colorId, finish)
-    else if (intent === 'save') setSaved(true)
+    else if (intent === 'save') {
+      // The save gate can be submitted from the design step (limit_reached):
+      // clear the "leave your details" error it answered, and let the design
+      // step show the confirmation the result step already has.
+      setRenderError('')
+      setSaved(true)
+    }
   }
 
   const onDownload = async () => {
@@ -274,6 +359,32 @@ export default function VisualizerWizard() {
               busyLabel="Preparing your photo…"
               error={uploadError}
             />
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => {
+                trackEvent('visualizer_camera_open')
+                trackEvent('ar_open')
+                cameraKey.current += 1
+                setCameraOpen(true)
+              }}
+              className="mt-3 flex w-full items-center justify-center gap-3 border border-brushly-gold/40 px-6 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-cream transition-colors duration-300 hover:bg-brushly-gold hover:text-brushly-black disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
+                <circle cx="12" cy="13" r="3.5" />
+              </svg>
+              Use my camera
+            </button>
             <p className="mt-3 font-body text-[12px] text-brushly-cream/40">
               Tip: natural light and the whole wall in frame give the best results.
             </p>
@@ -378,6 +489,17 @@ export default function VisualizerWizard() {
             </div>
 
             {renderError && <p className="font-body text-[13px] text-red-400">{renderError}</p>}
+
+            {saved && (
+              <div role="status" className="border border-brushly-gold/30 bg-brushly-gold/5 p-5">
+                <p className="font-display text-xl font-light text-brushly-cream">
+                  Sent — thank you.
+                </p>
+                <p className="mt-2 font-body text-[14px] text-brushly-cream/60">
+                  We’ll be in touch shortly with your visualisation and a free quote.
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-4">
               <button
@@ -507,6 +629,16 @@ export default function VisualizerWizard() {
               </div>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {cameraOpen && (
+          <ARCamera
+            key={cameraKey.current}
+            onCaptureRender={(file, sel) => void onARCaptureRender(file, sel)}
+            onClose={() => setCameraOpen(false)}
+          />
         )}
       </AnimatePresence>
 
