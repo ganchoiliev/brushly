@@ -53,3 +53,5 @@ real-wall.JPG
 # test artifacts
 /test-results/
 /playwright-report/
+**/test-results/
+**/playwright-report/
