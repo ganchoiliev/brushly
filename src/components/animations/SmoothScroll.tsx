@@ -39,6 +39,7 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       smoothWheel: true,
     })
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Lenis must be constructed client-side in the effect (touch/reduced-motion checks); state exposes the instance via context
     setLenis(lenisInstance)
 
     // Sync Lenis scroll position with GSAP ScrollTrigger

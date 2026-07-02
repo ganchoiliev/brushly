@@ -1,7 +1,8 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useCallback } from 'react'
 import gsap from 'gsap'
+import useReducedMotion from '@/hooks/useReducedMotion'
 
 interface MagneticButtonProps {
   children: React.ReactNode
@@ -15,15 +16,7 @@ export default function MagneticButton({
   strength = 0.3,
 }: MagneticButtonProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const [isReduced, setIsReduced] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setIsReduced(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setIsReduced(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
+  const isReduced = useReducedMotion()
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {

@@ -11,6 +11,7 @@ export default function PageLoader() {
 
   useEffect(() => {
     if (hasLoaded) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot skip on remount: module flag can't be read during render without breaking SSR/hydration markup
       setHidden(true)
       return
     }

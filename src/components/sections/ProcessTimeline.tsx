@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useSyncExternalStore } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import Image from 'next/image'
 import { blurDataURL } from '@/lib/shimmer'
@@ -45,21 +45,22 @@ const steps = [
   },
 ]
 
+const subscribeToResize = (callback: () => void) => {
+  window.addEventListener('resize', callback)
+  return () => window.removeEventListener('resize', callback)
+}
+const getIsMobile = () => window.innerWidth < 768
+// Server snapshot matches the old useState(true) initial value so SSR output is unchanged
+const getIsMobileServer = () => true
+
 export default function ProcessTimeline() {
   const sectionRef = useRef<HTMLElement>(null)
   const lineRef = useRef<SVGLineElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
-  const [isMobile, setIsMobile] = useState(true)
+  const isMobile = useSyncExternalStore(subscribeToResize, getIsMobile, getIsMobileServer)
   const reduced = useReducedMotion()
   const { palette } = useTheme()
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768)
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   // Drawing progress line + per-step reveals
   useEffect(() => {

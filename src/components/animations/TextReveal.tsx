@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useMemo, createElement, CSSProperties } from 'react'
+import { useRef, useEffect, useMemo, CSSProperties } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import useReducedMotion from '@/hooks/useReducedMotion'
@@ -19,7 +19,7 @@ interface TextRevealProps {
 export default function TextReveal({
   children,
   className,
-  as: tag = 'p',
+  as: Tag = 'p',
   staggerDelay = 0.05,
   duration = 0.8,
   style,
@@ -60,9 +60,9 @@ export default function TextReveal({
     </span>
   ))
 
-  return createElement(
-    tag,
-    { ref: containerRef, className, style },
-    ...content
+  return (
+    <Tag ref={containerRef} className={className} style={style}>
+      {content}
+    </Tag>
   )
 }

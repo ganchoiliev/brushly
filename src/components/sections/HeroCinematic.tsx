@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useSyncExternalStore } from 'react'
 import useReducedMotion from '@/hooks/useReducedMotion'
 import { blurDataURL } from '@/lib/shimmer'
 import Image from 'next/image'
@@ -10,6 +10,19 @@ import MagneticButton from '@/components/animations/MagneticButton'
 import { useTheme, PALETTES } from '@/lib/ThemeContext'
 
 gsap.registerPlugin(ScrollTrigger)
+
+function subscribeToResize(callback: () => void) {
+  window.addEventListener('resize', callback)
+  return () => window.removeEventListener('resize', callback)
+}
+
+function getIsMobileSnapshot(): boolean {
+  return window.innerWidth < 768
+}
+
+function getIsMobileServerSnapshot(): boolean {
+  return true
+}
 
 function SplitText({ children, className = '' }: { children: string; className?: string }) {
   return (
@@ -34,15 +47,8 @@ export default function HeroCinematic() {
   const { activePalette, setActivePalette, palette: p } = useTheme()
   const [videoLoaded, setVideoLoaded] = useState(false)
   const reduced = useReducedMotion()
-  const [isMobile, setIsMobile] = useState(true)
-
   // Detect mobile
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768)
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  const isMobile = useSyncExternalStore(subscribeToResize, getIsMobileSnapshot, getIsMobileServerSnapshot)
 
   // --- ENTRANCE ANIMATION ---
   useEffect(() => {

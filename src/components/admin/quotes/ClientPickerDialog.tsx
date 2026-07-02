@@ -32,6 +32,7 @@ export default function ClientPickerDialog({
   /* Reset on each open so a previous search doesn't flash up stale. */
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset-on-open: the dialog stays mounted between opens, so state must clear when `open` flips
       setTerm('')
       setHits([])
       setSearched(false)

@@ -1,24 +1,34 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useSyncExternalStore } from 'react'
 import gsap from 'gsap'
 
 type CursorVariant = 'default' | 'view' | 'drag'
+
+function subscribePointerFine(callback: () => void) {
+  const mq = window.matchMedia('(pointer: fine)')
+  mq.addEventListener('change', callback)
+  return () => mq.removeEventListener('change', callback)
+}
+
+function getPointerFineSnapshot() {
+  return window.matchMedia('(pointer: fine)').matches
+}
+
+function getPointerFineServerSnapshot() {
+  return false
+}
 
 export default function CustomCursor() {
   const cursorRef = useRef<HTMLDivElement>(null)
   const textRef = useRef<HTMLSpanElement>(null)
   const [variant, setVariant] = useState<CursorVariant>('default')
   const [visible, setVisible] = useState(false)
-  const [isPointerFine, setIsPointerFine] = useState(false)
-
-  useEffect(() => {
-    const mq = window.matchMedia('(pointer: fine)')
-    setIsPointerFine(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setIsPointerFine(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
+  const isPointerFine = useSyncExternalStore(
+    subscribePointerFine,
+    getPointerFineSnapshot,
+    getPointerFineServerSnapshot
+  )
 
   useEffect(() => {
     if (!isPointerFine || !cursorRef.current) return

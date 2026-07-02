@@ -87,6 +87,7 @@ export default function ServicesPinned() {
 
   // Detect mobile
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-side mobile detection on mount; SSR intentionally renders mobile-first (isMobile=true) and corrects after hydration
     setIsMobile(window.innerWidth < 768)
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -232,6 +233,7 @@ export default function ServicesPinned() {
         }
       )
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- GSAP transition bookkeeping: prevIndex must sync immediately when there are no image refs to animate (normally set in the tween's onComplete)
       setPrevIndex(activeIndex)
     }
 

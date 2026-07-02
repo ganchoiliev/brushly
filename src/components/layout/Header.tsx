@@ -42,6 +42,7 @@ export default function Header() {
 
   // Close mobile menu on route change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset-on-navigation: closing the menu here drives the GSAP close animation
     setMobileOpen(false)
   }, [pathname])
 
