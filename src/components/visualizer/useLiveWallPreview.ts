@@ -200,6 +200,7 @@ export default function useLiveWallPreview({
     const prevLuma = new Float32Array(40 * 40)
     let hasPrevLuma = false
     let wallLum = 0.5
+    let hasWallLum = false
     setStatus('loading')
 
     // Clearing goes through the compositor ONLY. A getContext('2d') fallback
@@ -314,9 +315,22 @@ export default function useLiveWallPreview({
             motionBlend(motion, tune),
           )
           smoothRef.current = smooth
-          wallLum =
-            maskedMedianLuminance(frame.data, inputSize, inputSize, smooth.data, width, height) ??
-            wallLum
+          // The shading denominator drives the brightness of EVERY painted
+          // pixel, so a raw per-pass swap makes the whole wall pulse at model
+          // rate. Snap the first valid estimate, then slew toward later ones so
+          // exposure/mask shifts glide instead of stepping.
+          const estLum = maskedMedianLuminance(
+            frame.data,
+            inputSize,
+            inputSize,
+            smooth.data,
+            width,
+            height,
+          )
+          if (estLum !== null) {
+            wallLum = hasWallLum ? wallLum + (estLum - wallLum) * 0.2 : estLum
+            hasWallLum = true
+          }
           if (!compositing) {
             if (!startCompositor()) {
               fail()

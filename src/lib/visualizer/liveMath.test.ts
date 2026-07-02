@@ -181,6 +181,25 @@ describe('recolorPixels', () => {
     expect(px[0] - px[2]).toBeLessThan(60) // channel spread collapsed — no neon
   })
 
+  it('does not leave a pale ghost when a dark paint covers a blown-out patch', () => {
+    // A near-white overexposed wall patch painted near-black. The old fixed
+    // neutral wash left this as a mid-grey ghost of the original wall (the
+    // reported "white spot"); a dark colour must absorb the excess light.
+    const px = rgbaFill(1, 1, [242, 242, 242])
+    recolorPixels(px, 1, 1, fullAlpha(1), [26, 26, 26], 0.55, { specPreserve: 0 })
+    const y = relativeLuminance(srgbToLinear(px[0]), srgbToLinear(px[1]), srgbToLinear(px[2]))
+    expect(y).toBeLessThan(0.08)
+  })
+
+  it('still washes a saturated mid-tone paint (anti-neon unaffected by the dark fix)', () => {
+    // Terracotta sits above the paint-luminance window, so a bright patch must
+    // keep its neutral wash — the dark-paint fix must not dim mid-tones.
+    const px = rgbaFill(1, 1, [240, 240, 240])
+    recolorPixels(px, 1, 1, fullAlpha(1), [181, 98, 63], 0.15)
+    expect(px[1]).toBeGreaterThan(180) // green still washed up, not pegged low
+    expect(px[0] - px[2]).toBeLessThan(70) // channels stay close — no neon
+  })
+
   it('gloss finishes keep more of a specular highlight than matte', () => {
     const bright: [number, number, number] = [250, 250, 250]
     const wallLum = 0.2 // highlight is far above the wall average

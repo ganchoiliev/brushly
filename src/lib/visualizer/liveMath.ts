@@ -30,8 +30,13 @@ export const DEFAULT_TUNING: LiveTuning = {
   // through everywhere — paint looked diluted (terracotta read as salmon).
   // Edge smoothness is the JBU/bilinear upsample's job, not the feather's.
   feather: 0.9,
-  temporalBase: 0.35,
-  temporalMax: 0.85,
+  // Lower base + max than before (was 0.35 / 0.85): the raw 256px model mask is
+  // noisy pass-to-pass, and letting 35% of each new mask through at rest — plus
+  // ramping to 85% on the slightest handheld shake — made the overlay flicker
+  // and its edge re-land every model pass. A gentler blend trades a little pan
+  // lag (the model re-segments ~10×/s and catches up) for a steady preview.
+  temporalBase: 0.3,
+  temporalMax: 0.6,
   tintStrength: 1,
   edgeSigma: 0.08,
 }
@@ -146,8 +151,11 @@ export function motionScore(
  * under panning so the mask doesn't trail behind the wall.
  */
 export function motionBlend(motion: number, tuning: LiveTuning): number {
-  // < ~1% mean luma change is sensor noise; > ~6% is a deliberate pan.
-  const t = smoothstep(0.01, 0.06, motion)
+  // < ~2% mean luma change is sensor noise / handheld micro-shake (hold the
+  // blend near base so those don't defeat the smoothing); > ~10% is a
+  // deliberate pan. Wider window than before (0.01–0.06) so ordinary handheld
+  // jitter stops cranking the blend toward max and reintroducing flicker.
+  const t = smoothstep(0.02, 0.1, motion)
   return tuning.temporalBase + (tuning.temporalMax - tuning.temporalBase) * t
 }
 
@@ -234,6 +242,17 @@ export function recolorPixels(
   const pr = srgbToLinear(paint[0])
   const pg = srgbToLinear(paint[1])
   const pb = srgbToLinear(paint[2])
+  // Dark paints absorb the excess light that lands on a bright/overexposed
+  // patch; only light paints scatter it back as near-white. The neutral wash
+  // and specular add below are therefore scaled by the paint's own reflectance
+  // — without this, a near-black colour over a blown-out wall highlight leaves
+  // a pale grey ghost of the old wall ("white spot"). The window tops out by
+  // ~0.18 luminance so saturated mid-tones (Red Earth, terracotta…) keep the
+  // full anti-neon wash they were tuned against. Keep in sync with FRAG.
+  const paintY = relativeLuminance(pr, pg, pb)
+  const paintFactor = smoothstep(0.02, 0.18, paintY)
+  const washGain = 0.55 * (0.18 + 0.82 * paintFactor)
+  const specGain = 0.35 * (0.34 + 0.66 * paintFactor)
   const denom = Math.max(wallLum, 0.02)
   for (let i = 0; i < alpha.length; i++) {
     const a = Math.min(alpha[i] * ALPHA_GAIN, 1) * tint
@@ -246,13 +265,13 @@ export function recolorPixels(
     const shading = Math.min(y / denom, 2.5)
     // Diffuse reflection is capped by the paint's albedo: scaling chroma past
     // ~1.25× the wall average turns saturated paints (reds especially) neon.
-    // Brightness beyond the cap is light washing over the surface — add it as
-    // NEUTRAL white, which is how a sunlit patch on red paint actually looks.
+    // Brightness beyond the cap is light washing over the surface — added as
+    // near-white, but only as much as the paint's own lightness would reflect.
     const diffuse = Math.min(shading, 1.25)
-    const wash = (shading - diffuse) * 0.55
+    const wash = (shading - diffuse) * washGain
     // Specular preservation: luminance well above the wall average is a
     // highlight — glossier finishes keep more of it on top of the paint.
-    const highlight = smoothstep(denom * 1.6, denom * 2.4, y) * spec * 0.35
+    const highlight = smoothstep(denom * 1.6, denom * 2.4, y) * spec * specGain
     const rr = pr * diffuse + wash + highlight
     const rg = pg * diffuse + wash + highlight
     const rb = pb * diffuse + wash + highlight

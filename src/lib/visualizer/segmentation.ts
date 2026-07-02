@@ -31,11 +31,13 @@ const NUM_CLASSES = 150
 const MEAN = [0.485, 0.456, 0.406]
 const STD = [0.229, 0.224, 0.225]
 
-// ADE20K class indices (0-based). Interior painting targets 'wall'; exterior
-// targets the building facade classes — pointing the interior mask at a house
-// front finds almost nothing, because facades classify as building/house.
+// ADE20K class indices (0-based). Interior painting targets 'wall'. Exterior
+// ADDS the building/house facade classes but KEEPS 'wall' too: a house front
+// classifies as building/house (which the interior mask misses), yet a close-up
+// of render or masonry often reads as plain 'wall', and keeping wall also lets
+// the exterior preview be tried on any wall — including indoors when testing.
 export const INTERIOR_CLASSES: readonly number[] = [0] // wall
-export const EXTERIOR_CLASSES: readonly number[] = [1, 25] // building;edifice, house
+export const EXTERIOR_CLASSES: readonly number[] = [0, 1, 25] // wall, building;edifice, house
 
 export interface WallMask {
   /** 1 = wall, 0 = not wall; length = width * height (source resolution). */

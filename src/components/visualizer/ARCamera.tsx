@@ -33,6 +33,18 @@ const AR_SERVICES = (Object.keys(SERVICE_LABELS) as VisualizerService[]).map((id
   label: SERVICE_LABELS[id].split(' ')[0],
 }))
 
+// Aiming hint per service. Exterior segments building/house — pointed at an
+// interior wall it finds nothing, so it must tell the user to aim at a facade.
+// The live overlay can only show a FLAT colour; wallpaper patterns and
+// specialist textures only exist in the final photoreal render, so those modes
+// say so rather than looking identical to interior (which read as "broken").
+const AIM_HINT: Record<VisualizerService, string> = {
+  interior: 'Point at the wall you want to paint',
+  exterior: 'Point at the building or house exterior',
+  wallpaper: 'Point at your feature wall — we add the pattern in your render',
+  finish: 'Point at your feature wall — we add the finish in your render',
+}
+
 export default function ARCamera({ onCaptureRender, onClose }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -320,8 +332,8 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
               </span>
             ) : (
               <>
-                <span className="rounded-full bg-brushly-black/50 px-4 py-2 font-body text-[12px] text-brushly-cream/80 backdrop-blur-sm">
-                  Point at the wall you want to paint
+                <span className="rounded-full bg-brushly-black/50 px-4 py-2 text-center font-body text-[12px] text-brushly-cream/80 backdrop-blur-sm">
+                  {AIM_HINT[service]}
                 </span>
                 {liveStatus === 'loading' && (
                   <span className="rounded-full bg-brushly-black/40 px-3 py-1 font-body text-[11px] text-brushly-cream/50 backdrop-blur-sm">

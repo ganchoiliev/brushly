@@ -127,13 +127,20 @@ void main() {
 
   // Luminance-transfer recolour (see liveMath.recolorPixels). Diffuse is
   // capped at ~1.25× the wall average — beyond that, brightness is light
-  // washing over the surface and must be added as NEUTRAL white, or
-  // saturated paints (reds especially) scale into neon.
+  // washing over the surface and is added as near-white, or saturated paints
+  // (reds especially) scale into neon. The wash/specular add are scaled by the
+  // paint's own reflectance so a dark colour absorbs the excess light instead
+  // of leaving a pale ghost of the old wall on blown-out patches; the window
+  // tops out by ~0.18 so saturated mid-tones keep the full anti-neon wash.
   float denom = max(uWallLum, 0.02);
   float shading = min(y / denom, 2.5);
   float diffuse = min(shading, 1.25);
-  float wash = (shading - diffuse) * 0.55;
-  float highlight = smoothstep(denom * 1.6, denom * 2.4, y) * uSpec * 0.35;
+  float paintY = dot(uPaint, LUMA);
+  float paintFactor = smoothstep(0.02, 0.18, paintY);
+  float washGain = 0.55 * (0.18 + 0.82 * paintFactor);
+  float specGain = 0.35 * (0.34 + 0.66 * paintFactor);
+  float wash = (shading - diffuse) * washGain;
+  float highlight = smoothstep(denom * 1.6, denom * 2.4, y) * uSpec * specGain;
   vec3 recol = uPaint * diffuse + vec3(wash + highlight);
   vec3 outLin = mix(lin, recol, clamp(alpha * uTint, 0.0, 1.0));
   outColor = vec4(pow(outLin, vec3(1.0 / 2.2)), 1.0);

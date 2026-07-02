@@ -34,8 +34,9 @@ vi.mock('onnxruntime-web/all', () => {
   }
   // Fully-convolutional stand-in: input [1,3,S,S] → logits [1,150,S/8,S/8],
   // wall (class 0) wins on the left half of every row and building (class 1)
-  // on the right half — so both the interior and exterior target sets are
-  // assertable, including that they exclude each other.
+  // on the right half — so the interior set (wall only) and exterior set (wall
+  // + building/house) are both assertable: interior paints the left half only,
+  // exterior paints both.
   const makeLogits = (S: number) => {
     const out = S / 8
     const data = new Float32Array(150 * out * out)
@@ -136,17 +137,19 @@ describe('segmentWallMargin (live path)', () => {
     expect(margin[16 * 32 + 28]).toBeLessThan(0)
   })
 
-  it('EXTERIOR_CLASSES targets the facade instead of interior walls', async () => {
+  it('EXTERIOR_CLASSES adds the building facade while still catching walls', async () => {
     const { margin } = await segmentWallMargin(fakeSource(640, 480), 256, EXTERIOR_CLASSES)
-    // Building wins on the right half; wall (now a NON-target) wins the left.
-    expect(margin[16 * 32 + 28]).toBeGreaterThan(0)
-    expect(margin[16 * 32 + 4]).toBeLessThan(0)
+    // Building wins the right half (the facade the interior mask misses) and
+    // wall the left — both are targets now, so the exterior preview registers
+    // on a house front AND on an ordinary wall (e.g. tested indoors).
+    expect(margin[16 * 32 + 28]).toBeGreaterThan(0) // building / facade
+    expect(margin[16 * 32 + 4]).toBeGreaterThan(0) // wall
   })
 
-  it('segmentWall with EXTERIOR_CLASSES masks the building half', async () => {
+  it('segmentWall with EXTERIOR_CLASSES masks both the building and the wall', async () => {
     const { mask } = await segmentWall(fakeSource(100, 80), EXTERIOR_CLASSES)
-    expect(mask[40 * 100 + 90]).toBe(1)
-    expect(mask[40 * 100 + 10]).toBe(0)
+    expect(mask[40 * 100 + 90]).toBe(1) // building half
+    expect(mask[40 * 100 + 10]).toBe(1) // wall half — now included
   })
 })
 
