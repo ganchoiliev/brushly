@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -43,6 +43,14 @@ export default function StartScreen() {
         <Text style={styles.footnote}>
           Uses your camera. Nothing is uploaded until you tap capture.
         </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Staff sign in"
+          onPress={() => router.push('/staff')}
+          hitSlop={8}
+        >
+          <Text style={styles.staffLink}>Staff</Text>
+        </Pressable>
         {__DEV__ && <Text style={styles.devNote}>API: {API_BASE_URL}</Text>}
       </Animated.View>
     </SafeAreaView>
@@ -91,6 +99,14 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     fontSize: 13,
     lineHeight: 18,
+    color: Colors.creamFaint,
+    textAlign: 'center',
+  },
+  staffLink: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     color: Colors.creamFaint,
     textAlign: 'center',
   },

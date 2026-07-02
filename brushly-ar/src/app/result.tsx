@@ -1,8 +1,5 @@
 import { Image } from 'expo-image';
-import * as MediaLibrary from 'expo-media-library';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
-import { File, Paths } from 'expo-file-system';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -15,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GoldButton } from '@/components/gold-button';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { getColor } from '@/lib/palette';
+import { useStaffSession } from '@/lib/staff';
 
 /* The payoff screen: photoreal Gemini render vs the captured original,
    compared with a draggable divider. Save/share the after image. */
@@ -29,6 +27,7 @@ export default function ResultScreen() {
   }>();
 
   const color = getColor(params.colorId ?? '');
+  const staffSession = useStaffSession();
   const [busy, setBusy] = useState<'save' | 'share' | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -51,24 +50,33 @@ export default function ResultScreen() {
   }));
 
   /* The signed URLs expire — pull the after image into cache once and
-     reuse the local copy for both save and share. */
-  async function downloadAfter(): Promise<File> {
-    const target = new File(Paths.cache, `brushly-render-${params.renderId}.jpg`);
-    if (target.exists) return target;
-    return File.downloadFileAsync(String(params.afterUrl), target);
+     reuse the local copy for both save and share. expo-file-system /
+     media-library / sharing are lazy-imported: their native classes don't
+     exist in the web target's Node render, and neither action can run
+     before a user tap on a device anyway. */
+  async function downloadAfter(): Promise<string> {
+    const { Directory, File, Paths } = await import('expo-file-system');
+    const target = new File(
+      new Directory(Paths.cache),
+      `brushly-render-${params.renderId}.jpg`,
+    );
+    if (target.exists) return target.uri;
+    const downloaded = await File.downloadFileAsync(String(params.afterUrl), target);
+    return downloaded.uri;
   }
 
   async function handleSave() {
     setBusy('save');
     setNotice(null);
     try {
+      const MediaLibrary = await import('expo-media-library');
       const permission = await MediaLibrary.requestPermissionsAsync(true);
       if (!permission.granted) {
         setNotice('Allow photo access in Settings to save your render.');
         return;
       }
-      const file = await downloadAfter();
-      await MediaLibrary.Asset.create(file.uri);
+      const uri = await downloadAfter();
+      await MediaLibrary.Asset.create(uri);
       setNotice('Saved to your photos.');
     } catch {
       setNotice('Could not save the image. Please try again.');
@@ -81,12 +89,13 @@ export default function ResultScreen() {
     setBusy('share');
     setNotice(null);
     try {
+      const Sharing = await import('expo-sharing');
       if (!(await Sharing.isAvailableAsync())) {
         setNotice('Sharing isn’t available on this device.');
         return;
       }
-      const file = await downloadAfter();
-      await Sharing.shareAsync(file.uri, { mimeType: 'image/jpeg' });
+      const uri = await downloadAfter();
+      await Sharing.shareAsync(uri, { mimeType: 'image/jpeg' });
     } catch {
       setNotice('Could not share the image. Please try again.');
     } finally {
@@ -171,6 +180,18 @@ export default function ResultScreen() {
             style={styles.secondaryButton}
           />
         </View>
+        {staffSession && (
+          <GoldButton
+            label="Attach to lead"
+            variant="ghost"
+            onPress={() =>
+              router.push({
+                pathname: '/attach',
+                params: { renderId: String(params.renderId) },
+              })
+            }
+          />
+        )}
         <Text style={styles.footnote}>
           Your photo and render are kept for 30 days, then deleted.
         </Text>

@@ -26,6 +26,12 @@ export const renderSchema = z.object({
   finish: z.string().min(1).max(64).optional(),
 })
 
+/* Staff (native app) attaching a finished render to a CRM lead. */
+export const attachRenderSchema = z.object({
+  renderId: z.string().uuid(),
+  leadId: z.string().uuid(),
+})
+
 export const leadSchema = z.object({
   sessionId,
   name: singleLine,
