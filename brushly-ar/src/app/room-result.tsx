@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -13,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GoldButton } from '@/components/gold-button';
+import { PaintWaitStrip } from '@/components/paint-wait-strip';
+import { TileShimmer } from '@/components/tile-shimmer';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { getColor, type VisualizerService } from '@/lib/palette';
 import { newRoomId, saveRoom } from '@/lib/saved-rooms';
@@ -186,9 +187,18 @@ export default function RoomResultScreen() {
   }
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-    void renderTiles(shots.map((_, i) => `tile-${i}`));
+    // Defer the initial batch out of the effect body so the setState inside
+    // renderTiles isn't synchronous within this effect (react-compiler
+    // set-state-in-effect) — same discipline as the settle effect below. The
+    // started-ref guard lives inside the timer so a double-invoked mount still
+    // starts the batch exactly once, and the cleanup cancels it if we unmount
+    // before it fires.
+    const timer = setTimeout(() => {
+      if (started.current) return;
+      started.current = true;
+      void renderTiles(shots.map((_, i) => `tile-${i}`));
+    }, 0);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run the batch once on mount
   }, []);
 
@@ -348,8 +358,10 @@ export default function RoomResultScreen() {
   const inProgress = tiles.some(
     (t) => t.status === 'pending' || t.status === 'uploading' || t.status === 'rendering',
   );
-  const progressLabel = inProgress
-    ? `painting ${doneCount}/${total}…`
+  const roomWord = total === 1 ? 'wall' : 'room';
+  // Room-level progress: live while painting, a quiet tally once settled.
+  const progressLine = inProgress
+    ? `Painting your ${roomWord} · ${doneCount} of ${total} done`
     : `${doneCount} of ${total} done`;
 
   return (
@@ -358,22 +370,35 @@ export default function RoomResultScreen() {
         <Text style={styles.title}>{total === 1 ? 'Your wall' : 'Your room'}</Text>
         {color ? (
           <Text style={styles.subtitle}>
-            {color.label} · {finish} · {progressLabel}
+            {color.label} · {color.brand} · {finish}
           </Text>
-        ) : (
-          <Text style={styles.subtitle}>{progressLabel}</Text>
-        )}
+        ) : null}
+        <Text style={[styles.progressLine, inProgress && styles.progressLineActive]}>
+          {progressLine}
+        </Text>
       </View>
+
+      {inProgress && <PaintWaitStrip color={color} finish={finish} />}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.grid}>
         {tiles.map((t) => {
           const isDone = t.status === 'done';
           const showAfter = isDone && !!t.afterUrl;
+          // Screen-reader label must track the visible state — a failed or
+          // limited tile shouldn't announce "rendering".
+          const a11yLabel = isDone
+            ? 'Open before and after'
+            : t.status === 'error'
+              ? 'This wall couldn’t be rendered'
+              : t.status === 'limit'
+                ? 'Preview limit reached'
+                : 'Painting your wall';
           return (
             <Pressable
               key={t.id}
               accessibilityRole={isDone ? 'button' : 'image'}
-              accessibilityLabel={isDone ? 'Open before and after' : 'Rendering your wall'}
+              accessibilityLabel={a11yLabel}
+              accessibilityState={{ disabled: !isDone }}
               disabled={!isDone}
               onPress={() => openTile(t)}
               style={[styles.tile, total === 1 && styles.tileSingle]}
@@ -384,26 +409,17 @@ export default function RoomResultScreen() {
                 contentFit="cover"
                 transition={200}
               />
-              {!isDone && (
+              {t.status === 'error' ? (
                 <View style={styles.tileScrim}>
-                  {t.status === 'error' ? (
-                    <Text style={styles.tileStatusText}>Couldn’t render this one</Text>
-                  ) : t.status === 'limit' ? (
-                    <Text style={styles.tileStatusText}>Preview limit reached</Text>
-                  ) : (
-                    <>
-                      <ActivityIndicator color={Colors.gold} />
-                      <Text style={styles.tileStatusText}>
-                        {t.status === 'uploading'
-                          ? 'Uploading…'
-                          : t.status === 'rendering'
-                            ? 'Painting…'
-                            : 'Waiting…'}
-                      </Text>
-                    </>
-                  )}
+                  <Text style={styles.tileStatusText}>Couldn’t render this one</Text>
                 </View>
-              )}
+              ) : t.status === 'limit' ? (
+                <View style={styles.tileScrim}>
+                  <Text style={styles.tileStatusText}>Preview limit reached</Text>
+                </View>
+              ) : t.status !== 'done' ? (
+                <TileShimmer status={t.status} />
+              ) : null}
               {isDone && (
                 <View style={styles.tileBadge}>
                   <Text style={styles.tileBadgeText}>After · tap to compare</Text>
@@ -478,6 +494,14 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     fontSize: 14,
     color: Colors.creamFaint,
+  },
+  progressLine: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: 13,
+    color: Colors.creamFaint,
+  },
+  progressLineActive: {
+    color: Colors.goldLight,
   },
   scroll: {
     flex: 1,

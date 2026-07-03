@@ -36,6 +36,10 @@ export interface PaintColor {
   hex: string
   brand: string
   group: PaletteGroup
+  /* Optional one-line colour "story" — shown in the render-wait strip for a few
+     popular shades so the wait feels bespoke. Display-only; never sent to the
+     server, so it doesn't affect id/finish validation or the site sync. */
+  description?: string
 }
 
 export const PALETTE: PaintColor[] = [
@@ -48,7 +52,7 @@ export const PALETTE: PaintColor[] = [
 
   // Neutrals
   { id: 'cornforth-white', label: 'Cornforth White', hex: '#CFC9BE', brand: 'Farrow & Ball', group: 'Neutrals' },
-  { id: 'elephants-breath', label: "Elephant's Breath", hex: '#CDC0B0', brand: 'Farrow & Ball', group: 'Neutrals' },
+  { id: 'elephants-breath', label: "Elephant's Breath", hex: '#CDC0B0', brand: 'Farrow & Ball', group: 'Neutrals', description: 'A warm grey-beige that shifts between mauve and stone as the light moves.' },
   { id: 'skimming-stone', label: 'Skimming Stone', hex: '#D8CFC2', brand: 'Farrow & Ball', group: 'Neutrals' },
   { id: 'purbeck-stone', label: 'Purbeck Stone', hex: '#B7AE9F', brand: 'Farrow & Ball', group: 'Neutrals' },
   { id: 'oxford-stone', label: 'Oxford Stone', hex: '#DFCCA9', brand: 'Farrow & Ball', group: 'Neutrals' },
@@ -61,7 +65,7 @@ export const PALETTE: PaintColor[] = [
 
   // Blacks & Darks
   { id: 'downpipe', label: 'Downpipe', hex: '#5B5E5B', brand: 'Farrow & Ball', group: 'Blacks & Darks' },
-  { id: 'railings', label: 'Railings', hex: '#45484D', brand: 'Farrow & Ball', group: 'Blacks & Darks' },
+  { id: 'railings', label: 'Railings', hex: '#45484D', brand: 'Farrow & Ball', group: 'Blacks & Darks', description: 'An off-black with a soft blue undertone — grounding on walls.' },
   { id: 'pitch-black', label: 'Pitch Black', hex: '#313437', brand: 'Farrow & Ball', group: 'Blacks & Darks' },
   { id: 'lamp-black', label: 'Lamp Black', hex: '#3B4042', brand: 'Little Greene', group: 'Blacks & Darks' },
   { id: 'off-black', label: 'Off-Black', hex: '#24262A', brand: 'Brushly', group: 'Blacks & Darks' },
@@ -70,7 +74,7 @@ export const PALETTE: PaintColor[] = [
   { id: 'vert-de-terre', label: 'Vert de Terre', hex: '#B5BCA4', brand: 'Farrow & Ball', group: 'Greens' },
   { id: 'breakfast-room-green', label: 'Breakfast Room Green', hex: '#94A386', brand: 'Farrow & Ball', group: 'Greens' },
   { id: 'sage-green', label: 'Sage Green', hex: '#9AA089', brand: 'Little Greene', group: 'Greens' },
-  { id: 'green-smoke', label: 'Green Smoke', hex: '#6C7267', brand: 'Farrow & Ball', group: 'Greens' },
+  { id: 'green-smoke', label: 'Green Smoke', hex: '#6C7267', brand: 'Farrow & Ball', group: 'Greens', description: 'A smoky blue-green — calm, characterful, quietly confident.' },
   { id: 'card-room-green', label: 'Card Room Green', hex: '#6A6D5D', brand: 'Farrow & Ball', group: 'Greens' },
   { id: 'calke-green', label: 'Calke Green', hex: '#77855C', brand: 'Farrow & Ball', group: 'Greens' },
   { id: 'overtly-olive', label: 'Overtly Olive', hex: '#7C7A52', brand: 'Dulux Trade', group: 'Greens' },
@@ -84,12 +88,12 @@ export const PALETTE: PaintColor[] = [
   { id: 'de-nimes', label: 'De Nimes', hex: '#768388', brand: 'Farrow & Ball', group: 'Blues' },
   { id: 'hicks-blue', label: "Hicks' Blue", hex: '#33526B', brand: 'Little Greene', group: 'Blues' },
   { id: 'stiffkey-blue', label: 'Stiffkey Blue', hex: '#3B4657', brand: 'Farrow & Ball', group: 'Blues' },
-  { id: 'hague-blue', label: 'Hague Blue', hex: '#313E43', brand: 'Farrow & Ball', group: 'Blues' },
+  { id: 'hague-blue', label: 'Hague Blue', hex: '#313E43', brand: 'Farrow & Ball', group: 'Blues', description: 'A deep, near-navy blue-black that turns a room jewel-like after dark.' },
 
   // Reds & Pinks
   { id: 'pink-ground', label: 'Pink Ground', hex: '#EBD5C8', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
   { id: 'setting-plaster', label: 'Setting Plaster', hex: '#E3C6B8', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
-  { id: 'sulking-room-pink', label: 'Sulking Room Pink', hex: '#9F7D76', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
+  { id: 'sulking-room-pink', label: 'Sulking Room Pink', hex: '#9F7D76', brand: 'Farrow & Ball', group: 'Reds & Pinks', description: 'A muted, dusky rose-pink — intimate and enveloping, never sweet.' },
   { id: 'picture-gallery-red', label: 'Picture Gallery Red', hex: '#9A5A4B', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
   { id: 'eating-room-red', label: 'Eating Room Red', hex: '#7C3B39', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
   { id: 'rectory-red', label: 'Rectory Red', hex: '#97393B', brand: 'Farrow & Ball', group: 'Reds & Pinks' },
