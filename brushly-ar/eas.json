@@ -6,13 +6,28 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://brushly.uk",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://dpovfhwigetfeydmbrhz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb3ZmaHdpZ2V0ZmV5ZG1icmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNDYxNzYsImV4cCI6MjA5NjYyMjE3Nn0.S5GzeH9FaHho9oGhVhT9qjhvhoHqMm_8yukN0xDBRQU"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://brushly.uk",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://dpovfhwigetfeydmbrhz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb3ZmaHdpZ2V0ZmV5ZG1icmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNDYxNzYsImV4cCI6MjA5NjYyMjE3Nn0.S5GzeH9FaHho9oGhVhT9qjhvhoHqMm_8yukN0xDBRQU"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://brushly.uk",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://dpovfhwigetfeydmbrhz.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb3ZmaHdpZ2V0ZmV5ZG1icmh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNDYxNzYsImV4cCI6MjA5NjYyMjE3Nn0.S5GzeH9FaHho9oGhVhT9qjhvhoHqMm_8yukN0xDBRQU"
+      }
     }
   },
   "submit": {

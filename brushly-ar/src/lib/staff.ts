@@ -10,10 +10,12 @@ export function useStaffSession(): Session | null {
   const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    if (!supabase) return
+    const client = supabase
+    client.auth.getSession().then(({ data }) => setSession(data.session))
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, next) => setSession(next))
+    } = client.auth.onAuthStateChange((_event, next) => setSession(next))
     return () => subscription.unsubscribe()
   }, [])
 
@@ -21,6 +23,7 @@ export function useStaffSession(): Session | null {
 }
 
 async function staffFetch(path: `/${string}`, init?: RequestInit): Promise<Response> {
+  if (!supabase) throw new Error('Staff sign-in is not configured in this build.')
   const {
     data: { session },
   } = await supabase.auth.getSession()

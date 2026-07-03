@@ -29,6 +29,10 @@ export default function StaffScreen() {
 
   async function handleSignIn() {
     if (busy) return;
+    if (!supabase) {
+      setError('Staff sign-in is not configured in this build.');
+      return;
+    }
     setBusy(true);
     setError(null);
     const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -44,6 +48,7 @@ export default function StaffScreen() {
   }
 
   async function handleSignOut() {
+    if (!supabase) return;
     setBusy(true);
     await supabase.auth.signOut();
     setBusy(false);
