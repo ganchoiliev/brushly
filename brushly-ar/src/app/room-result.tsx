@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GoldButton } from '@/components/gold-button';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { getColor, type VisualizerService } from '@/lib/palette';
+import { newRoomId, saveRoom } from '@/lib/saved-rooms';
 import { getSessionId, requestRender, uploadPhoto } from '@/lib/visualizer-api';
 
 /* The room gallery: every captured wall is uploaded + rendered on the server
@@ -98,6 +100,23 @@ export default function RoomResultScreen() {
     };
   }, []);
 
+  // "My Rooms": once the batch settles, the finished walls are kept on the
+  // device so the room survives past the server's ~24h signed-url TTL. One
+  // stable id + timestamp per render session; persisted once, re-persisted only
+  // if a Retry adds more finished walls.
+  const roomIdRef = useRef<string | null>(null);
+  const createdAtRef = useRef(0);
+  const savingRef = useRef(false);
+  const savedWallCount = useRef(0);
+  // Set when a persist is asked for while one is already running; the in-flight
+  // save re-runs itself once from fresh state, so a wall that finishes mid-save
+  // is never dropped.
+  const resaveRequested = useRef(false);
+  // Latest committed tiles, mirrored so the async persist (and its coalesced
+  // re-run) read the freshest set — a captured snapshot could miss a late wall.
+  const tilesRef = useRef(tiles);
+  const [savedState, setSavedState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   function patchTile(id: string, patch: Partial<Tile>) {
     setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   }
@@ -172,6 +191,83 @@ export default function RoomResultScreen() {
     void renderTiles(shots.map((_, i) => `tile-${i}`));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run the batch once on mount
   }, []);
+
+  // Keep the finished walls in My Rooms. Async + ref-guarded, safe to call
+  // repeatedly: it reads the freshest tiles (tilesRef), persists only walls not
+  // already kept, and never setStates after unmount (the disk writes still
+  // finish). If asked to run while a save is in flight it coalesces into a
+  // single re-run rather than dropping the request — so a wall that finishes
+  // mid-save is never lost.
+  async function persistRoom() {
+    if (Platform.OS === 'web') return;
+    if (savingRef.current) {
+      resaveRequested.current = true;
+      return;
+    }
+    const ready = tilesRef.current.filter((t) => t.status === 'done' && t.afterUrl && t.renderId);
+    if (ready.length <= savedWallCount.current) return;
+    savingRef.current = true;
+    setSavedState('saving');
+    try {
+      if (!roomIdRef.current) {
+        roomIdRef.current = newRoomId();
+        createdAtRef.current = Date.now();
+      }
+      const room = await saveRoom({
+        id: roomIdRef.current,
+        createdAt: createdAtRef.current,
+        colorId,
+        finish,
+        service,
+        walls: ready.map((t) => ({
+          renderId: String(t.renderId),
+          localBeforeUri: t.localUri,
+          beforeUrl: t.beforeUrl,
+          afterUrl: String(t.afterUrl),
+          afterExt: afterExt(t.afterUrl),
+          calibration: t.calibration,
+        })),
+      });
+      savedWallCount.current = room.walls.length;
+      if (alive.current) setSavedState('saved');
+    } catch {
+      // Once at least one wall is kept the room is genuinely saved and viewable,
+      // so a failed incremental re-save must not erase the "kept" state.
+      if (alive.current) setSavedState(savedWallCount.current > 0 ? 'saved' : 'error');
+    } finally {
+      savingRef.current = false;
+      // Walls arrived while we were saving — persist again from fresh state.
+      if (resaveRequested.current) {
+        resaveRequested.current = false;
+        void persistRoom();
+      }
+    }
+  }
+
+  // Mirror the latest committed tiles for persistRoom (and its re-run) to read.
+  useEffect(() => {
+    tilesRef.current = tiles;
+  }, [tiles]);
+
+  // Persist the moment the batch settles (>=1 wall done, none still running);
+  // re-fires after a Retry that produces more done walls. Deferred into a timer
+  // so the setState inside persistRoom isn't synchronous within this effect
+  // (react-compiler set-state-in-effect); the cleanup cancels a pending persist
+  // if the tiles change again first.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const stillGoing = tiles.some(
+      (t) => t.status === 'pending' || t.status === 'uploading' || t.status === 'rendering',
+    );
+    if (stillGoing) return;
+    const anyDone = tiles.some((t) => t.status === 'done' && t.afterUrl && t.renderId);
+    if (!anyDone) return;
+    const timer = setTimeout(() => {
+      void persistRoom();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- persist on settle; ref-guarded
+  }, [tiles]);
 
   function openTile(t: Tile) {
     if (t.status !== 'done' || !t.renderId) return;
@@ -330,6 +426,9 @@ export default function RoomResultScreen() {
           You’ve reached today’s preview limit — try the rest again tomorrow.
         </Text>
       )}
+      {savedState === 'saved' && (
+        <Text style={styles.savedNote}>Kept in My Rooms — reopen it anytime.</Text>
+      )}
 
       <View style={styles.actions}>
         {!inProgress && failedCount > 0 && (
@@ -344,9 +443,16 @@ export default function RoomResultScreen() {
           variant={!inProgress && failedCount > 0 ? 'ghost' : 'solid'}
           disabled={busy || doneCount === 0}
         />
+        {savedState === 'saved' && (
+          <GoldButton
+            label="View My Rooms"
+            variant="ghost"
+            onPress={() => router.push('/my-rooms')}
+          />
+        )}
         <GoldButton label="Back to camera" variant="ghost" onPress={() => router.back()} />
         <Text style={styles.footnote}>
-          Your photos and renders are kept for 30 days, then deleted.
+          Kept on this device in My Rooms. The server copy is deleted after 30 days.
         </Text>
       </View>
     </SafeAreaView>
@@ -437,6 +543,13 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.body,
     fontSize: 12,
     color: Colors.creamFaint,
+    textAlign: 'center',
+    paddingTop: Spacing.xs,
+  },
+  savedNote: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: 12,
+    color: Colors.goldLight,
     textAlign: 'center',
     paddingTop: Spacing.xs,
   },

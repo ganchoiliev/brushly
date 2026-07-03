@@ -40,6 +40,11 @@ export default function StartScreen() {
         style={styles.footer}
       >
         <GoldButton label="Start AR" onPress={() => router.push('/ar')} />
+        <GoldButton
+          label="My Rooms"
+          variant="ghost"
+          onPress={() => router.push('/my-rooms')}
+        />
         <Text style={styles.footnote}>
           Uses your camera. Nothing is uploaded until you tap Render.
         </Text>

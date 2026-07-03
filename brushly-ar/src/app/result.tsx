@@ -64,6 +64,10 @@ export default function ResultScreen() {
      / media-library / sharing are lazy-imported: their native classes don't
      exist in the web target's Node render. */
   async function downloadAfter(): Promise<string> {
+    // Opened from a kept room ("My Rooms"), the after is already a persistent
+    // local file — nothing to download, and downloadFileAsync doesn't take a
+    // file:// source. Hand it back as-is so save/share work unchanged.
+    if (String(params.afterUrl).startsWith('file://')) return String(params.afterUrl);
     const { Directory, File, Paths } = await import('expo-file-system');
     const target = new File(
       new Directory(Paths.cache),
