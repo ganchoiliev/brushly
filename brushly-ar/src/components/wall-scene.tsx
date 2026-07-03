@@ -77,23 +77,91 @@ interface SceneNavigatorInjectedProps {
 // ARKit plane classifications that are vertical but NOT paintable wall.
 const NON_WALL = new Set(['Window', 'Door']);
 
-function asTrackedPlane(anchor: ViroAnchor): TrackedPlane | null {
-  // anchorDetectionTypes is PlanesVertical-only, so every plane anchor here
-  // is a wall; the alignment check guards against config drift, and ARKit's ML
-  // classification (when present) lets us skip windows/doors. Unclassified
-  // ('None'/undefined — common on ARCore) is kept.
+// A wall must clear ADMIT in BOTH width and height (metres) to START being
+// tinted. AR plane detection throws up small, thin, low-confidence planes —
+// ceiling strips, reflections, furniture edges — that render as floating coloured
+// triangles (the "sticker overlay" look users hate). Requiring both extents drops
+// the thin junk: a sliver always fails on its short side, while a real wall clears
+// the bar in both dimensions almost immediately as the user pans across it.
+const ADMIT_WALL_EXTENT_M = 0.5;
+// Once tinted, a wall is only DROPPED when it falls below this lower bar on an
+// axis. The hysteresis gap [KEEP, ADMIT] debounces the per-frame extent jitter
+// ARKit/ARCore report: a borderline wall won't blink off (and re-flap the "point
+// at a wall" hint) on a momentary dip, yet a plane that genuinely shrinks to a
+// sliver — including junk that spiked over ADMIT for a single frame — is still
+// evicted rather than lingering as a stale triangle. DEVICE-QA knobs: raise ADMIT
+// to kill more junk; widen the gap if borderline walls flicker.
+const KEEP_WALL_EXTENT_M = 0.35;
+
+// Is this anchor a paintable wall at all, size aside? anchorDetectionTypes is
+// PlanesVertical-only so every plane anchor should be a wall; the alignment check
+// guards against config drift, and ARKit's ML classification (when present) skips
+// windows/doors. Unclassified ('None'/undefined — common on ARCore) is kept. Kept
+// separate from the size gate so the anchor handler can tell "not a wall" (drop
+// it) from "a wall that's momentarily too small" (keep what we already have).
+function isWallAnchor(anchor: ViroAnchor): boolean {
   if (anchor.type !== 'plane' || anchor.alignment?.startsWith('Horizontal')) {
-    return null;
+    return false;
   }
   if (anchor.classification && NON_WALL.has(anchor.classification)) {
-    return null;
+    return false;
   }
-  return {
-    anchorId: anchor.anchorId,
-    width: anchor.width ?? 1,
-    height: anchor.height ?? 1,
-    center: anchor.center ?? [0, 0, 0],
-  };
+  return true;
+}
+
+// Metric extents (metres) of a plane. Prefer ARKit/ARCore's own width/height;
+// fall back to the bounding box of the boundary polygon when the scalar extents
+// aren't reported. `vertices` are in plane-local XZ — Viro's own ViroARPlane
+// selector maps [x,_y,z]→[x,z] and lays it flat with the same [-90,0,0] rotation
+// we use — so max-minus-min over X and Z IS the width/height. Returns NaN extents
+// when there's no size signal at all, so the size gate treats the plane as "too
+// small": we never tint an unmeasurable junk plane, and never fabricate a bogus
+// area for ranking (which the old `?? 1` fallback did — a 1×1 sentinel could
+// out-rank a real sub-1m² wall, or on an extentless platform make every plane
+// tie at area 1 and pick an arbitrary one).
+function measureExtent(anchor: ViroAnchor): { width: number; height: number } {
+  if (typeof anchor.width === 'number' && typeof anchor.height === 'number') {
+    return { width: anchor.width, height: anchor.height };
+  }
+  const verts = anchor.vertices;
+  if (verts && verts.length > 0) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const v of verts) {
+      if (v[0] < minX) minX = v[0];
+      if (v[0] > maxX) maxX = v[0];
+      if (v[2] < minZ) minZ = v[2];
+      if (v[2] > maxZ) maxZ = v[2];
+    }
+    return { width: maxX - minX, height: maxZ - minZ };
+  }
+  return { width: NaN, height: NaN };
+}
+
+/* Tint only ONE wall at a time — the largest tracked vertical plane, a cheap and
+   robust proxy for "the wall the user is aiming at" (people point at the wall
+   they want). This replaces tinting every detected plane, which is what produced
+   the floating triangles. Largest-area (not nearest-screen-centre) is deliberate:
+   it needs no per-frame camera pose, and because ARKit keeps off-screen walls
+   tracked, plain "largest" stays responsive as the wall you pan onto grows to
+   overtake the old one — a sticky/hysteresis pick would lag behind your aim. The
+   cost is a possible tint hop between two near-equal walls in a corner (rare,
+   self-correcting); revisit with camera-ray picking if device QA shows it. */
+function pickAimedWall(
+  planes: Record<string, TrackedPlane>,
+): TrackedPlane | null {
+  let best: TrackedPlane | null = null;
+  let bestArea = 0;
+  for (const plane of Object.values(planes)) {
+    const area = plane.width * plane.height;
+    if (area > bestArea) {
+      bestArea = area;
+      best = plane;
+    }
+  }
+  return best;
 }
 
 /* Viro's initialScene.scene type is `() => JSX.Element`, but the navigator
@@ -111,19 +179,52 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
 
   const [planes, setPlanes] = useState<Record<string, TrackedPlane>>({});
 
-  const handleAnchorFound = useCallback((anchor: ViroAnchor) => {
-    const plane = asTrackedPlane(anchor);
-    if (!plane) return;
-    setPlanes((prev) => ({ ...prev, [plane.anchorId]: plane }));
-  }, []);
-
-  const handleAnchorUpdated = useCallback((anchor: ViroAnchor) => {
-    const plane = asTrackedPlane(anchor);
-    if (!plane) return;
-    // ARKit/ARCore grow plane extents as the user scans — keep quads in sync.
-    setPlanes((prev) =>
-      prev[plane.anchorId] ? { ...prev, [plane.anchorId]: plane } : prev,
-    );
+  // One handler for both found and updated — the single admission control for the
+  // tinted-wall set. A newly-seen wall must clear ADMIT on both axes; an already-
+  // tracked wall is refreshed to its current size and kept until it drops below
+  // the lower KEEP bar (hysteresis against per-frame extent jitter) or is
+  // reclassified away from being a wall. Refreshing the stored size every frame is
+  // what stops a plane that spiked over ADMIT for one frame from lingering, tinted
+  // at that stale inflated size. Routing `updated` through this too lets a wall
+  // that only clears ADMIT AFTER the user pans in still get tinted.
+  const syncAnchor = useCallback((anchor: ViroAnchor) => {
+    setPlanes((prev) => {
+      const existing = prev[anchor.anchorId];
+      // No longer a paintable wall (reclassified horizontal/window/door, or not a
+      // plane): drop it if we were tracking it.
+      if (!isWallAnchor(anchor)) {
+        if (!existing) return prev;
+        const next = { ...prev };
+        delete next[anchor.anchorId];
+        return next;
+      }
+      const { width, height } = measureExtent(anchor);
+      if (!Number.isFinite(width) || !Number.isFinite(height)) {
+        // No size signal this frame — unknown ≠ shrunk. Don't admit on nothing,
+        // and don't tear down a wall we're already tracking. (Real ARKit/ARCore
+        // keep reporting numeric extents for a tracked plane and fire
+        // onAnchorRemoved for dead ones, so a tracked plane going permanently
+        // signal-less isn't expected; if DEVICE-QA ever shows a triangle that
+        // survives panning away, evict after N sustained no-signal frames here.)
+        return prev;
+      }
+      const gate = existing ? KEEP_WALL_EXTENT_M : ADMIT_WALL_EXTENT_M;
+      if (width < gate || height < gate) {
+        if (!existing) return prev; // sub-ADMIT junk we've never tinted: stay out
+        const next = { ...prev }; // a tracked wall that really shrank: evict it
+        delete next[anchor.anchorId];
+        return next;
+      }
+      return {
+        ...prev,
+        [anchor.anchorId]: {
+          anchorId: anchor.anchorId,
+          width,
+          height,
+          center: anchor.center ?? existing?.center ?? [0, 0, 0],
+        },
+      };
+    });
   }, []);
 
   const handleAnchorRemoved = useCallback((anchor?: ViroAnchor) => {
@@ -179,11 +280,15 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
     : wallMaterialName(selectedColorId, sheen);
   const shownOpacity = USE_CALIBRATED_SHADER ? 1 : WALL_OPACITY;
 
+  // The single wall we actually tint. null → nothing qualifies yet, so the
+  // "point at a wall" hint (driven by wallCount in the painter) stays up.
+  const wall = pickAimedWall(planes);
+
   return (
     <ViroARScene
       anchorDetectionTypes={['PlanesVertical']}
-      onAnchorFound={handleAnchorFound}
-      onAnchorUpdated={handleAnchorUpdated}
+      onAnchorFound={syncAnchor}
+      onAnchorUpdated={syncAnchor}
       onAnchorRemoved={handleAnchorRemoved}
       onTrackingUpdated={handleTrackingUpdated}
     >
@@ -198,20 +303,20 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
         direction={[0.3, -1, -0.3]}
         intensity={200}
       />
-      {Object.values(planes).map((plane) => (
-        <ViroARPlane key={plane.anchorId} anchorId={plane.anchorId}>
+      {wall && (
+        <ViroARPlane key={wall.anchorId} anchorId={wall.anchorId}>
           {/* Plane anchors have +Y normals in local space; -90° about X lays
               the quad onto the wall. */}
           <ViroQuad
-            position={plane.center}
+            position={wall.center}
             rotation={[-90, 0, 0]}
-            width={plane.width}
-            height={plane.height}
+            width={wall.width}
+            height={wall.height}
             materials={[material]}
             opacity={overlayHidden ? 0 : shownOpacity}
           />
         </ViroARPlane>
-      ))}
+      )}
     </ViroARScene>
   );
 }
