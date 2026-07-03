@@ -212,7 +212,7 @@ export default function ResultScreen() {
             style={styles.secondaryButton}
           />
           <GoldButton
-            label="Try another colour"
+            label="Back to room"
             variant="ghost"
             onPress={() => router.back()}
             style={styles.secondaryButton}

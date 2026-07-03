@@ -41,7 +41,7 @@ export default function StartScreen() {
       >
         <GoldButton label="Start AR" onPress={() => router.push('/ar')} />
         <Text style={styles.footnote}>
-          Uses your camera. Nothing is uploaded until you tap capture.
+          Uses your camera. Nothing is uploaded until you tap Render.
         </Text>
         <Pressable
           accessibilityRole="button"

@@ -1,7 +1,8 @@
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ViroARSceneNavigator,
@@ -11,17 +12,22 @@ import {
 
 import { GoldButton } from '@/components/gold-button';
 import { LooksRow } from '@/components/looks-row';
-import { RenderProgress } from '@/components/render-progress';
 import { ServiceFinishBar } from '@/components/service-finish-bar';
 import { SwatchRow } from '@/components/swatch-row';
 import WallScene, { type WallSceneProps } from '@/components/wall-scene';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { toUploadJpeg } from '@/lib/capture';
 import { sheenForFinish } from '@/lib/materials';
-import { FINISHES, getColor, type VisualizerService } from '@/lib/palette';
-import { getSessionId, requestRender, uploadPhoto } from '@/lib/visualizer-api';
+import { FINISHES, type VisualizerService } from '@/lib/palette';
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/* Each app session can render a bounded number of walls server-side
+   (8/session), so cap a room at 6 — a full room renders in a single pass with a
+   little slack. A second pass (e.g. re-rendering the room in another colour) can
+   run into the per-session limit; the gallery surfaces that honestly rather than
+   pretending there's budget for it. */
+const MAX_SHOTS = 6;
 
 type Phase = 'checking' | 'unsupported' | 'denied' | 'ready';
 type PickerMode = 'colours' | 'looks';
@@ -70,13 +76,17 @@ export function WallPainter() {
   const [trackingReady, setTrackingReady] = useState(false);
   const [wallCount, setWallCount] = useState(0);
   const [overlayHidden, setOverlayHidden] = useState(false);
-  const [rendering, setRendering] = useState(false);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  const [capturing, setCapturing] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
+  // Captured walls waiting to be rendered together as one room (JPEG file uris).
+  const [shots, setShots] = useState<{ id: string; uri: string }[]>([]);
 
   const navigatorRef = useRef<ViroARSceneNavigator>(null);
   // In-flight guard must be a ref, not state — the shutter Pressable can
-  // fire from a stale closure while a render is already running.
+  // fire from a stale closure while a capture is already running.
   const captureInFlight = useRef(false);
+  // Monotonic id for captured shots — stable keys through add/remove.
+  const shotSeq = useRef(0);
   // The render takes 10-20s; if the user backs out (hardware back / close),
   // the finished promise must not setState or yank them onto /result.
   const alive = useRef(true);
@@ -148,17 +158,19 @@ export function WallPainter() {
     [colorId, finish, overlayHidden, override],
   );
 
-  async function handleShutter() {
-    if (captureInFlight.current) return;
+  // Capture one wall into the filmstrip. Rendering happens later, once, for the
+  // whole room (see /room-result) — so this only grabs a clean frame.
+  async function handleCapture() {
+    if (captureInFlight.current || shots.length >= MAX_SHOTS) return;
     captureInFlight.current = true;
-    setRenderError(null);
-    setRendering(true);
+    setCaptureError(null);
+    setCapturing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      // Drop the tint quads for a beat so the API gets the unpainted wall —
-      // Gemini must repaint the original, not our overlay. 500ms: the clean
-      // frame must actually reach the GL swapchain before the screenshot on
-      // slower devices; the RenderProgress overlay masks the pause anyway.
+      // Drop the tint quads for a beat so the render gets the UNPAINTED wall —
+      // Gemini repaints the original, not our overlay. 500ms: the clean frame
+      // must actually reach the GL swapchain before the screenshot on slower
+      // devices.
       setOverlayHidden(true);
       await delay(500);
       const shot = await navigatorRef.current?.arSceneNavigator.takeScreenshot(
@@ -172,56 +184,39 @@ export function WallPainter() {
       const localUri = String(shot.url).startsWith('file://')
         ? String(shot.url)
         : `file://${shot.url}`;
-
       const jpegUri = await toUploadJpeg(localUri);
-      const session = getSessionId();
-      const sourcePath = await uploadPhoto(session, jpegUri);
-      const result = await requestRender({
-        sessionId: session,
-        sourcePath,
-        service,
-        colorId,
-        finish,
-      });
-
       if (!alive.current) return;
+      shotSeq.current += 1;
+      setShots((prev) => [...prev, { id: `shot-${shotSeq.current}`, uri: jpegUri }]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.push({
-        pathname: '/result',
-        params: {
-          renderId: result.renderId,
-          beforeUrl: result.beforeUrl,
-          afterUrl: result.afterUrl,
-          colorId,
-          finish,
-          // Forwarded so the result screen can offer "See it live on your wall"
-          // and re-enter AR in the render's achieved colour (present only when
-          // the server ran the calibration step).
-          ...(result.calibration
-            ? {
-                calPaint: result.calibration.paint.join(','),
-                calWallLum: String(result.calibration.wallLum),
-              }
-            : {}),
-        },
-      });
     } catch (error) {
+      setOverlayHidden(false);
       if (!alive.current) return;
       const message = error instanceof Error ? error.message : '';
-      setRenderError(
-        message === 'limit_reached_session'
-          ? 'That’s the preview limit for this session — try again in a little while.'
-          : message === 'limit_reached' || message === 'limit_reached_ip'
-            ? 'You’ve reached today’s preview limit — try again tomorrow.'
-            : message || 'Something went wrong. Please try again.',
-      );
+      setCaptureError(message || 'Something went wrong. Please try again.');
     } finally {
       captureInFlight.current = false;
-      if (alive.current) {
-        setOverlayHidden(false);
-        setRendering(false);
-      }
+      if (alive.current) setCapturing(false);
     }
+  }
+
+  // Hand the captured walls (+ the chosen colour) to the gallery, which uploads
+  // and renders each on the server and shows a before/after grid.
+  function handleRenderRoom() {
+    if (!shots.length) return;
+    router.push({
+      pathname: '/room-result',
+      params: {
+        shots: JSON.stringify(shots.map((s) => s.uri)),
+        colorId,
+        finish,
+        service,
+      },
+    });
+  }
+
+  function removeShot(id: string) {
+    setShots((prev) => prev.filter((s) => s.id !== id));
   }
 
   if (phase === 'checking') {
@@ -289,32 +284,65 @@ export function WallPainter() {
             <Text style={styles.hintText}>{hint}</Text>
           </View>
         )}
-        {renderError && (
+        {captureError && (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Dismiss error"
-            onPress={() => setRenderError(null)}
+            onPress={() => setCaptureError(null)}
             style={styles.errorPill}
           >
-            <Text style={styles.errorText}>{renderError}</Text>
+            <Text style={styles.errorText}>{captureError}</Text>
           </Pressable>
+        )}
+
+        {shots.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filmstripContent}
+            style={styles.filmstrip}
+          >
+            {shots.map((shot, i) => (
+              <View key={shot.id} style={styles.thumbWrap}>
+                <Image source={{ uri: shot.uri }} style={styles.thumb} contentFit="cover" />
+                <Text style={styles.thumbIndex}>{i + 1}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove photo ${i + 1}`}
+                  onPress={() => removeShot(shot.id)}
+                  style={styles.thumbRemove}
+                  hitSlop={8}
+                >
+                  <Text style={styles.thumbRemoveGlyph}>✕</Text>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
         )}
 
         <View style={styles.shutterRow}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Capture and render this wall"
-            disabled={rendering}
-            onPress={handleShutter}
+            accessibilityLabel={shots.length > 0 ? 'Capture another wall' : 'Capture this wall'}
+            disabled={capturing || shots.length >= MAX_SHOTS}
+            onPress={handleCapture}
             style={({ pressed }) => [
               styles.shutter,
               pressed && styles.shutterPressed,
-              rendering && styles.shutterDisabled,
+              (capturing || shots.length >= MAX_SHOTS) && styles.shutterDisabled,
             ]}
           >
             <View style={styles.shutterInner} />
           </Pressable>
         </View>
+
+        {shots.length >= MAX_SHOTS && (
+          <Text style={styles.capacityNote}>Room full — up to {MAX_SHOTS} photos.</Text>
+        )}
+
+        {shots.length > 0 && (
+          <GoldButton label={`Render room (${shots.length})`} onPress={handleRenderRoom} />
+        )}
 
         <ServiceFinishBar
           service={service}
@@ -375,9 +403,6 @@ export function WallPainter() {
         )}
       </View>
 
-      {rendering && (
-        <RenderProgress colorLabel={getColor(colorId)?.label ?? 'Your colour'} />
-      )}
     </View>
   );
 }
@@ -418,8 +443,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.scrim,
     alignItems: 'center',
     justifyContent: 'center',
-    // Above the RenderProgress overlay (zIndex 20) — closing mid-render is
-    // the only cancel affordance, especially on iOS with no hardware back.
+    // Sits above the bottom control scrim so Close stays tappable.
     zIndex: 30,
   },
   closeGlyph: {
@@ -488,6 +512,60 @@ const styles = StyleSheet.create({
     height: 54,
     borderRadius: Radius.pill,
     backgroundColor: Colors.gold,
+  },
+  filmstrip: {
+    alignSelf: 'stretch',
+    flexGrow: 0,
+  },
+  filmstripContent: {
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    alignItems: 'center',
+  },
+  thumbWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: Radius.sm,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.hairline,
+    backgroundColor: Colors.black,
+  },
+  thumb: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbIndex: {
+    position: 'absolute',
+    left: 4,
+    bottom: 2,
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 11,
+    color: Colors.cream,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowRadius: 3,
+  },
+  thumbRemove: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.scrim,
+    borderBottomLeftRadius: Radius.sm,
+  },
+  thumbRemoveGlyph: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: 11,
+    color: Colors.cream,
+  },
+  capacityNote: {
+    alignSelf: 'center',
+    fontFamily: Fonts.body,
+    fontSize: 12,
+    color: Colors.creamFaint,
   },
   modeRow: {
     flexDirection: 'row',
