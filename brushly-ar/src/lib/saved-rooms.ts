@@ -25,9 +25,10 @@ const ROOMS_DIRNAME = 'brushly-rooms'
 export interface SavedWall {
   /** The server render id — also the on-disk filename stem (stable, dedupes). */
   renderId: string
-  /** Persistent file:// uri of the original (before) photo. */
+  /** The original (before) photo. Stored RELATIVE to the document dir on disk
+   *  (see toRelativePath); resolved to an absolute file:// uri on read. */
   beforePath: string
-  /** Persistent file:// uri of the rendered (after) image. */
+  /** The rendered (after) image. Stored RELATIVE on disk, absolute on read. */
   afterPath: string
   /** Look calibration carried from the render, so "See it live" still works. */
   calibration?: { paint: [number, number, number]; wallLum: number }
@@ -72,17 +73,58 @@ async function writeIndex(rooms: SavedRoom[]): Promise<void> {
   await AsyncStorage.setItem(INDEX_KEY, JSON.stringify(rooms))
 }
 
-/** All kept rooms, newest first. Empty on web (no persistence target). */
+/* Persisted image paths are stored RELATIVE to the document dir and re-rooted to
+   the CURRENT document dir on every read. The absolute container path is NOT
+   stable across app updates/reinstalls: iOS relocates the whole data container to
+   a new UUID, and AsyncStorage moves with it — so a room stays LISTED (its index
+   entry survived) but any absolute file:// string saved earlier now points at the
+   old, gone container and every image 404s (the "room opens but is empty" bug).
+   Everything we write lives under <document>/brushly-rooms/<id>/<name>, so the
+   substring from the ROOMS_DIRNAME marker onward is the stable relative path. */
+function toRelativePath(uri: string): string {
+  const marker = `${ROOMS_DIRNAME}/`
+  const i = uri.indexOf(marker)
+  return i >= 0 ? uri.slice(i) : uri
+}
+
+function toAbsolutePath(stored: string, docRootUri: string): string {
+  // Strip any (possibly stale) absolute prefix a legacy row saved, then re-root.
+  const rel = toRelativePath(stored)
+  if (!rel.startsWith(`${ROOMS_DIRNAME}/`)) return stored // unknown shape — leave as-is
+  const base = docRootUri.endsWith('/') ? docRootUri : `${docRootUri}/`
+  return `${base}${rel}`
+}
+
+function withAbsolutePaths(room: SavedRoom, docRootUri: string): SavedRoom {
+  return {
+    ...room,
+    walls: room.walls.map((w) => ({
+      ...w,
+      beforePath: toAbsolutePath(w.beforePath, docRootUri),
+      afterPath: toAbsolutePath(w.afterPath, docRootUri),
+    })),
+  }
+}
+
+/** All kept rooms, newest first. Empty on web (no persistence target). Paths are
+ *  re-rooted to the current document dir so a container move doesn't blank them. */
 export async function listRooms(): Promise<SavedRoom[]> {
   if (Platform.OS === 'web') return []
+  const { Paths } = await import('expo-file-system')
+  const root = Paths.document.uri
   const rooms = await readIndex()
-  return rooms.slice().sort((a, b) => b.createdAt - a.createdAt)
+  return rooms
+    .slice()
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .map((r) => withAbsolutePaths(r, root))
 }
 
 export async function getRoom(id: string): Promise<SavedRoom | null> {
   if (Platform.OS === 'web') return null
+  const { Paths } = await import('expo-file-system')
   const rooms = await readIndex()
-  return rooms.find((r) => r.id === id) ?? null
+  const room = rooms.find((r) => r.id === id)
+  return room ? withAbsolutePaths(room, Paths.document.uri) : null
 }
 
 /* Guard against a "successful" download of a non-image body.
@@ -246,8 +288,9 @@ export async function saveRoom(input: {
 
       walls.push({
         renderId: w.renderId,
-        beforePath: beforeFile.uri,
-        afterPath: afterFile.uri,
+        // Persist RELATIVE to the document dir; re-rooted on read (toAbsolutePath).
+        beforePath: toRelativePath(beforeFile.uri),
+        afterPath: toRelativePath(afterFile.uri),
         calibration: w.calibration,
       })
     } catch {
@@ -274,10 +317,11 @@ export async function saveRoom(input: {
     colorId: input.colorId,
     finish: input.finish,
     service: input.service,
-    walls,
+    walls, // relative paths — what's persisted
   }
   await writeIndex([room, ...rooms.filter((r) => r.id !== input.id)])
-  return room
+  // Hand callers absolute paths (consistent with getRoom/listRooms).
+  return withAbsolutePaths(room, Paths.document.uri)
 }
 
 /* Delete a kept room. Drops the index entry FIRST: if the index write fails we

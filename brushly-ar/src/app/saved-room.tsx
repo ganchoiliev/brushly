@@ -244,6 +244,27 @@ export default function SavedRoomScreen() {
           <Text style={styles.emptyText}>This room is no longer on your device.</Text>
           <GoldButton label="Back to My Rooms" onPress={() => router.back()} />
         </View>
+      ) : room.walls.length === 0 ? (
+        // An honest state for a room whose renders aren't on the device (e.g. saved
+        // by an older build, or their files were cleared) — never a blank grid. The
+        // colour is still known, so offer to paint it live right away.
+        <View style={styles.centre}>
+          <Text style={styles.emptyTitle}>No saved renders</Text>
+          <Text style={styles.emptyText}>
+            This room’s renders aren’t on this device anymore — but you can paint{' '}
+            {color?.label ?? 'this colour'} live on your wall right now.
+          </Text>
+          <GoldButton
+            label="See it live on your wall"
+            onPress={() =>
+              router.push({
+                pathname: '/ar',
+                params: { calColorId: room.colorId, calFinish: room.finish },
+              })
+            }
+          />
+          <GoldButton label="Delete room" variant="ghost" onPress={handleDelete} />
+        </View>
       ) : (
         <>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.grid}>
@@ -296,6 +317,27 @@ export default function SavedRoomScreen() {
           {notice && <Text style={styles.notice}>{notice}</Text>}
 
           <View style={styles.actions}>
+            {/* Re-enter AR and paint this room's colour live on the wall. Works
+                even if the saved renders are broken — it repaints live, it doesn't
+                read the stored images. Calibration rides along when a wall has it. */}
+            <GoldButton
+              label="See it live on your wall"
+              onPress={() =>
+                router.push({
+                  pathname: '/ar',
+                  params: {
+                    calColorId: room.colorId,
+                    calFinish: room.finish,
+                    ...(room.walls[0]?.calibration
+                      ? {
+                          calPaint: room.walls[0].calibration.paint.join(','),
+                          calWallLum: String(room.walls[0].calibration.wallLum),
+                        }
+                      : {}),
+                  },
+                })
+              }
+            />
             {brokenCount > 0 && (
               <GoldButton
                 label={`Re-render ${brokenCount} wall${brokenCount === 1 ? '' : 's'}`}

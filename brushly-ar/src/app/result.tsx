@@ -186,17 +186,25 @@ export default function ResultScreen() {
       {notice && <Text style={styles.notice}>{notice}</Text>}
 
       <View style={styles.actions}>
-        {params.calPaint ? (
+        {/* Re-enter AR painting the CHOSEN colour live on the wall. Available for
+            every render — the render's calibrated albedo (calPaint) is an optional
+            refinement that rides along only once the server calibration step is
+            deployed; without it AR paints the swatch colour, which is the point. */}
+        {params.colorId ? (
           <GoldButton
             label="See it live on your wall"
             onPress={() =>
               router.push({
                 pathname: '/ar',
                 params: {
-                  calPaint: String(params.calPaint),
-                  calWallLum: String(params.calWallLum ?? ''),
                   calColorId: String(params.colorId ?? ''),
                   calFinish: String(params.finish ?? ''),
+                  ...(params.calPaint
+                    ? {
+                        calPaint: String(params.calPaint),
+                        calWallLum: String(params.calWallLum ?? ''),
+                      }
+                    : {}),
                 },
               })
             }

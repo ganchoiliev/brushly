@@ -49,14 +49,24 @@ export function WallPainter() {
     calFinish?: string;
   }>();
   const initialCal = useMemo(() => {
-    if (!params.calPaint) return null;
-    const paint = params.calPaint.split(',').map(Number);
-    if (paint.length !== 3 || paint.some((n) => Number.isNaN(n))) return null;
+    const colorId = params.calColorId || undefined;
+    const finish = params.calFinish || undefined;
+    // calPaint (the render's ACHIEVED albedo) is optional — it only exists once the
+    // server calibration step is deployed. When absent, we still seed the chosen
+    // colour/finish and let AR paint the raw swatch (no override).
+    let paint: [number, number, number] | null = null;
+    if (params.calPaint) {
+      const parsed = params.calPaint.split(',').map(Number);
+      if (parsed.length === 3 && !parsed.some((n) => Number.isNaN(n))) {
+        paint = parsed as [number, number, number];
+      }
+    }
+    if (!colorId && !finish && !paint) return null;
     return {
-      paint: paint as [number, number, number],
+      paint,
       wallLum: Number(params.calWallLum) || 0.3,
-      colorId: params.calColorId,
-      finish: params.calFinish,
+      colorId,
+      finish,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -68,8 +78,9 @@ export function WallPainter() {
   // Sage Green at 0.6 alpha over a white wall barely registers).
   const [colorId, setColorId] = useState(initialCal?.colorId ?? 'green-smoke');
   // The render's achieved look, applied until the user picks a new colour/finish.
+  // Only set when calibration actually rode along (initialCal.paint non-null).
   const [override, setOverride] = useState<{ paint: [number, number, number]; wallLum: number } | null>(
-    initialCal ? { paint: initialCal.paint, wallLum: initialCal.wallLum } : null,
+    initialCal?.paint ? { paint: initialCal.paint, wallLum: initialCal.wallLum } : null,
   );
   const [lookId, setLookId] = useState<string | null>(null);
   const [pickerMode, setPickerMode] = useState<PickerMode>('colours');
