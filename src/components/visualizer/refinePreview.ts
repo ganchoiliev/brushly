@@ -4,11 +4,13 @@
 //
 // The live overlay recolours every frame from a coarse mask upsampled with a
 // tiny kernel — fast, but the paint edge can't hug real object/lamp boundaries
-// and bright patches wash out. When the user taps "See it perfectly" we FREEZE
-// one frame and spend a second or two producing a near-photoreal recolour:
+// and bright patches wash out. When the user taps "Sharpen preview" we FREEZE
+// one frame and spend a second or two producing a sharper recolour:
 //   1. segment the still at 512 (the same recipe as instantPreview),
-//   2. refine the coarse alpha to a PIXEL-ACCURATE matte with a guided filter
-//      (matting.ts) so the paint stops exactly at lamps/frames/furniture,
+//   2. refine the coarse alpha with a guided filter (matting.ts) so the paint
+//      snaps toward image edges — sharper than the live upsample, but still
+//      BOUNDED by the model's semantic precision: it can't fully clean object
+//      edges or same-tone wall/ceiling seams (that's what the cloud render is for),
 //   3. recolour with the shared luminance-transfer math.
 // Colour switches then re-run only the (LUT-accelerated) recolour on the cached
 // matte — visually instant, no re-segment.
