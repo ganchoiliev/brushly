@@ -36,6 +36,11 @@ export default function MyRoomsScreen() {
   const router = useRouter();
   // null = still loading (first paint); [] = loaded and genuinely empty.
   const [rooms, setRooms] = useState<SavedRoom[] | null>(null);
+  // Cards whose first-wall thumbnail won't decode (a corrupt/partial file from an
+  // older save). Keyed by room id so the card shows an honest "Image unavailable"
+  // placeholder instead of a silent dark square; the card still opens, where the
+  // room can be re-rendered to recover.
+  const [failedById, setFailedById] = useState<Record<string, boolean>>({});
 
   // Reload on every refocus so a freshly-kept or just-deleted room is reflected
   // without a manual refresh (returning from /saved-room or /room-result).
@@ -101,9 +106,20 @@ export default function MyRoomsScreen() {
                 style={styles.card}
               >
                 <View style={styles.thumbWrap}>
-                  {thumb ? (
-                    <Image source={{ uri: thumb }} style={styles.thumb} contentFit="cover" />
-                  ) : null}
+                  {thumb && !failedById[room.id] ? (
+                    <Image
+                      source={{ uri: thumb }}
+                      style={styles.thumb}
+                      contentFit="cover"
+                      onError={() =>
+                        setFailedById((prev) =>
+                          prev[room.id] ? prev : { ...prev, [room.id]: true },
+                        )
+                      }
+                    />
+                  ) : (
+                    <Text style={styles.thumbFallback}>Image unavailable</Text>
+                  )}
                 </View>
                 <View style={styles.cardBody}>
                   <Text style={styles.cardTitle} numberOfLines={1}>
@@ -192,10 +208,20 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     overflow: 'hidden',
     backgroundColor: Colors.offBlack,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   thumb: {
     width: '100%',
     height: '100%',
+  },
+  thumbFallback: {
+    fontFamily: Fonts.body,
+    fontSize: 10,
+    lineHeight: 13,
+    color: Colors.creamFaint,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
   cardBody: {
     flex: 1,
