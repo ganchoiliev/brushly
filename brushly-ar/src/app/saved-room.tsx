@@ -109,6 +109,23 @@ export default function SavedRoomScreen() {
             out.push(`stat ERR ${String(e).slice(0, 44)}`);
           }
         }
+        const first = room?.walls?.[0];
+        if (first) {
+          try {
+            const f = new File(first.afterPath);
+            if (f.exists) {
+              const b = await f.bytes();
+              const hex = Array.from(b.slice(0, 8))
+                .map((x) => x.toString(16).padStart(2, '0'))
+                .join(' ');
+              out.push(`magic=${hex}`);
+              out.push(`uriHead=${String(first.afterPath).slice(0, 16)}`);
+            }
+          } catch (e) {
+            out.push(`magic ERR ${String(e).slice(0, 30)}`);
+          }
+        }
+        out.push(`rendered walls in map=${room?.walls?.length ?? 0}`);
       } catch (e) {
         out.push(`DBG ERR ${String(e).slice(0, 80)}`);
       }
@@ -333,11 +350,13 @@ export default function SavedRoomScreen() {
                         style={StyleSheet.absoluteFill}
                         contentFit="cover"
                         transition={200}
-                        onError={() =>
+                        onLoad={() => console.warn('IMG OK', w.renderId.slice(0, 6))}
+                        onError={(e) => {
+                          console.warn('IMG ERR', w.renderId.slice(0, 6), JSON.stringify(e).slice(0, 120));
                           setFailedById((prev) =>
                             prev[w.renderId] ? prev : { ...prev, [w.renderId]: true },
-                          )
-                        }
+                          );
+                        }}
                       />
                       <View style={styles.tileBadge}>
                         <Text style={styles.tileBadgeText}>After · tap to compare</Text>
@@ -488,7 +507,11 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: Radius.lg,
     overflow: 'hidden',
-    backgroundColor: Colors.black,
+    // TEMP DIAGNOSTIC: bright bg + border so an empty/sized-but-blank tile is
+    // obvious. Revert to Colors.black once the image bug is fixed.
+    backgroundColor: '#5a3a3a',
+    borderWidth: 2,
+    borderColor: '#ff5555',
   },
   tileSingle: {
     width: '100%',
