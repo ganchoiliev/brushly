@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Dimensions } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 import {
   ViroAmbientLight,
   ViroARPlane,
@@ -21,6 +21,7 @@ import {
   pushWallViewportUniforms,
   registerCalibratedWallMaterial,
   rgb255ToLinear,
+  type ShaderStage,
   specPreserveForSheen,
   updateWallLook,
 } from '@/lib/wall-shader';
@@ -28,21 +29,51 @@ import {
 /* Register both wall materials once at module load:
    - the calibrated shader (single material; colour/finish/calibration live in
      uniforms) — the primary, camera-sampling luminance-transfer recolour;
-   - the flat per-(colour,sheen) PBR materials — kept as an on-device fallback.
-   DEVICE-QA: if the shader quad renders black/blank on an EAS build, flip
-   USE_CALIBRATED_SHADER to false to A/B against the known-good flat quad. */
+   - the flat per-(colour,sheen) PBR materials — always registered, the on-device
+     fallback the shader path degrades to. */
 
-// TEMPORARILY false: the calibrated camera-sampling shader crashed on first
-// device test (custom GLSL / camera_texture binding is unverified on-device).
-// Ship the known-good flat quad first to confirm the base AR + capture + render
-// work on a real device, then re-enable and debug the shader on that foundation.
-const USE_CALIBRATED_SHADER = false;
+// ─── The device-QA switch ───────────────────────────────────────────────────────
+// The calibrated camera-sampling shader crashed on the first device run (the
+// hand-written camera_texture GLSL didn't compile — see wall-shader.ts header for
+// the root cause + fix). It is now rebuilt in STAGES so it can be de-risked ONE
+// unknown at a time on a real phone: set TARGET_SHADER_STAGE, reload Metro, look.
+//   0 = OFF   → flat PBR quad (known-good; the SHIPPED default — never regress
+//               real users to an untested shader).
+//   1 = Constant surface modifier paints a fixed colour (no camera). Proves the
+//       material registers and Constant honours _surface.diffuse_color.
+//   2 = + live camera_texture sample, shown raw (the risky binding + UV).
+//   3 = full luminance-transfer recolour (paint × wall shading) — the real look.
+// Advance only after the previous stage renders correctly on-device; drop back a
+// stage the moment one misbehaves. This constant stays 0 in git.
+const TARGET_SHADER_STAGE: ShaderStage = 0;
+
+// Device/perf gate: the shader path is native GL only (web has its own painter).
+// This is also the seam to add a remote kill-switch or a per-device allowlist
+// without touching the render path. A NATIVE GLSL compile failure can't be caught
+// from JS — that's exactly why the default is stage 0 and each stage is verified
+// on-device before it ships, rather than trusting a runtime try/catch to save us.
+function resolveShaderStage(target: ShaderStage): ShaderStage {
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return 0;
+  return target;
+}
+const SHADER_STAGE = resolveShaderStage(TARGET_SHADER_STAGE);
 
 ViroMaterials.createMaterials(WALL_MATERIALS);
-// Only register the camera-sampling shader material when it's actually in use:
-// Viro may compile the shaderModifier at registration, so registering it while
-// disabled could crash the exact same way. Declared before this so the guard works.
-if (USE_CALIBRATED_SHADER) registerCalibratedWallMaterial();
+
+// Register the shader material ONLY when a stage is on: Viro compiles the
+// shaderModifier at registration, so registering a broken stage crashes even if
+// nothing renders it. A JS-level failure here (never a native compile error) falls
+// back to the flat quad instead of taking AR down. Declared before use.
+function initCalibratedShader(): boolean {
+  if (SHADER_STAGE <= 0) return false;
+  try {
+    return registerCalibratedWallMaterial(SHADER_STAGE);
+  } catch (err) {
+    console.warn('[wall-shader] registration failed; falling back to flat quad', err);
+    return false;
+  }
+}
+const SHADER_ACTIVE = initCalibratedShader();
 
 const WALL_OPACITY = 0.6; // flat-fallback opacity; the shader path uses 1.0
 
@@ -250,9 +281,10 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
   }, [wallCount, onWallCountChanged]);
 
   // Push the physical-pixel viewport size so the shader's gl_FragCoord → screen
-  // UV → camera-texture sample is correct; refresh on orientation change.
+  // UV → camera-texture sample is correct; refresh on orientation change. Only
+  // stages that sample the camera (2+) read these uniforms.
   useEffect(() => {
-    if (!USE_CALIBRATED_SHADER) return;
+    if (!SHADER_ACTIVE || SHADER_STAGE < 2) return;
     pushWallViewportUniforms();
     const sub = Dimensions.addEventListener('change', pushWallViewportUniforms);
     return () => sub.remove();
@@ -260,9 +292,10 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
 
   // Live-update the wall look. Default albedo is the raw swatch; when the app
   // returns from a render with `paintOverride`, use the render's ACHIEVED albedo
-  // (calibration.ts) so the live wall matches the photoreal result.
+  // (calibration.ts) so the live wall matches the photoreal result. Only the
+  // recolour stage (3) reads these uniforms.
   useEffect(() => {
-    if (!USE_CALIBRATED_SHADER) return;
+    if (!SHADER_ACTIVE || SHADER_STAGE < 3) return;
     const paintLinear = paintOverride
       ? rgb255ToLinear(paintOverride)
       : hexToLinearRgb(getColor(selectedColorId)?.hex ?? '#7A8778');
@@ -275,10 +308,10 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
     });
   }, [selectedColorId, sheen, paintOverride, wallLumOverride]);
 
-  const material = USE_CALIBRATED_SHADER
+  const material = SHADER_ACTIVE
     ? CALIBRATED_WALL_MATERIAL
     : wallMaterialName(selectedColorId, sheen);
-  const shownOpacity = USE_CALIBRATED_SHADER ? 1 : WALL_OPACITY;
+  const shownOpacity = SHADER_ACTIVE ? 1 : WALL_OPACITY;
 
   // The single wall we actually tint. null → nothing qualifies yet, so the
   // "point at a wall" hint (driven by wallCount in the painter) stays up.
