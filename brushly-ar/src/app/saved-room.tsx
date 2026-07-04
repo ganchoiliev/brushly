@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -78,61 +79,14 @@ export default function SavedRoomScreen() {
       });
   }, [id]);
 
-  // TEMPORARY DIAGNOSTIC — reports what's actually persisted + on disk for this
-  // room so the "saved room shows no images" bug can be pinned down. Remove once
-  // resolved. Reads the raw index (what's stored) and stats each resolved file.
-  const [dbg, setDbg] = useState<string | null>(null);
-  useEffect(() => {
-    if (Platform.OS === 'web' || !id) return;
-    (async () => {
-      const out: string[] = [];
-      try {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage'))
-          .default;
-        const raw = await AsyncStorage.getItem('brushly.savedRooms.v1');
-        const arr: unknown = raw ? JSON.parse(raw) : [];
-        const list = Array.isArray(arr) ? (arr as { id: string; walls?: unknown[] }[]) : [];
-        out.push(`index rooms=${list.length}`);
-        const stored = list.find((x) => x.id === id);
-        out.push(`stored walls=${stored?.walls?.length ?? 'NONE'}`);
-        const { File, Paths } = await import('expo-file-system');
-        out.push(`docRoot=…${String(Paths.document.uri).slice(-28)}`);
-        for (const w of stored?.walls ?? []) {
-          const p = (w as { afterPath?: string }).afterPath ?? '?';
-          out.push(`raw after=…${String(p).slice(-38)}`);
-        }
-        for (const w of room?.walls ?? []) {
-          try {
-            const f = new File(w.afterPath);
-            out.push(`resolved exists=${f.exists} size=${f.exists ? f.size : '-'}`);
-          } catch (e) {
-            out.push(`stat ERR ${String(e).slice(0, 44)}`);
-          }
-        }
-        const first = room?.walls?.[0];
-        if (first) {
-          try {
-            const f = new File(first.afterPath);
-            if (f.exists) {
-              const b = await f.bytes();
-              const hex = Array.from(b.slice(0, 8))
-                .map((x) => x.toString(16).padStart(2, '0'))
-                .join(' ');
-              out.push(`magic=${hex}`);
-              out.push(`uriHead=${String(first.afterPath).slice(0, 16)}`);
-            }
-          } catch (e) {
-            out.push(`magic ERR ${String(e).slice(0, 30)}`);
-          }
-        }
-        out.push(`rendered walls in map=${room?.walls?.length ?? 0}`);
-      } catch (e) {
-        out.push(`DBG ERR ${String(e).slice(0, 80)}`);
-      }
-      console.warn('[saved-room DBG]\n' + out.join('\n'));
-      if (alive.current) setDbg(out.join('\n'));
-    })();
-  }, [id, room]);
+  // Tile sizing computed from the window width: aspectRatio on a percentage-width
+  // flex child inside the wrapping grid collapsed to ZERO height on Android
+  // (Yoga quirk), so the image had a 0px box and nothing showed. Explicit numeric
+  // width+height per tile is robust. 3:4 portrait (width:height = 3:4).
+  const { width: winW } = useWindowDimensions();
+  const gutter = Spacing.lg * 2; // screen paddingHorizontal, both sides
+  const colW = (winW - gutter - Spacing.sm) / 2; // two columns + one gap
+  const fullW = winW - gutter;
 
   function openWall(w: SavedWall) {
     router.push({
@@ -290,8 +244,6 @@ export default function SavedRoomScreen() {
         </View>
       </View>
 
-      {dbg ? <Text style={styles.debug}>{dbg}</Text> : null}
-
       {loading ? (
         <View style={styles.centre}>
           <ActivityIndicator color={Colors.gold} />
@@ -336,7 +288,12 @@ export default function SavedRoomScreen() {
                   accessibilityState={{ disabled: isFailed }}
                   disabled={isFailed}
                   onPress={() => openWall(w)}
-                  style={[styles.tile, count === 1 && styles.tileSingle]}
+                  style={[
+                    styles.tile,
+                    count === 1
+                      ? { width: fullW, height: fullW * (4 / 3) }
+                      : { width: colW, height: colW * (4 / 3) },
+                  ]}
                 >
                   {isFailed ? (
                     <View style={styles.tileScrim}>
@@ -350,13 +307,11 @@ export default function SavedRoomScreen() {
                         style={StyleSheet.absoluteFill}
                         contentFit="cover"
                         transition={200}
-                        onLoad={() => console.warn('IMG OK', w.renderId.slice(0, 6))}
-                        onError={(e) => {
-                          console.warn('IMG ERR', w.renderId.slice(0, 6), JSON.stringify(e).slice(0, 120));
+                        onError={() =>
                           setFailedById((prev) =>
                             prev[w.renderId] ? prev : { ...prev, [w.renderId]: true },
-                          );
-                        }}
+                          )
+                        }
                       />
                       <View style={styles.tileBadge}>
                         <Text style={styles.tileBadgeText}>After · tap to compare</Text>
@@ -473,15 +428,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.md,
   },
-  debug: {
-    fontFamily: Fonts.body,
-    fontSize: 10,
-    lineHeight: 14,
-    color: '#ffd479',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
   emptyTitle: {
     fontFamily: Fonts.display,
     fontSize: 26,
@@ -503,19 +449,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   tile: {
-    width: '48%',
-    aspectRatio: 3 / 4,
+    // width + height are set inline (from window width) — aspectRatio collapsed
+    // to zero height on Android inside the wrapping grid.
     borderRadius: Radius.lg,
     overflow: 'hidden',
-    // TEMP DIAGNOSTIC: bright bg + border so an empty/sized-but-blank tile is
-    // obvious. Revert to Colors.black once the image bug is fixed.
-    backgroundColor: '#5a3a3a',
-    borderWidth: 2,
-    borderColor: '#ff5555',
-  },
-  tileSingle: {
-    width: '100%',
-    aspectRatio: 3 / 4,
+    backgroundColor: Colors.black,
   },
   tileScrim: {
     position: 'absolute',

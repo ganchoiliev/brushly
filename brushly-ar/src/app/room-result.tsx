@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -365,6 +366,11 @@ export default function RoomResultScreen() {
   }
 
   const total = tiles.length;
+  // Explicit tile size from window width — aspectRatio on a %-width flex child in
+  // the wrapping grid collapses to zero height on Android (Yoga quirk).
+  const { width: winW } = useWindowDimensions();
+  const colW = (winW - Spacing.lg * 2 - Spacing.sm) / 2;
+  const fullW = winW - Spacing.lg * 2;
   const doneCount = tiles.filter((t) => t.status === 'done').length;
   const failedCount = tiles.filter((t) => t.status === 'error' || t.status === 'limit').length;
   const inProgress = tiles.some(
@@ -413,7 +419,12 @@ export default function RoomResultScreen() {
               accessibilityState={{ disabled: !isDone }}
               disabled={!isDone}
               onPress={() => openTile(t)}
-              style={[styles.tile, total === 1 && styles.tileSingle]}
+              style={[
+                styles.tile,
+                total === 1
+                  ? { width: fullW, height: fullW * (4 / 3) }
+                  : { width: colW, height: colW * (4 / 3) },
+              ]}
             >
               <Image
                 source={{ uri: showAfter ? String(t.afterUrl) : t.localUri }}
@@ -525,15 +536,11 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   tile: {
-    width: '48%',
-    aspectRatio: 3 / 4,
+    // width + height set inline (from window width); aspectRatio collapsed to
+    // zero height on Android inside the wrapping grid.
     borderRadius: Radius.lg,
     overflow: 'hidden',
     backgroundColor: Colors.black,
-  },
-  tileSingle: {
-    width: '100%',
-    aspectRatio: 3 / 4,
   },
   tileScrim: {
     position: 'absolute',
