@@ -89,9 +89,15 @@ const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 // bright walls instead of washing them white). SPEC_WHITE: the only near-white
 // source, gated by finish. BRIGHT_RELAX: bright-side widening of the mask
 // edge-detector so lit wall next to a light keeps its paint (no old-colour rim).
+// LOWERED 2.5→1.3: at 2.5 a moderately-bright OBJECT edge (a light desk/laptop,
+// brighter than the wall) was rescued as "lit wall" and painted over — device-
+// observed bleed of ~19% alpha onto object rims. At 1.3 that drops to the bilinear
+// floor (~3%) so edges hug objects crisply, while a lit wall stays fully painted;
+// the only cost is a hair less rescue on an extreme lamp-lit wall gradient. (The
+// original edge-accurate feel the coarse-mask blend had, with the better colours.)
 const float DIFFUSE_CAP = 1.5;
 const float SPEC_WHITE = 0.9;
-const float BRIGHT_RELAX = 2.5;
+const float BRIGHT_RELAX = 1.3;
 
 float lumaAt(vec2 screenUv, float lod) {
   vec3 srgb = textureLod(uVideo, uCropOff + screenUv * uCropScale, lod).rgb;
