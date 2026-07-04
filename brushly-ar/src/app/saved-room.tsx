@@ -78,6 +78,45 @@ export default function SavedRoomScreen() {
       });
   }, [id]);
 
+  // TEMPORARY DIAGNOSTIC — reports what's actually persisted + on disk for this
+  // room so the "saved room shows no images" bug can be pinned down. Remove once
+  // resolved. Reads the raw index (what's stored) and stats each resolved file.
+  const [dbg, setDbg] = useState<string | null>(null);
+  useEffect(() => {
+    if (Platform.OS === 'web' || !id) return;
+    (async () => {
+      const out: string[] = [];
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage'))
+          .default;
+        const raw = await AsyncStorage.getItem('brushly.savedRooms.v1');
+        const arr: unknown = raw ? JSON.parse(raw) : [];
+        const list = Array.isArray(arr) ? (arr as { id: string; walls?: unknown[] }[]) : [];
+        out.push(`index rooms=${list.length}`);
+        const stored = list.find((x) => x.id === id);
+        out.push(`stored walls=${stored?.walls?.length ?? 'NONE'}`);
+        const { File, Paths } = await import('expo-file-system');
+        out.push(`docRoot=…${String(Paths.document.uri).slice(-28)}`);
+        for (const w of stored?.walls ?? []) {
+          const p = (w as { afterPath?: string }).afterPath ?? '?';
+          out.push(`raw after=…${String(p).slice(-38)}`);
+        }
+        for (const w of room?.walls ?? []) {
+          try {
+            const f = new File(w.afterPath);
+            out.push(`resolved exists=${f.exists} size=${f.exists ? f.size : '-'}`);
+          } catch (e) {
+            out.push(`stat ERR ${String(e).slice(0, 44)}`);
+          }
+        }
+      } catch (e) {
+        out.push(`DBG ERR ${String(e).slice(0, 80)}`);
+      }
+      console.warn('[saved-room DBG]\n' + out.join('\n'));
+      if (alive.current) setDbg(out.join('\n'));
+    })();
+  }, [id, room]);
+
   function openWall(w: SavedWall) {
     router.push({
       pathname: '/result',
@@ -233,6 +272,8 @@ export default function SavedRoomScreen() {
           )}
         </View>
       </View>
+
+      {dbg ? <Text style={styles.debug}>{dbg}</Text> : null}
 
       {loading ? (
         <View style={styles.centre}>
@@ -412,6 +453,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.md,
+  },
+  debug: {
+    fontFamily: Fonts.body,
+    fontSize: 10,
+    lineHeight: 14,
+    color: '#ffd479',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   emptyTitle: {
     fontFamily: Fonts.display,
