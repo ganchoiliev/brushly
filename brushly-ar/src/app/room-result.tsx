@@ -16,7 +16,7 @@ import { PaintWaitStrip } from '@/components/paint-wait-strip';
 import { TileShimmer } from '@/components/tile-shimmer';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { getColor, type VisualizerService } from '@/lib/palette';
-import { newRoomId, saveRoom } from '@/lib/saved-rooms';
+import { isValidImageFile, newRoomId, saveRoom } from '@/lib/saved-rooms';
 import { getSessionId, requestRender, uploadPhoto } from '@/lib/visualizer-api';
 
 /* The room gallery: every captured wall is uploaded + rendered on the server
@@ -321,10 +321,22 @@ export default function RoomResultScreen() {
             new Directory(Paths.cache),
             `brushly-render-${t.renderId}.${afterExt(t.afterUrl)}`,
           );
-          const uri = target.exists
-            ? target.uri
-            : (await File.downloadFileAsync(String(t.afterUrl), target)).uri;
-          await MediaLibrary.Asset.create(uri);
+          if (!target.exists) {
+            await File.downloadFileAsync(String(t.afterUrl), target);
+          }
+          // Same guard as My Rooms: a signed url can answer 2xx with an error
+          // body that downloads as if it were the render. Never hand a corrupt
+          // file to the camera roll — verify (covers a stale reused cache file
+          // too), and drop a bad one so a later attempt re-downloads it.
+          if (!(await isValidImageFile(target))) {
+            try {
+              if (target.exists) target.delete();
+            } catch {
+              // best effort
+            }
+            continue;
+          }
+          await MediaLibrary.Asset.create(target.uri);
           saved += 1;
         } catch {
           // Skip a single failure; the aggregate count is reported below.

@@ -51,6 +51,11 @@ export default function SavedRoomScreen() {
   const [loading, setLoading] = useState(() => Platform.OS !== 'web' && !!id);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  // Tiles whose persisted after-image won't decode — a corrupt/partial file from
+  // an older save (before download verification). Keyed by renderId so the tile
+  // shows an honest "Image unavailable" state instead of a silent blank, and the
+  // room can be re-rendered from its kept before-photos to recover.
+  const [failedById, setFailedById] = useState<Record<string, boolean>>({});
 
   const alive = useRef(true);
   useEffect(() => {
@@ -105,8 +110,11 @@ export default function SavedRoomScreen() {
         setNotice('Allow photo access in Settings to save your renders.');
         return;
       }
+      // Don't push a tile we know is broken to the camera roll — save only the
+      // ones that decode, and report against that count so it stays honest.
+      const savable = room.walls.filter((w) => !failedById[w.renderId]);
       let saved = 0;
-      for (const w of room.walls) {
+      for (const w of savable) {
         try {
           await MediaLibrary.Asset.create(w.afterPath);
           saved += 1;
@@ -116,9 +124,11 @@ export default function SavedRoomScreen() {
       }
       if (!alive.current) return;
       setNotice(
-        saved === room.walls.length
-          ? `Saved ${saved} to your photos.`
-          : `Saved ${saved} of ${room.walls.length}.`,
+        savable.length === 0
+          ? 'These renders need re-rendering before you can save them.'
+          : saved === savable.length
+            ? `Saved ${saved} to your photos.`
+            : `Saved ${saved} of ${savable.length}.`,
       );
     } catch {
       if (alive.current) setNotice('Could not save. Please try again.');
@@ -127,10 +137,34 @@ export default function SavedRoomScreen() {
     }
   }
 
+  /* Re-render the walls whose after-image won't load, reusing the room-result
+     pipeline on their kept before-photos. Produces fresh renders (new signed
+     urls, re-verified on save) as a new room — the recovery path for a room
+     with corrupt files. The kept before-photo is a local copy, so it's the one
+     durable source we still have; the expired after-url is long gone. */
+  function handleReRender() {
+    if (!room) return;
+    const shots = room.walls.filter((w) => failedById[w.renderId]).map((w) => w.beforePath);
+    if (!shots.length) return;
+    router.push({
+      pathname: '/room-result',
+      params: {
+        shots: JSON.stringify(shots),
+        colorId: room.colorId,
+        finish: room.finish,
+        service: room.service,
+      },
+    });
+  }
+
   async function handleShare() {
     if (!room || busy) return;
-    const first = room.walls[0];
-    if (!first) return;
+    // Never share a tile we know is broken — pick the first that still decodes.
+    const first = room.walls.find((w) => !failedById[w.renderId]);
+    if (!first) {
+      setNotice('These renders need re-rendering before you can share.');
+      return;
+    }
     setBusy(true);
     setNotice(null);
     try {
@@ -173,6 +207,7 @@ export default function SavedRoomScreen() {
 
   const color = room ? getColor(room.colorId) : undefined;
   const count = room?.walls.length ?? 0;
+  const brokenCount = room ? room.walls.filter((w) => failedById[w.renderId]).length : 0;
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -212,30 +247,62 @@ export default function SavedRoomScreen() {
       ) : (
         <>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.grid}>
-            {room.walls.map((w) => (
-              <Pressable
-                key={w.renderId}
-                accessibilityRole="button"
-                accessibilityLabel="Open before and after"
-                onPress={() => openWall(w)}
-                style={[styles.tile, count === 1 && styles.tileSingle]}
-              >
-                <Image
-                  source={{ uri: w.afterPath }}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  transition={200}
-                />
-                <View style={styles.tileBadge}>
-                  <Text style={styles.tileBadgeText}>After · tap to compare</Text>
-                </View>
-              </Pressable>
-            ))}
+            {room.walls.map((w) => {
+              const isFailed = !!failedById[w.renderId];
+              return (
+                <Pressable
+                  key={w.renderId}
+                  accessibilityRole={isFailed ? 'image' : 'button'}
+                  accessibilityLabel={isFailed ? 'Image unavailable' : 'Open before and after'}
+                  accessibilityState={{ disabled: isFailed }}
+                  disabled={isFailed}
+                  onPress={() => openWall(w)}
+                  style={[styles.tile, count === 1 && styles.tileSingle]}
+                >
+                  {isFailed ? (
+                    <View style={styles.tileScrim}>
+                      <Text style={styles.tileUnavailableTitle}>Image unavailable</Text>
+                      <Text style={styles.tileUnavailableText}>This render didn’t save fully.</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Image
+                        source={{ uri: w.afterPath }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                        transition={200}
+                        onError={() =>
+                          setFailedById((prev) =>
+                            prev[w.renderId] ? prev : { ...prev, [w.renderId]: true },
+                          )
+                        }
+                      />
+                      <View style={styles.tileBadge}>
+                        <Text style={styles.tileBadgeText}>After · tap to compare</Text>
+                      </View>
+                    </>
+                  )}
+                </Pressable>
+              );
+            })}
           </ScrollView>
 
+          {brokenCount > 0 && (
+            <Text style={styles.warnNote}>
+              {brokenCount === 1 ? 'One render' : `${brokenCount} renders`} didn’t save fully —
+              re-render to restore {brokenCount === 1 ? 'it' : 'them'}.
+            </Text>
+          )}
           {notice && <Text style={styles.notice}>{notice}</Text>}
 
           <View style={styles.actions}>
+            {brokenCount > 0 && (
+              <GoldButton
+                label={`Re-render ${brokenCount} wall${brokenCount === 1 ? '' : 's'}`}
+                onPress={handleReRender}
+                disabled={busy}
+              />
+            )}
             <View style={styles.secondaryRow}>
               <GoldButton
                 label={busy ? 'Saving…' : count > 1 ? `Save all to Photos` : 'Save to Photos'}
@@ -335,6 +402,30 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 3 / 4,
   },
+  tileScrim: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    padding: Spacing.md,
+    backgroundColor: Colors.offBlack,
+  },
+  tileUnavailableTitle: {
+    fontFamily: Fonts.bodySemiBold,
+    fontSize: 14,
+    color: Colors.cream,
+    textAlign: 'center',
+  },
+  tileUnavailableText: {
+    fontFamily: Fonts.body,
+    fontSize: 12,
+    color: Colors.creamFaint,
+    textAlign: 'center',
+  },
   tileBadge: {
     position: 'absolute',
     left: Spacing.sm,
@@ -351,6 +442,13 @@ const styles = StyleSheet.create({
     color: Colors.cream,
   },
   notice: {
+    fontFamily: Fonts.body,
+    fontSize: 13,
+    color: Colors.goldLight,
+    textAlign: 'center',
+    paddingTop: Spacing.sm,
+  },
+  warnNote: {
     fontFamily: Fonts.body,
     fontSize: 13,
     color: Colors.goldLight,

@@ -85,6 +85,65 @@ export async function getRoom(id: string): Promise<SavedRoom | null> {
   return rooms.find((r) => r.id === id) ?? null
 }
 
+/* Guard against a "successful" download of a non-image body.
+   File.downloadFileAsync rejects on a non-2xx status, but an expired or failed
+   signed url can still answer 2xx with a tiny XML/JSON error (or a proxy's HTML
+   interstitial) — bytes that land on disk looking like a real render. Recorded
+   unchecked, that path is kept forever (the url expires in ~24h and is never
+   re-fetched) and the tile shows blank. Two cheap, decisive checks catch it:
+   a size floor — error/interstitial bodies are a few hundred bytes to a few KB,
+   a real render is tens of KB+ — and an image magic-number sniff, since an
+   XML/JSON/HTML body can never begin with a JPEG/PNG/WebP/GIF signature. */
+const MIN_IMAGE_BYTES = 1024
+
+function hasImageMagic(b: Uint8Array): boolean {
+  // JPEG: FF D8 FF
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return true
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    b.length >= 8 &&
+    b[0] === 0x89 &&
+    b[1] === 0x50 &&
+    b[2] === 0x4e &&
+    b[3] === 0x47 &&
+    b[4] === 0x0d &&
+    b[5] === 0x0a &&
+    b[6] === 0x1a &&
+    b[7] === 0x0a
+  )
+    return true
+  // GIF: "GIF8" (87a / 89a)
+  if (b.length >= 4 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38)
+    return true
+  // WebP: "RIFF"????"WEBP"
+  if (
+    b.length >= 12 &&
+    b[0] === 0x52 &&
+    b[1] === 0x49 &&
+    b[2] === 0x46 &&
+    b[3] === 0x46 &&
+    b[8] === 0x57 &&
+    b[9] === 0x45 &&
+    b[10] === 0x42 &&
+    b[11] === 0x50
+  )
+    return true
+  return false
+}
+
+/** True only when `file` is on disk, above a sane size floor, and begins with a
+ *  real image signature — i.e. a genuine render, not a downloaded error body.
+ *  Used to gate every downloaded after-image before it is recorded or persisted;
+ *  reused by the room-result save-to-Photos path so neither can keep a blank. */
+export async function isValidImageFile(file: FSFile): Promise<boolean> {
+  try {
+    if (!file.exists || file.size < MIN_IMAGE_BYTES) return false
+    return hasImageMagic(await file.bytes())
+  } catch {
+    return false
+  }
+}
+
 /* Persist (upsert) a room. Idempotent by design:
    - re-called for the same id (e.g. after a Retry adds walls) it only downloads
      images that aren't already on disk, and preserves the original createdAt;
@@ -155,6 +214,18 @@ export async function saveRoom(input: {
       await materialise(afterFile, (tmp) =>
         File.downloadFileAsync(w.afterUrl, tmp, { idempotent: true }),
       )
+      // The download can "succeed" on a non-image body (see isValidImageFile).
+      // Verify before recording the wall: a bad file is deleted so it's never
+      // adopted by the `finalFile.exists` skip on a later save, and this wall is
+      // dropped into the catch below rather than kept as a permanent blank tile.
+      if (!(await isValidImageFile(afterFile))) {
+        try {
+          if (afterFile.exists) afterFile.delete()
+        } catch {
+          // best effort — a leftover is re-checked (and rejected) on the next save
+        }
+        throw new Error('after image failed verification')
+      }
 
       const beforeFile = new File(dir, `before-${w.renderId}.jpg`)
       await materialise(beforeFile, async (tmp) => {
