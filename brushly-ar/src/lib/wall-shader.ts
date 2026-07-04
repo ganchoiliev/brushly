@@ -64,7 +64,7 @@ export const CALIBRATED_WALL_MATERIAL = 'wall-calibrated';
  * time on a real device (see the module header). 0 means "don't register the
  * material at all" — wall-scene.tsx uses the flat-quad fallback instead.
  */
-export type ShaderStage = 0 | 1 | 2 | 3;
+export type ShaderStage = 0 | 1 | 2 | 3 | 4;
 
 /** sRGB channel 0-255 → linear (pow-2.2), matching liveMath.srgbToLinear. */
 function srgbToLinear(v: number): number {
@@ -125,20 +125,37 @@ const SAMPLE_CAMERA = `
 // Stage 1 — no camera at all. Prove createMaterials + a surface shaderModifier
 // register without crashing and that lightingModel 'Constant' honours
 // _surface.diffuse_color (green-smoke, so a black quad is obviously wrong, not a
-// dark-but-plausible paint). Intentionally references NO uniforms.
+// dark-but-plausible paint). Intentionally references NO uniforms. PASSED on device.
 const BODY_STAGE1 = `
   _surface.diffuse_color = vec4(0.478, 0.529, 0.471, 1.0);`;
 
-// Stage 2 — the risky binding, shown raw. If the wall shows the live camera
-// (roughly aligned), the sampler bind + UV are good; a frozen/black/offset image
-// tells you which of those failed before any recolour math muddies it.
-const BODY_STAGE2 = `${SAMPLE_CAMERA}
-  _surface.diffuse_color = vec4(live, 1.0);`;
+// Stage 2 — MACHINERY test, NO camera. Draw a red→green screen-space gradient from
+// gl_FragCoord and the viewport uniforms (_rf_vpw/_rf_vph, registered in
+// materialUniforms + pushed from JS). This isolates "does gl_FragCoord + the
+// viewport-uniform pipeline work in a surface modifier" from the camera binding:
+//   • smooth red/green gradient across the wall → machinery works → camera (st3) is
+//     the isolated culprit
+//   • tiny/garbage/uniform-colour pattern        → viewport uniforms aren't flowing
+//   • NOTHING                                     → gl_FragCoord unavailable here
+const BODY_STAGE2 = `
+  highp vec2 g = gl_FragCoord.xy / vec2(_rf_vpw, _rf_vph);
+  _surface.diffuse_color = vec4(g.x, g.y, 0.25, 1.0);`;
 
-// Stage 3 — the production recolour. Kept in sync with liveMath.recolorPixels /
+// Stage 3 — the risky camera binding, made UNMISTAKABLE. A raw passthrough that
+// works is invisible (it just reproduces the scene), so we blend the sample 50%
+// with pure green. Three distinguishable outcomes on device:
+//   • green-TINTED view of the real scene → bind + UV + compile all good (PASS)
+//   • SOLID flat green (no scene detail)   → shader compiles/runs, but the camera
+//                                            sample is black (bind returns nothing)
+//   • NOTHING at all                        → the camera_texture modifier won't
+//                                            compile on this Android/Viro build
+const BODY_STAGE3 = `${SAMPLE_CAMERA}
+  _surface.diffuse_color = vec4(mix(live, vec3(0.0, 1.0, 0.0), 0.5), 1.0);`;
+
+// Stage 4 — the production recolour. Kept in sync with liveMath.recolorPixels /
 // the web FRAG shader. highp throughout the scalar math: `shading` is capped at
 // 2.5 and would saturate at ~2.0 in a lowp register.
-const BODY_STAGE3 = `${SAMPLE_CAMERA}
+const BODY_STAGE4 = `${SAMPLE_CAMERA}
   highp vec3 lin = pow(live, vec3(2.2));
   highp float y = dot(lin, vec3(0.2126, 0.7152, 0.0722));
   highp float denom = max(wallLum, 0.02);
@@ -165,13 +182,15 @@ function currentViewport(): { vpw: number; vph: number } {
 
 /** GLSL uniform declarations for a stage (only what that stage's body reads). */
 function uniformsForStage(stage: ShaderStage): string {
-  if (stage >= 3) return `${DECL_CAMERA}\n${DECL_VIEWPORT}\n${DECL_LOOK}`;
-  if (stage === 2) return `${DECL_CAMERA}\n${DECL_VIEWPORT}`;
+  if (stage >= 4) return `${DECL_CAMERA}\n${DECL_VIEWPORT}\n${DECL_LOOK}`;
+  if (stage === 3) return `${DECL_CAMERA}\n${DECL_VIEWPORT}`;
+  if (stage === 2) return DECL_VIEWPORT; // machinery test — no camera
   return ''; // stage 1 reads no uniforms
 }
 
 function bodyForStage(stage: ShaderStage): string {
-  if (stage >= 3) return BODY_STAGE3;
+  if (stage >= 4) return BODY_STAGE4;
+  if (stage === 3) return BODY_STAGE3;
   if (stage === 2) return BODY_STAGE2;
   return BODY_STAGE1;
 }
@@ -188,7 +207,7 @@ function materialUniformsForStage(stage: ShaderStage): MaterialUniform[] | undef
     { name: '_rf_vpw', type: 'float', value: vpw },
     { name: '_rf_vph', type: 'float', value: vph },
   ];
-  if (stage >= 3) {
+  if (stage >= 4) {
     list.push(
       { name: 'paintAlbedo', type: 'vec3', value: DEFAULT_ALBEDO },
       { name: 'wallLum', type: 'float', value: 0.3 },
@@ -213,7 +232,7 @@ export function registerCalibratedWallMaterial(stage: ShaderStage): boolean {
   const uniforms = uniformsForStage(stage);
   const surface: Record<string, unknown> = { body: bodyForStage(stage) };
   if (uniforms) surface.uniforms = uniforms;
-  if (stage >= 2) surface.requiresCameraTexture = true; // native binds the feed
+  if (stage >= 3) surface.requiresCameraTexture = true; // native binds the feed
 
   const material: Record<string, unknown> = {
     lightingModel: 'Constant',

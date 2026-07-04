@@ -41,10 +41,20 @@ import {
 //               real users to an untested shader).
 //   1 = Constant surface modifier paints a fixed colour (no camera). Proves the
 //       material registers and Constant honours _surface.diffuse_color.
-//   2 = + live camera_texture sample, shown raw (the risky binding + UV).
-//   3 = full luminance-transfer recolour (paint × wall shading) — the real look.
+//   2 = gl_FragCoord + viewport-uniform GRADIENT (no camera). Isolates the
+//       screen-UV machinery from the camera binding.
+//   3 = + live camera_texture sample, shown as a 50% green blend (the risky bind).
+//   4 = full luminance-transfer recolour (paint × wall shading) — the real look.
 // Advance only after the previous stage renders correctly on-device; drop back a
-// stage the moment one misbehaves. This constant stays 0 in git.
+// stage the moment one misbehaves.
+// DEVICE-QA FINDINGS (real Android device, 2026-07-04):
+//   stage 1 (fixed colour)  → PASS: sage quad rendered, no crash, Constant honours it
+//   stage 2 (UV gradient)   → PASS: gl_FragCoord + viewport uniforms work in-surface
+//   stage 3 (camera_texture) → FAIL: renders NOTHING. The engine's Android OES
+//     camera_texture bind via core createMaterials produces no output (machinery is
+//     proven fine by stage 2, so the camera sampler is the isolated blocker).
+// Held at 0 (safe flat quad). Even a working camera bind can't mask around objects
+// (no wall mask on-device) — that edge quality lives in the web segmentation path.
 const TARGET_SHADER_STAGE: ShaderStage = 0;
 
 // Device/perf gate: the shader path is native GL only (web has its own painter).
@@ -298,9 +308,9 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
   // Live-update the wall look. Default albedo is the raw swatch; when the app
   // returns from a render with `paintOverride`, use the render's ACHIEVED albedo
   // (calibration.ts) so the live wall matches the photoreal result. Only the
-  // recolour stage (3) reads these uniforms.
+  // recolour stage (4) reads these uniforms.
   useEffect(() => {
-    if (!SHADER_ACTIVE || SHADER_STAGE < 3) return;
+    if (!SHADER_ACTIVE || SHADER_STAGE < 4) return;
     const paintLinear = paintOverride
       ? rgb255ToLinear(paintOverride)
       : hexToLinearRgb(getColor(selectedColorId)?.hex ?? '#7A8778');
