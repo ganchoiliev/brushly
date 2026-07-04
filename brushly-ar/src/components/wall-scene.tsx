@@ -171,28 +171,33 @@ function measureExtent(anchor: ViroAnchor): { width: number; height: number } {
   return { width: NaN, height: NaN };
 }
 
-/* Tint only ONE wall at a time — the largest tracked vertical plane, a cheap and
-   robust proxy for "the wall the user is aiming at" (people point at the wall
-   they want). This replaces tinting every detected plane, which is what produced
-   the floating triangles. Largest-area (not nearest-screen-centre) is deliberate:
-   it needs no per-frame camera pose, and because ARKit keeps off-screen walls
-   tracked, plain "largest" stays responsive as the wall you pan onto grows to
-   overtake the old one — a sticky/hysteresis pick would lag behind your aim. The
-   cost is a possible tint hop between two near-equal walls in a corner (rare,
-   self-correcting); revisit with camera-ray picking if device QA shows it. */
-function pickAimedWall(
+/* ─── Flat-quad coverage tuning (device-tunable) ────────────────────────────────
+   The flat overlay only ever painted the ONE largest plane, sized to ARKit's
+   detected extent — so on a blank wall it read as a rectangle over the middle
+   "half wall", and never appeared on more than one wall. These two knobs widen
+   that without reintroducing the floating-triangle junk (the ADMIT/KEEP size gate
+   above is what actually filters junk; painting more planes is safe as long as
+   that gate holds). Raise ADMIT_WALL_EXTENT_M if junk reappears; lower
+   WALL_COVERAGE_SCALE if paint bleeds onto the ceiling/floor/adjacent walls. */
+// Paint up to this many of the largest admitted walls, not just the single
+// largest — so panning across a room tints each wall it settles on.
+const MAX_PAINTED_WALLS = 6;
+// Grow each quad past ARKit's detected extent to fill more of the real wall. A
+// blank-wall plane is often ~half the wall; a modest overscan closes that gap.
+// 1.0 = exactly the detected plane (old behaviour).
+const WALL_COVERAGE_SCALE = 1.35;
+
+/* The walls we tint: the largest admitted planes (up to MAX_PAINTED_WALLS).
+   Largest-area first is a cheap, pose-free proxy for "the walls the user is
+   aiming at", and because ARKit keeps off-screen walls tracked it stays
+   responsive as a wall you pan onto grows. Returns [] when nothing qualifies yet,
+   so the "point at a wall" hint stays up. */
+function pickPaintedWalls(
   planes: Record<string, TrackedPlane>,
-): TrackedPlane | null {
-  let best: TrackedPlane | null = null;
-  let bestArea = 0;
-  for (const plane of Object.values(planes)) {
-    const area = plane.width * plane.height;
-    if (area > bestArea) {
-      bestArea = area;
-      best = plane;
-    }
-  }
-  return best;
+): TrackedPlane[] {
+  return Object.values(planes)
+    .sort((a, b) => b.width * b.height - a.width * a.height)
+    .slice(0, MAX_PAINTED_WALLS);
 }
 
 /* Viro's initialScene.scene type is `() => JSX.Element`, but the navigator
@@ -313,9 +318,9 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
     : wallMaterialName(selectedColorId, sheen);
   const shownOpacity = SHADER_ACTIVE ? 1 : WALL_OPACITY;
 
-  // The single wall we actually tint. null → nothing qualifies yet, so the
-  // "point at a wall" hint (driven by wallCount in the painter) stays up.
-  const wall = pickAimedWall(planes);
+  // The walls we tint. [] → nothing qualifies yet, so the "point at a wall" hint
+  // (driven by wallCount in the painter) stays up.
+  const walls = pickPaintedWalls(planes);
 
   return (
     <ViroARScene
@@ -336,20 +341,21 @@ export default function WallScene(props: SceneNavigatorInjectedProps = {}) {
         direction={[0.3, -1, -0.3]}
         intensity={200}
       />
-      {wall && (
-        <ViroARPlane key={wall.anchorId} anchorId={wall.anchorId}>
+      {walls.map((w) => (
+        <ViroARPlane key={w.anchorId} anchorId={w.anchorId}>
           {/* Plane anchors have +Y normals in local space; -90° about X lays
-              the quad onto the wall. */}
+              the quad onto the wall. Overscan (WALL_COVERAGE_SCALE) fills more of
+              the real wall than ARKit's detected sub-extent. */}
           <ViroQuad
-            position={wall.center}
+            position={w.center}
             rotation={[-90, 0, 0]}
-            width={wall.width}
-            height={wall.height}
+            width={w.width * WALL_COVERAGE_SCALE}
+            height={w.height * WALL_COVERAGE_SCALE}
             materials={[material]}
             opacity={overlayHidden ? 0 : shownOpacity}
           />
         </ViroARPlane>
-      )}
+      ))}
     </ViroARScene>
   );
 }
