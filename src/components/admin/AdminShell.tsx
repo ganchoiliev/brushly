@@ -8,6 +8,7 @@ import {
   FileText,
   Receipt,
   BookUser,
+  Palette,
   Settings,
   Plus,
   Menu,
@@ -20,6 +21,7 @@ const NAV = [
   { href: '/admin/quotes', label: 'Quotes', icon: FileText },
   { href: '/admin/invoices', label: 'Invoices', icon: Receipt },
   { href: '/admin/clients', label: 'Clients', icon: BookUser },
+  { href: '/admin/visualizer', label: 'Visualizer', icon: Palette },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 

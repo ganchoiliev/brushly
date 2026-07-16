@@ -8,6 +8,7 @@ import OutcomeButtons from '@/components/admin/leads/OutcomeButtons'
 import LeadStatusButtons from '@/components/admin/leads/LeadStatusButtons'
 import LeadNotes from '@/components/admin/leads/LeadNotes'
 import LeadDetailsForm from '@/components/admin/leads/LeadDetailsForm'
+import LeadRenders from '@/components/admin/leads/LeadRenders'
 import { requireUser } from '@/lib/admin/auth'
 import { formatDate, timeAgo } from '@/lib/admin/format'
 
@@ -21,6 +22,7 @@ const SOURCE_LABEL: Record<string, string> = {
   referral: 'a referral',
   phone: 'from a phone call',
   manual: 'added by hand',
+  visualizer: 'from the AI Visualizer',
 }
 
 export default async function LeadDetailPage({
@@ -32,12 +34,20 @@ export default async function LeadDetailPage({
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound()
 
   const { supabase } = await requireUser()
-  const [{ data: lead }, { data: quotes }] = await Promise.all([
+  const [{ data: lead }, { data: quotes }, { data: renders }] = await Promise.all([
     supabase.from('leads').select('*').eq('id', id).maybeSingle(),
     supabase
       .from('quotes')
       .select('id, quote_number, title, status, total_pence')
       .eq('lead_id', id)
+      .order('created_at', { ascending: false }),
+    // RLS-enforced like the rest of the page; prompt/model/qa/cost stay
+    // internal, so they are never selected.
+    supabase
+      .from('visualizer_renders')
+      .select('id, created_at, service, color_label, color_hex, finish, source_path, result_path')
+      .eq('lead_id', id)
+      .eq('status', 'done')
       .order('created_at', { ascending: false }),
   ])
   if (!lead) notFound()
@@ -85,6 +95,8 @@ export default async function LeadDetailPage({
             </p>
           </section>
         )}
+
+        <LeadRenders renders={renders ?? []} />
 
         {quotes && quotes.length > 0 && (
           <section className="rounded-sm border border-admin-hairline bg-admin-card">
