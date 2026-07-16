@@ -28,6 +28,26 @@ export async function signReadUrl(path: string, expiresIn = 86_400): Promise<str
   return data.signedUrl
 }
 
+/* Batch variant for pages that show many objects at once (admin activity
+   views): one storage call for the lot. Paths that fail to sign are simply
+   absent from the map — callers render those rows without the image. */
+export async function signReadUrls(
+  paths: string[],
+  expiresIn = 86_400,
+): Promise<Map<string, string>> {
+  if (paths.length === 0) return new Map()
+  const supabase = createAdminClient()
+  const { data, error } = await supabase.storage
+    .from(VISUALIZER_BUCKET)
+    .createSignedUrls(paths, expiresIn)
+  if (error || !data) throw new Error(`signReadUrls: ${error?.message ?? 'unknown'}`)
+  return new Map(
+    data.flatMap((d) =>
+      d.signedUrl && d.path ? [[d.path, d.signedUrl] as [string, string]] : []
+    )
+  )
+}
+
 export async function downloadAsBase64(
   path: string,
 ): Promise<{ base64: string; mimeType: string }> {

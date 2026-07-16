@@ -56,6 +56,15 @@ export function formatDateShort(iso: string | null): string {
   })
 }
 
+/* Rows inside a single visualizer session: "18:39" London wall time. */
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/London',
+  })
+}
+
 /* "2h ago", "3 days ago" — for lead ages and activity feeds. Minutes and
    hours stay compact; days and months are words a decorator would say. */
 export function timeAgo(iso: string): string {

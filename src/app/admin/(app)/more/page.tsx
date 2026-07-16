@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { BookUser, Settings, ChevronRight } from 'lucide-react'
+import { BookUser, Palette, Settings, ChevronRight } from 'lucide-react'
 import PageHeader from '@/components/admin/PageHeader'
 import SignOutButton from '@/components/admin/SignOutButton'
 
 const LINKS = [
   { href: '/admin/clients', label: 'Clients', icon: BookUser },
+  { href: '/admin/visualizer', label: 'Visualizer', icon: Palette },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
