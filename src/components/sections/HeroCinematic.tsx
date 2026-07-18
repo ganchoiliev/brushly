@@ -24,6 +24,10 @@ function getIsMobileServerSnapshot(): boolean {
   return true
 }
 
+function subscribeHydration() {
+  return () => {}
+}
+
 function SplitText({ children, className = '' }: { children: string; className?: string }) {
   return (
     <>
@@ -46,6 +50,15 @@ export default function HeroCinematic() {
   const brushVideoRef = useRef<HTMLVideoElement>(null)
   const { activePalette, setActivePalette, palette: p } = useTheme()
   const [videoLoaded, setVideoLoaded] = useState(false)
+  /* False during SSR and the hydration render, true right after — video srcs
+     attach only then, gated on the live viewport. display:none videos still
+     download their src, so SSR-ing all three variants shipped ~4.3MB of
+     unused video to every visitor. */
+  const mounted = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false,
+  )
   const reduced = useReducedMotion()
   // Detect mobile
   const isMobile = useSyncExternalStore(subscribeToResize, getIsMobileSnapshot, getIsMobileServerSnapshot)
@@ -472,9 +485,8 @@ export default function HeroCinematic() {
             loop
             playsInline
             preload="auto"
-          >
-            <source src="/videos/hero.mp4" type="video/mp4" />
-          </video>
+            src={mounted && !isMobile ? '/videos/hero.mp4' : undefined}
+          />
 
           {/* Desktop: Consultation video (hidden initially, fades in on scroll via GSAP) */}
           <video
@@ -486,9 +498,8 @@ export default function HeroCinematic() {
             loop
             playsInline
             preload="auto"
-          >
-            <source src="/videos/hero-desktop.mp4" type="video/mp4" />
-          </video>
+            src={mounted && !isMobile ? '/videos/hero-desktop.mp4' : undefined}
+          />
 
           {/* Mobile: Single video (brush video as full-viewport background) */}
           <video
@@ -500,9 +511,8 @@ export default function HeroCinematic() {
             preload="metadata"
             onLoadedData={() => setVideoLoaded(true)}
             onPlaying={() => setVideoLoaded(true)}
-          >
-            <source src="/videos/hero-mobile.mp4" type="video/mp4" />
-          </video>
+            src={mounted && isMobile ? '/videos/hero-mobile.mp4' : undefined}
+          />
 
           {/* Fallback image */}
           <div className="absolute inset-0">

@@ -408,7 +408,6 @@ export default function ServicesPinned() {
                   fill
                   className="object-cover"
                   sizes="100vw"
-                  priority={i === 0}
                   placeholder="blur"
                   blurDataURL={blurDataURL}
                 />
@@ -758,7 +757,6 @@ export default function ServicesPinned() {
                         transform: hoveredItem !== null && activeIndex === i ? 'scale(1.06)' : 'scale(1.0)',
                       }}
                       sizes="50vw"
-                      priority={i === 0}
                       placeholder="blur"
                       blurDataURL={blurDataURL}
                     />

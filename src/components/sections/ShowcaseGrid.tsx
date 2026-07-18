@@ -132,7 +132,6 @@ export default function ShowcaseGrid() {
                         fill
                         className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105"
                         sizes={config.sizes}
-                        priority={i === 0}
                         placeholder="blur"
                         blurDataURL={blurDataURL}
                       />
