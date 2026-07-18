@@ -1,12 +1,18 @@
 'use client'
 
 import useReducedMotion from '@/hooks/useReducedMotion'
+import { usePathname } from 'next/navigation'
 
 /* Page transition wipe overlay — skip when reduced motion */
 export default function PageTransitionWipe() {
   const reduced = useReducedMotion()
+  const pathname = usePathname()
 
-  if (reduced) return null
+  // /visualizer is a conversion landing page (ads, QR deep links): nothing
+  // branded may stand between the visitor and the content, so the wipe sits
+  // this route out — cold loads and navigations into it alike. The template
+  // remounts per navigation, so this is decided fresh each transition.
+  if (reduced || pathname === '/visualizer' || pathname.startsWith('/visualizer/')) return null
 
   return (
     <div

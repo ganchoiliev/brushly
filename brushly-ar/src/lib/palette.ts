@@ -103,7 +103,10 @@ export const PALETTE: PaintColor[] = [
   // Earth & Terracotta
   { id: 'dead-salmon', label: 'Dead Salmon', hex: '#C3A088', brand: 'Farrow & Ball', group: 'Earth & Terracotta' },
   { id: 'red-earth', label: 'Red Earth', hex: '#B06A50', brand: 'Farrow & Ball', group: 'Earth & Terracotta' },
-  { id: 'terracotta', label: 'Terracotta', hex: '#B5623F', brand: 'Little Greene', group: 'Earth & Terracotta' },
+  // House colour: Little Greene sells no colour named "Terracotta" (verified 2026-07),
+  // so this stays a generic Brushly terracotta rather than a false brand attribution.
+  // Closest real Little Greene matches if it's ever made a branded colour: Pot Red / Tuscan Red No.140.
+  { id: 'terracotta', label: 'Terracotta', hex: '#B5623F', brand: 'Brushly', group: 'Earth & Terracotta' },
   { id: 'london-clay', label: 'London Clay', hex: '#75685D', brand: 'Farrow & Ball', group: 'Earth & Terracotta' },
 
   // Exterior

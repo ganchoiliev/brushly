@@ -4,7 +4,7 @@
 // The room preview is a local object URL (user's own file), not a next/image
 // candidate.
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { VisualizerService } from '@/lib/supabase/types'
 import { FINISHES, SERVICE_LABELS, getColor, type Look } from '@/lib/visualizer/palette'
@@ -14,10 +14,13 @@ import {
   uploadPhoto,
   requestRender,
   submitLead,
+  submitQuoteRequest,
+  QUOTE_LEAD_GONE,
   RENDER_CANCELLED,
   type RenderResult,
 } from '@/lib/visualizer/client'
 import { downloadRender, shareRender } from '@/lib/visualizer/share'
+import { isLiveCapable } from '@/lib/visualizer/liveCapability'
 import { trackEvent, trackConversion, CONV_LABELS } from '@/lib/gtag'
 import dynamic from 'next/dynamic'
 import Uploader from './Uploader'
@@ -32,6 +35,9 @@ const ARCamera = dynamic(() => import('./ARCamera'), {
   ssr: false,
   loading: () => <div aria-busy="true" className="fixed inset-0 z-[80] bg-brushly-black" />,
 })
+// Desktop-only chrome (QR hand-off to the phone) — loaded on demand so the QR
+// encoder never taxes the phone bundle.
+const LiveHandoffModal = dynamic(() => import('./LiveHandoffModal'), { ssr: false })
 import ColorChooser from './ColorChooser'
 import VisualBeforeAfter from './VisualBeforeAfter'
 import SoftGate from './SoftGate'
@@ -120,6 +126,8 @@ export default function VisualizerWizard() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [cameraOpen, setCameraOpen] = useState(false)
+  // Live AR on a non-capable device (desktop): hand off to the phone via QR.
+  const [handoffOpen, setHandoffOpen] = useState(false)
 
   const [service, setService] = useState<VisualizerService>('interior')
   const [colorId, setColorId] = useState<string>()
@@ -150,7 +158,10 @@ export default function VisualizerWizard() {
 
   const [freeUsed, setFreeUsed] = useState(false)
   const [leadCaptured, setLeadCaptured] = useState(false)
-  const [gate, setGate] = useState<{ open: boolean; intent: 'continue' | 'save' }>({
+  // The lead this session created, if any — unlocks the one-tap quote
+  // request (no second form) from the result screen.
+  const [leadId, setLeadId] = useState<string | null>(null)
+  const [gate, setGate] = useState<{ open: boolean; intent: 'continue' | 'save' | 'quote' }>({
     open: false,
     intent: 'continue',
   })
@@ -158,6 +169,9 @@ export default function VisualizerWizard() {
   // inline instead of silently re-modal-ing on every tap.
   const [gateDismissed, setGateDismissed] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [quoteRequested, setQuoteRequested] = useState(false)
+  const [quoteBusy, setQuoteBusy] = useState(false)
+  const [quoteError, setQuoteError] = useState('')
   const [busyAction, setBusyAction] = useState<'' | 'download' | 'share'>('')
   const [busySample, setBusySample] = useState<string | null>(null)
   const [zoomUrl, setZoomUrl] = useState<string | null>(null)
@@ -171,7 +185,7 @@ export default function VisualizerWizard() {
   const renderSource = useRef<'ui' | 'ar'>('ui')
   // In-flight guard as a REF, not state: AnimatePresence keeps the exiting
   // design step clickable with frozen closures for its 0.5s fade, so a
-  // double-tap on "See it"/a Look would otherwise POST two paid renders.
+  // double-tap on "See it on my walls" would otherwise POST two paid renders.
   const renderInFlight = useRef(false)
   const renderAbort = useRef<AbortController | null>(null)
   // Staleness guard for the async instant preview: a slow preview from an
@@ -181,10 +195,47 @@ export default function VisualizerWizard() {
   // Mirrors instantPreviewUrl for unmount cleanup + late-resolve revocation.
   const instantUrlRef = useRef<string | null>(null)
 
+  const openCamera = useCallback(() => {
+    trackEvent('visualizer_camera_open')
+    trackEvent('ar_open')
+    cameraKey.current += 1
+    setCameraOpen(true)
+  }, [])
+
+  // The live path is a phone feature — on desktop the 'environment' camera
+  // falls back to the user-facing webcam, which points at a face, not a wall.
+  // Capability-check at click time and offer a QR hand-off to the phone
+  // instead of opening a face cam.
+  const onLiveClick = async () => {
+    if (await isLiveCapable()) {
+      openCamera()
+    } else {
+      trackEvent('ar_handoff_shown')
+      setHandoffOpen(true)
+    }
+  }
+
   useEffect(() => {
     setSessionId(getSessionId())
     trackEvent('visualizer_open')
   }, [])
+
+  // ?live=1 — the QR hand-off deep link. On a live-capable phone, jump
+  // straight into the live preview (the fullscreen camera covers the landing,
+  // so there is nothing to scroll past). Anywhere else the param is ignored —
+  // scanning must never loop back into a second QR modal.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('live') !== '1') return
+    let cancelled = false
+    void isLiveCapable().then((capable) => {
+      if (cancelled || !capable) return
+      trackEvent('ar_deeplink_open')
+      openCamera()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [openCamera])
 
   // The instant preview only belongs to the progress screen; drop it (and its
   // object URL) as soon as the render settles either way.
@@ -247,7 +298,7 @@ export default function VisualizerWizard() {
     }
   }
 
-  const openGate = (intent: 'continue' | 'save') => {
+  const openGate = (intent: 'continue' | 'save' | 'quote') => {
     trackEvent('visualizer_gate_shown')
     setGate({ open: true, intent })
   }
@@ -498,10 +549,12 @@ export default function VisualizerWizard() {
     })
   }
 
-  // One-tap Look → clamp its finish to the current service, then render.
-  const applyLook = (look: Look) => {
-    const fin = FINISHES[service].includes(look.finish) ? look.finish : FINISHES[service][0]
-    startRender(look.colorId, fin)
+  // Look tap = selection only: set the colour and clamp the look's finish to
+  // the current service. Rendering is exclusively the CTA's job — a tap must
+  // never spend a paid render.
+  const selectLook = (look: Look) => {
+    setColorId(look.colorId)
+    setFinish(FINISHES[service].includes(look.finish) ? look.finish : FINISHES[service][0])
   }
 
   const onGateSubmit = async (d: {
@@ -510,7 +563,11 @@ export default function VisualizerWizard() {
     email: string
     company: string
   }) => {
-    await submitLead({
+    const intent = gate.intent
+    // The quote gate only opens over the result step, so the active render is
+    // the room the visitor is asking to have quoted.
+    const activeRender = activeKey ? results[activeKey] : null
+    const { leadId: newLeadId } = await submitLead({
       sessionId,
       name: d.name,
       phone: d.phone,
@@ -518,12 +575,16 @@ export default function VisualizerWizard() {
       consent: true,
       renderIds,
       company: d.company,
+      ...(intent === 'quote'
+        ? { intent: 'quote_request' as const, quoteRenderId: activeRender?.result.renderId }
+        : {}),
     })
-    const intent = gate.intent
     setLeadCaptured(true)
+    if (newLeadId) setLeadId(newLeadId)
     setGateDismissed(false)
     setGate({ open: false, intent: 'continue' })
     trackEvent('visualizer_lead_captured')
+    if (intent === 'quote') trackEvent('visualizer_quote_request')
     trackConversion(CONV_LABELS.form)
     if (intent === 'continue' && colorId) {
       const norm = normalizeSelection(service, colorId, finish, wallpaperPath)
@@ -540,6 +601,9 @@ export default function VisualizerWizard() {
       // step show the confirmation the result step already has.
       setRenderError('')
       setSaved(true)
+    } else if (intent === 'quote') {
+      setQuoteError('')
+      setQuoteRequested(true)
     }
   }
 
@@ -568,6 +632,44 @@ export default function VisualizerWizard() {
       /* ignore */
     } finally {
       setBusyAction('')
+    }
+  }
+
+  // The business ask at peak intent: gated visitors get a one-tap quote
+  // request against their existing lead; anonymous visitors get the gate
+  // form (one form, quote-headed) — never both.
+  const requestQuote = async () => {
+    if (!active || quoteBusy) return
+    trackEvent('visualizer_quote_cta')
+    setQuoteError('')
+    if (!leadCaptured || !leadId) {
+      openGate('quote')
+      return
+    }
+    setQuoteBusy(true)
+    try {
+      await submitQuoteRequest({
+        sessionId,
+        leadId,
+        renderIds,
+        quoteRenderId: active.result.renderId,
+      })
+      setQuoteRequested(true)
+      trackEvent('visualizer_quote_request')
+      trackConversion(CONV_LABELS.form)
+    } catch (e) {
+      if (e instanceof Error && e.message === QUOTE_LEAD_GONE) {
+        // Their lead vanished server-side (e.g. deleted in admin) — fall back
+        // to the form so the request still lands somewhere real.
+        setLeadId(null)
+        openGate('quote')
+      } else {
+        setQuoteError(
+          e instanceof Error && e.message ? e.message : 'Could not send your request — please try again.',
+        )
+      }
+    } finally {
+      setQuoteBusy(false)
     }
   }
 
@@ -633,12 +735,7 @@ export default function VisualizerWizard() {
             <button
               type="button"
               disabled={uploading}
-              onClick={() => {
-                trackEvent('visualizer_camera_open')
-                trackEvent('ar_open')
-                cameraKey.current += 1
-                setCameraOpen(true)
-              }}
+              onClick={() => void onLiveClick()}
               className="mt-3 flex w-full items-center justify-center gap-3 border border-brushly-gold/40 px-6 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-cream transition-colors duration-300 hover:bg-brushly-gold hover:text-brushly-black disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg
@@ -758,7 +855,7 @@ export default function VisualizerWizard() {
               <p className="mb-3 font-body text-[11px] uppercase tracking-[0.2em] text-brushly-cream/40">
                 Pick a look, or browse colours
               </p>
-              <ColorChooser colorId={colorId} onColor={setColorId} onLook={applyLook} />
+              <ColorChooser colorId={colorId} onColor={setColorId} onLook={selectLook} />
             </div>
 
             {service === 'wallpaper' && (
@@ -877,7 +974,7 @@ export default function VisualizerWizard() {
                 disabled={!effectiveColorId}
                 className="bg-brushly-gold px-10 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {currentComboCached ? 'See it again' : 'See it'}
+                {currentComboCached ? 'See it again' : 'See it on my walls'}
               </button>
               {renderedKeys.length > 0 && (
                 <button
@@ -983,17 +1080,48 @@ export default function VisualizerWizard() {
               </button>
             </div>
 
-            {saved ? (
-              <div className="border border-brushly-gold/30 bg-brushly-gold/5 p-5">
-                <p className="font-display text-xl font-light text-brushly-cream">
-                  Sent — thank you.
-                </p>
-                <p className="mt-2 font-body text-[14px] text-brushly-cream/60">
-                  We’ll be in touch shortly with your visualisation and a free quote for this look.
-                </p>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-4 border-t border-brushly-gold/10 pt-6">
+            {/* The business ask lives here — peak intent is the moment the
+                render appears, not the save. Quote CTA is primary; save and
+                browse are secondary. */}
+            <div className="flex flex-col gap-4 border-t border-brushly-gold/10 pt-6">
+              {quoteRequested ? (
+                <div role="status" className="border border-brushly-gold/30 bg-brushly-gold/5 p-5">
+                  <p className="font-display text-xl font-light text-brushly-cream">
+                    Quote request received — thank you.
+                  </p>
+                  <p className="mt-2 font-body text-[14px] text-brushly-cream/60">
+                    We’ll be in touch shortly with your fixed price for this exact look.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void requestQuote()}
+                    disabled={quoteBusy}
+                    className="w-full bg-brushly-gold px-8 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:self-start"
+                  >
+                    {quoteBusy ? 'Sending…' : 'Get a fixed quote for this room'}
+                  </button>
+                  {quoteError && (
+                    <p className="font-body text-[13px] text-red-400">{quoteError}</p>
+                  )}
+                </>
+              )}
+
+              {saved && !quoteRequested && (
+                <div role="status" className="border border-brushly-gold/30 bg-brushly-gold/5 p-5">
+                  <p className="font-display text-xl font-light text-brushly-cream">
+                    Sent — thank you.
+                  </p>
+                  <p className="mt-2 font-body text-[14px] text-brushly-cream/60">
+                    We’ll be in touch shortly with your visualisation and a free quote for this
+                    look.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3">
                 <button
                   type="button"
                   onClick={() => setStep('design')}
@@ -1001,15 +1129,17 @@ export default function VisualizerWizard() {
                 >
                   Try another colour
                 </button>
-                <button
-                  type="button"
-                  onClick={() => (leadCaptured ? setSaved(true) : openGate('save'))}
-                  className="bg-brushly-gold px-8 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light"
-                >
-                  Save &amp; get my free quote
-                </button>
+                {!saved && !quoteRequested && (
+                  <button
+                    type="button"
+                    onClick={() => (leadCaptured ? setSaved(true) : openGate('save'))}
+                    className="border border-brushly-gold/40 px-8 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-cream transition-colors duration-300 hover:bg-brushly-gold hover:text-brushly-black"
+                  >
+                    Save my visualisation
+                  </button>
+                )}
               </div>
-            )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1020,6 +1150,19 @@ export default function VisualizerWizard() {
             key={cameraKey.current}
             onCaptureRender={(file, sel) => void onARCaptureRender(file, sel)}
             onClose={() => setCameraOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {handoffOpen && (
+          <LiveHandoffModal
+            onProceed={() => {
+              trackEvent('ar_handoff_fallback')
+              setHandoffOpen(false)
+              openCamera()
+            }}
+            onClose={() => setHandoffOpen(false)}
           />
         )}
       </AnimatePresence>

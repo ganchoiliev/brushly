@@ -55,3 +55,7 @@ real-wall.JPG
 /playwright-report/
 **/test-results/
 **/playwright-report/
+
+# render-fidelity: real-engine baselines are billable + machine-specific — never
+# commit them. The committed mock baseline (baseline.json) is deterministic.
+src/lib/visualizer/fidelity/baseline.*.local.json

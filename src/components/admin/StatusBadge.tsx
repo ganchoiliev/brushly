@@ -18,6 +18,12 @@ export const LEAD_STATUS: Record<string, { label: string; tone: keyof typeof STY
   spam: { label: 'Spam', tone: 'muted' },
 }
 
+/* Explicit business ask captured with the lead. Only rendered when set —
+   quote requests must stand out from save-only visualizer leads. */
+export const LEAD_INTENT: Record<string, { label: string; tone: keyof typeof STYLES }> = {
+  quote_request: { label: 'Quote request', tone: 'green' },
+}
+
 export const QUOTE_STATUS: Record<string, { label: string; tone: keyof typeof STYLES }> = {
   draft: { label: 'Draft', tone: 'neutral' },
   sent: { label: 'Sent', tone: 'amber' },

@@ -1,0 +1,86 @@
+{
+  "engine": "mock",
+  "params": {
+    "workingLongEdge": 384,
+    "bandPx": 6
+  },
+  "results": [
+    {
+      "fixtureId": "cream-facade",
+      "colorId": "classic-white-masonry",
+      "targetHex": "#EFEAE0",
+      "measuredHex": "#D0C8BD",
+      "deltaE": 7.8089,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "cream-facade",
+      "colorId": "heritage-green",
+      "targetHex": "#5E6B54",
+      "measuredHex": "#D0C8BD",
+      "deltaE": 34.1643,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "cream-facade",
+      "colorId": "slate-grey-masonry",
+      "targetHex": "#6A6E71",
+      "measuredHex": "#D0C8BD",
+      "deltaE": 30.2627,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "plaster-room",
+      "colorId": "all-white",
+      "targetHex": "#F6F6F2",
+      "measuredHex": "#746C66",
+      "deltaE": 38.724,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "plaster-room",
+      "colorId": "hague-blue",
+      "targetHex": "#3F4D57",
+      "measuredHex": "#746C66",
+      "deltaE": 17.5634,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "plaster-room",
+      "colorId": "off-black",
+      "targetHex": "#24262A",
+      "measuredHex": "#746C66",
+      "deltaE": 25.268,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "teal-lounge",
+      "colorId": "all-white",
+      "targetHex": "#F6F6F2",
+      "measuredHex": "#415E5F",
+      "deltaE": 48.5918,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "teal-lounge",
+      "colorId": "studio-green",
+      "targetHex": "#464D4A",
+      "measuredHex": "#415E5F",
+      "deltaE": 9.2147,
+      "bleed": 0
+    },
+    {
+      "fixtureId": "teal-lounge",
+      "colorId": "terracotta",
+      "targetHex": "#B5623F",
+      "measuredHex": "#415E5F",
+      "deltaE": 36.1994,
+      "bleed": 0
+    }
+  ],
+  "summary": {
+    "meanDeltaE": 27.533,
+    "maxDeltaE": 48.5918,
+    "meanBleed": 0
+  }
+}
