@@ -136,3 +136,24 @@ test('camera-in-use (NotReadableError) shows the busy card with retry', async ({
   await expect(dialog.getByRole('alert')).toContainText('Camera is in use', { timeout: 20_000 })
   await expect(dialog.getByRole('button', { name: /try again/i })).toBeVisible()
 })
+
+test('?live=1 always attempts the live path — even on desktop, and never loops to the QR modal', async ({
+  page,
+}) => {
+  // The deep link is what the QR modal encodes. It must open the camera
+  // without any capability gate (a phone the gate misjudges still lands in
+  // the live path), and a failure must show the camera's own recovery card —
+  // bouncing back into a QR modal on the device the QR points at is a loop.
+  await page.addInitScript(`
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException('Permission denied', 'NotAllowedError');
+    };
+  `)
+  await page.goto('/visualizer?live=1')
+
+  const dialog = page.getByRole('dialog', { name: 'Camera' })
+  await expect(dialog.getByRole('alert')).toContainText('Camera access needed', {
+    timeout: 20_000,
+  })
+  await expect(page.getByText('This works best on your phone.')).toHaveCount(0)
+})

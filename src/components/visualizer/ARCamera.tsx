@@ -25,6 +25,13 @@ interface Props {
   /** Shutter: the captured frame plus the look selected in AR mode. */
   onCaptureRender: (file: File, selection: ARSelection) => void
   onClose: () => void
+  /**
+   * Hard, non-transient camera failure — no camera at all, or permission
+   * denied. Lets an optimistic opener (the touch-device live button) swap to
+   * its fallback UI instead of this dialog's recovery card. 'busy' (another
+   * app holds the camera) is transient and always stays in-dialog with retry.
+   */
+  onHardFail?: (reason: 'denied' | 'unavailable') => void
 }
 
 type CamState = 'starting' | 'live' | 'denied' | 'unavailable' | 'busy'
@@ -51,7 +58,7 @@ const AIM_HINT: Record<VisualizerService, string> = {
   finish: 'Point at your feature wall — we add the finish in your render',
 }
 
-export default function ARCamera({ onCaptureRender, onClose }: Props) {
+export default function ARCamera({ onCaptureRender, onClose, onHardFail }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const overlayRef = useRef<HTMLCanvasElement>(null)
@@ -122,10 +129,18 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
   // belonging to an unmounted instance) must not touch state or keep tracks.
   const camGen = useRef(0)
 
+  // Ref, not dep: a parent passing a fresh closure each render must not
+  // recreate startCamera (the mount effect would restart the stream).
+  const onHardFailRef = useRef(onHardFail)
+  useEffect(() => {
+    onHardFailRef.current = onHardFail
+  })
+
   // Camera failure states are funnel drop-offs — instrument them.
   const setFailState = useCallback((s: 'denied' | 'unavailable' | 'busy') => {
     setState(s)
     trackEvent(`ar_camera_${s}`)
+    if (s !== 'busy') onHardFailRef.current?.(s)
   }, [])
 
   const startCamera = useCallback(async () => {
@@ -142,7 +157,10 @@ export default function ARCamera({ onCaptureRender, onClose }: Props) {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: 'environment',
+            // ideal, not exact: prefer the rear camera but never throw for
+            // lacking one — the any-camera retry below is only for engines
+            // that reject anyway.
+            facingMode: { ideal: 'environment' },
             width: { ideal: 1920 },
             height: { ideal: 1080 },
           },

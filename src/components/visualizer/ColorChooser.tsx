@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import {
   PALETTE,
   PALETTE_BY_SPECTRUM,
@@ -10,6 +11,7 @@ import {
   type Look,
   type PaletteGroup,
 } from '@/lib/visualizer/palette'
+import { LOOK_THUMBS } from './lookThumbs'
 
 interface Props {
   colorId?: string
@@ -46,42 +48,66 @@ export default function ColorChooser({ colorId, onColor, onLook }: Props) {
       </div>
 
       {tab === 'looks' ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {LOOKS.map((look) => {
-            const c = getColor(look.colorId)
-            const active = colorId === look.colorId
-            return (
-              <button
-                key={look.id}
-                type="button"
-                onClick={() => onLook(look)}
-                aria-pressed={active}
-                className={`group relative overflow-hidden rounded-sm border text-left transition-all duration-300 ${
-                  active
-                    ? 'border-brushly-gold ring-1 ring-brushly-gold'
-                    : 'border-brushly-gold/15 hover:border-brushly-gold/50'
-                }`}
-              >
-                <div className="h-20 w-full" style={{ background: c?.hex }} />
-                <div className="p-3">
-                  <p className="font-display text-[15px] font-light text-brushly-cream">
-                    {look.name}
-                  </p>
-                  <p className="mt-0.5 font-body text-[11px] leading-snug text-brushly-cream/50">
-                    {look.vibe}
-                  </p>
-                </div>
-                <span
-                  className={`absolute right-2 top-2 rounded-full bg-brushly-black/50 px-2 py-0.5 font-body text-[9px] uppercase tracking-wider text-brushly-cream/70 backdrop-blur-sm transition-opacity duration-300 ${
-                    active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {LOOKS.map((look) => {
+              const c = getColor(look.colorId)
+              const active = colorId === look.colorId
+              const thumb = LOOK_THUMBS[look.id]
+              return (
+                <button
+                  key={look.id}
+                  type="button"
+                  onClick={() => onLook(look)}
+                  aria-pressed={active}
+                  className={`group relative overflow-hidden rounded-sm border text-left transition-all duration-300 ${
+                    active
+                      ? 'border-brushly-gold ring-1 ring-brushly-gold'
+                      : 'border-brushly-gold/15 hover:border-brushly-gold/50'
                   }`}
                 >
-                  {active ? 'Selected' : 'Tap to select'}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+                  {thumb ? (
+                    <div className="relative">
+                      <Image
+                        src={thumb}
+                        alt={`${look.name} visualised on our sample room`}
+                        unoptimized
+                        placeholder="blur"
+                        className="aspect-[4/3] w-full object-cover"
+                      />
+                      {/* The look's paint colour, demoted to a corner chip. */}
+                      <span
+                        aria-hidden
+                        className="absolute bottom-2 left-2 h-5 w-5 rounded-full border border-white/60 shadow-[0_1px_4px_rgba(0,0,0,0.4)]"
+                        style={{ background: c?.hex }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-20 w-full" style={{ background: c?.hex }} />
+                  )}
+                  <div className="p-3">
+                    <p className="font-display text-[15px] font-light text-brushly-cream">
+                      {look.name}
+                    </p>
+                    <p className="mt-0.5 font-body text-[11px] leading-snug text-brushly-cream/50">
+                      {look.vibe}
+                    </p>
+                  </div>
+                  <span
+                    className={`absolute right-2 top-2 rounded-full bg-brushly-black/50 px-2 py-0.5 font-body text-[9px] uppercase tracking-wider text-brushly-cream/70 backdrop-blur-sm transition-opacity duration-300 ${
+                      active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}
+                  >
+                    {active ? 'Selected' : 'Tap to select'}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <p className="mt-3 font-body text-[11px] text-brushly-cream/40">
+            Previews shown on our sample room
+          </p>
+        </>
       ) : (
         <div>
           <div

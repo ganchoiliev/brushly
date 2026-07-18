@@ -20,8 +20,10 @@ import {
   type RenderResult,
 } from '@/lib/visualizer/client'
 import { downloadRender, shareRender } from '@/lib/visualizer/share'
-import { isLiveCapable } from '@/lib/visualizer/liveCapability'
+import { shouldAttemptLive } from '@/lib/visualizer/liveCapability'
 import { trackEvent, trackConversion, CONV_LABELS } from '@/lib/gtag'
+import { useLenis } from '@/components/animations/SmoothScroll'
+import useReducedMotion from '@/hooks/useReducedMotion'
 import dynamic from 'next/dynamic'
 import Uploader from './Uploader'
 import { makeInstantPreview } from './instantPreview'
@@ -53,10 +55,12 @@ const SERVICES: { id: VisualizerService; label: string; blurb: string }[] = [
 ]
 
 // Existing site room photos double as instant demo rooms (no upload needed).
-const SAMPLES: { label: string; src: string }[] = [
-  { label: 'Living room', src: '/img/interior.webp' },
-  { label: 'Kitchen', src: '/img/modern_kitchen.webp' },
-  { label: 'Hallway', src: '/img/hallway.webp' },
+// Buttons show the pre-generated thumbs (scripts/generate-sample-thumbs.ts);
+// the full-size src is only fetched when a sample is picked.
+const SAMPLES: { label: string; src: string; thumb: string }[] = [
+  { label: 'Living room', src: '/img/interior.webp', thumb: '/img/samples/interior-thumb.webp' },
+  { label: 'Kitchen', src: '/img/modern_kitchen.webp', thumb: '/img/samples/modern_kitchen-thumb.webp' },
+  { label: 'Hallway', src: '/img/hallway.webp', thumb: '/img/samples/hallway-thumb.webp' },
 ]
 
 const HOW_IT_WORKS: [string, string][] = [
@@ -195,20 +199,30 @@ export default function VisualizerWizard() {
   // Mirrors instantPreviewUrl for unmount cleanup + late-resolve revocation.
   const instantUrlRef = useRef<string | null>(null)
 
-  const openCamera = useCallback(() => {
+  // Whether a hard camera failure (permission denied / no camera) should fall
+  // back to the QR hand-off. Set only by the optimistic touch-device attempt:
+  // the modal's own "use this device anyway" and the ?live=1 deep link must
+  // never bounce a failure back into the modal (a loop on the very device the
+  // QR points at).
+  const handoffOnFail = useRef(false)
+
+  const openCamera = useCallback((opts?: { handoffOnFail?: boolean }) => {
     trackEvent('visualizer_camera_open')
     trackEvent('ar_open')
+    handoffOnFail.current = opts?.handoffOnFail ?? false
     cameraKey.current += 1
     setCameraOpen(true)
   }, [])
 
   // The live path is a phone feature — on desktop the 'environment' camera
   // falls back to the user-facing webcam, which points at a face, not a wall.
-  // Capability-check at click time and offer a QR hand-off to the phone
-  // instead of opening a face cam.
-  const onLiveClick = async () => {
-    if (await isLiveCapable()) {
-      openCamera()
+  // Touch-primary devices attempt the camera DIRECTLY: pre-permission there
+  // is no trustworthy rear-camera signal to check (enumerateDevices hides
+  // labels), so the attempt itself is the test and a hard failure falls back
+  // to the hand-off. Everyone else gets the QR hand-off up front, as before.
+  const onLiveClick = () => {
+    if (shouldAttemptLive()) {
+      openCamera({ handoffOnFail: true })
     } else {
       trackEvent('ar_handoff_shown')
       setHandoffOpen(true)
@@ -220,22 +234,68 @@ export default function VisualizerWizard() {
     trackEvent('visualizer_open')
   }, [])
 
-  // ?live=1 — the QR hand-off deep link. On a live-capable phone, jump
-  // straight into the live preview (the fullscreen camera covers the landing,
-  // so there is nothing to scroll past). Anywhere else the param is ignored —
-  // scanning must never loop back into a second QR modal.
+  // ?live=1 — the QR hand-off deep link: always attempt the live path, with
+  // no capability gate. The link was followed deliberately, and a phone the
+  // gate would misjudge must still land in the camera (the fullscreen camera
+  // covers the landing, so there is nothing to scroll past). Hard failures
+  // show the camera's own recovery card — scanning must never loop back into
+  // a second QR modal.
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('live') !== '1') return
-    let cancelled = false
-    void isLiveCapable().then((capable) => {
-      if (cancelled || !capable) return
-      trackEvent('ar_deeplink_open')
-      openCamera()
-    })
-    return () => {
-      cancelled = true
-    }
+    trackEvent('ar_deeplink_open')
+    openCamera()
   }, [openCamera])
+
+  // ——— Keeping the viewport on the wizard through step swaps ———
+  // The design step is tall (photo + services + colours + finishes) and its
+  // CTA sits at the bottom. Swapping it for the much shorter progress screen
+  // shrinks the document, and the browser clamps the scroll position to the
+  // new maximum — on phones that landed visitors at the footer contact bar
+  // while the render happened off-screen above. So: jump to the wizard the
+  // moment a render starts (the progress screen is already mounted in place),
+  // and settle on the result container when it appears.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
+  // Lenis drives desktop scroll — window.scrollTo fights its raf loop, so
+  // route through it when present. On touch and reduced-motion devices
+  // SmoothScroll skips Lenis entirely and native scrolling is correct.
+  const lenis = useLenis()
+  const reducedMotion = useReducedMotion()
+  const scrollWizardTo = useCallback(
+    (el: HTMLElement | null, mode: 'jump' | 'smooth') => {
+      if (!el) return
+      const HEADER_OFFSET = 88 // clear the fixed site header
+      if (lenis) {
+        lenis.scrollTo(
+          el,
+          mode === 'jump'
+            ? { offset: -HEADER_OFFSET, immediate: true }
+            : { offset: -HEADER_OFFSET, duration: 0.9 },
+        )
+        return
+      }
+      const top = Math.max(el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET, 0)
+      window.scrollTo({
+        top,
+        behavior: mode === 'jump' || reducedMotion ? 'auto' : 'smooth',
+      })
+    },
+    [lenis, reducedMotion],
+  )
+
+  useEffect(() => {
+    // Instant, not smooth: the content under the viewport is being replaced,
+    // and animating over a collapsing page reads as broken.
+    if (rendering) scrollWizardTo(rootRef.current, 'jump')
+  }, [rendering, scrollWizardTo])
+
+  useEffect(() => {
+    if (step !== 'result') return
+    // The result enters via AnimatePresence; when a step is still exiting
+    // (cached "See it again" flips result without a progress phase) the ref
+    // isn't mounted yet — the wizard top is the same anchor a beat early.
+    scrollWizardTo(resultRef.current ?? rootRef.current, 'smooth')
+  }, [step, scrollWizardTo])
 
   // The instant preview only belongs to the progress screen; drop it (and its
   // object URL) as soon as the render settles either way.
@@ -688,25 +748,34 @@ export default function VisualizerWizard() {
   )
 
   return (
-    <div className="relative">
-      <AnimatePresence mode="wait">
-        {/* RENDERING — the "thinking" state, shown whenever a render is in flight */}
-        {rendering && (
-          <motion.div key="rendering" {...fade}>
-            <RenderProgress
-              previewUrl={previewUrl}
-              instantPreviewUrl={instantPreviewUrl}
-              serviceLabel={SERVICE_LABELS[service]}
-              // A custom-wallpaper render has no meaningful paint colour — don't
-              // caption it with the fallback swatch the API needs internally.
-              colorLabel={service === 'wallpaper' && wallpaperPath ? undefined : selectedColor?.label}
-              colorHex={service === 'wallpaper' && wallpaperPath ? undefined : selectedColor?.hex}
-              finish={service === 'wallpaper' && wallpaperPath ? undefined : finish}
-              onCancel={cancellable ? () => renderAbort.current?.abort() : undefined}
-            />
-          </motion.div>
-        )}
+    <div ref={rootRef} className="relative">
+      {/* RENDERING — the "thinking" state, shown whenever a render is in
+          flight. Outside the mode="wait" step cycle on purpose: waiting for
+          the design step's 0.5s exit fade before mounting would leave the tap
+          with no loading feedback, and the viewport must have something to
+          land on the moment it jumps up here. */}
+      {rendering && (
+        <motion.div
+          key="rendering"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
+        >
+          <RenderProgress
+            previewUrl={previewUrl}
+            instantPreviewUrl={instantPreviewUrl}
+            serviceLabel={SERVICE_LABELS[service]}
+            // A custom-wallpaper render has no meaningful paint colour — don't
+            // caption it with the fallback swatch the API needs internally.
+            colorLabel={service === 'wallpaper' && wallpaperPath ? undefined : selectedColor?.label}
+            colorHex={service === 'wallpaper' && wallpaperPath ? undefined : selectedColor?.hex}
+            finish={service === 'wallpaper' && wallpaperPath ? undefined : finish}
+            onCancel={cancellable ? () => renderAbort.current?.abort() : undefined}
+          />
+        </motion.div>
+      )}
 
+      <AnimatePresence mode="wait">
         {/* STEP 1 — UPLOAD */}
         {step === 'upload' && !rendering && (
           <motion.div key="upload" {...fade}>
@@ -735,7 +804,7 @@ export default function VisualizerWizard() {
             <button
               type="button"
               disabled={uploading}
-              onClick={() => void onLiveClick()}
+              onClick={onLiveClick}
               className="mt-3 flex w-full items-center justify-center gap-3 border border-brushly-gold/40 px-6 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-cream transition-colors duration-300 hover:bg-brushly-gold hover:text-brushly-black disabled:cursor-not-allowed disabled:opacity-50"
             >
               <svg
@@ -780,7 +849,13 @@ export default function VisualizerWizard() {
                     onClick={() => onSample(s.src)}
                     className="group relative overflow-hidden rounded-sm border border-brushly-gold/15 transition-colors duration-300 hover:border-brushly-gold/50 disabled:opacity-50"
                   >
-                    <img src={s.src} alt={s.label} className="h-20 w-full object-cover" />
+                    <img
+                      src={s.thumb}
+                      alt={s.label}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-20 w-full object-cover"
+                    />
                     {busySample === s.src && (
                       <span className="absolute inset-0 flex items-center justify-center bg-brushly-black/50">
                         <span className="h-5 w-5 animate-spin rounded-full border-2 border-brushly-gold/30 border-t-brushly-gold" />
@@ -1001,7 +1076,7 @@ export default function VisualizerWizard() {
 
         {/* STEP 3 — RESULT */}
         {step === 'result' && active && !rendering && (
-          <motion.div key="result" {...fade} className="flex flex-col gap-6">
+          <motion.div ref={resultRef} key="result" {...fade} className="flex flex-col gap-6">
             <StepLabel n={3} total={3} title="Your room, reimagined" />
 
             <VisualBeforeAfter
@@ -1150,6 +1225,14 @@ export default function VisualizerWizard() {
             key={cameraKey.current}
             onCaptureRender={(file, sel) => void onARCaptureRender(file, sel)}
             onClose={() => setCameraOpen(false)}
+            onHardFail={() => {
+              // Only the optimistic touch attempt falls back to the hand-off;
+              // other openers keep the camera's own recovery card.
+              if (!handoffOnFail.current) return
+              setCameraOpen(false)
+              trackEvent('ar_handoff_shown')
+              setHandoffOpen(true)
+            }}
           />
         )}
       </AnimatePresence>
