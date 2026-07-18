@@ -53,10 +53,28 @@ export const leadSchema = z.object({
   consent: z.literal(true),
   renderIds: z.array(z.string().uuid()).max(20).optional(),
   message: z.string().max(2000).optional(),
+  // Explicit business ask: 'quote_request' = "quote me this room" from the
+  // result screen. Absent = save-only submission (existing behaviour).
+  intent: z.enum(['quote_request']).optional(),
+  // The render on screen when the quote was requested — drives the colour /
+  // finish details in the notification email. Session-scoped server-side.
+  quoteRenderId: z.string().uuid().optional(),
   // Honeypot: real users never fill this; bots do. Must be empty.
   company: z.string().max(0).optional(),
+})
+
+/* One-tap quote request from a visitor who already passed the gate this
+   session: upgrades the lead created earlier instead of showing a second
+   form. The unguessable lead uuid (only ever returned to the creating
+   client) is the proof of ownership. */
+export const quoteRequestSchema = z.object({
+  sessionId,
+  leadId: z.string().uuid(),
+  renderIds: z.array(z.string().uuid()).max(20).optional(),
+  quoteRenderId: z.string().uuid().optional(),
 })
 
 export type UploadUrlInput = z.infer<typeof uploadUrlSchema>
 export type RenderInput = z.infer<typeof renderSchema>
 export type LeadInput = z.infer<typeof leadSchema>
+export type QuoteRequestInput = z.infer<typeof quoteRequestSchema>

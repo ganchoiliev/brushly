@@ -9,7 +9,8 @@
     "lint": "eslint",
     "postinstall": "node scripts/copy-ort-wasm.mjs",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "fidelity": "tsx scripts/render-fidelity.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.16",
@@ -26,6 +27,7 @@
     "lucide-react": "^1.17.0",
     "next": "16.2.1",
     "onnxruntime-web": "^1.27.0",
+    "qrcode-generator": "^2.0.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.9.4",
@@ -42,6 +44,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "sharp": "0.34.5",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",

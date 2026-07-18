@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, FileText } from 'lucide-react'
-import StatusBadge, { LEAD_STATUS } from '@/components/admin/StatusBadge'
+import StatusBadge, { LEAD_INTENT, LEAD_STATUS } from '@/components/admin/StatusBadge'
 import ContactActions from '@/components/admin/ContactActions'
 import OutcomeButtons from '@/components/admin/leads/OutcomeButtons'
 import LeadStatusButtons from '@/components/admin/leads/LeadStatusButtons'
@@ -66,7 +66,8 @@ export default async function LeadDetailPage({
           <h1 className="min-w-0 truncate font-display text-2xl font-light">
             {lead.name}
           </h1>
-          <span className="ml-auto shrink-0">
+          <span className="ml-auto flex shrink-0 items-center gap-2">
+            {lead.intent && <StatusBadge map={LEAD_INTENT} status={lead.intent} />}
             <StatusBadge map={LEAD_STATUS} status={lead.status} />
           </span>
         </div>

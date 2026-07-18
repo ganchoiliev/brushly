@@ -55,9 +55,10 @@ export default function ColorChooser({ colorId, onColor, onLook }: Props) {
                 key={look.id}
                 type="button"
                 onClick={() => onLook(look)}
+                aria-pressed={active}
                 className={`group relative overflow-hidden rounded-sm border text-left transition-all duration-300 ${
                   active
-                    ? 'border-brushly-gold'
+                    ? 'border-brushly-gold ring-1 ring-brushly-gold'
                     : 'border-brushly-gold/15 hover:border-brushly-gold/50'
                 }`}
               >
@@ -70,8 +71,12 @@ export default function ColorChooser({ colorId, onColor, onLook }: Props) {
                     {look.vibe}
                   </p>
                 </div>
-                <span className="absolute right-2 top-2 rounded-full bg-brushly-black/50 px-2 py-0.5 font-body text-[9px] uppercase tracking-wider text-brushly-cream/70 opacity-0 backdrop-blur-sm transition-opacity duration-300 group-hover:opacity-100">
-                  Tap to see
+                <span
+                  className={`absolute right-2 top-2 rounded-full bg-brushly-black/50 px-2 py-0.5 font-body text-[9px] uppercase tracking-wider text-brushly-cream/70 backdrop-blur-sm transition-opacity duration-300 ${
+                    active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  {active ? 'Selected' : 'Tap to select'}
                 </span>
               </button>
             )
@@ -109,6 +114,7 @@ export default function ColorChooser({ colorId, onColor, onLook }: Props) {
                   key={c.id}
                   type="button"
                   onClick={() => onColor(c.id)}
+                  aria-pressed={active}
                   className={`group flex flex-col overflow-hidden rounded-sm border text-left transition-all duration-300 ${
                     active
                       ? 'border-brushly-gold ring-1 ring-brushly-gold'

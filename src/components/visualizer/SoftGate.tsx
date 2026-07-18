@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 
 interface Props {
-  intent: 'continue' | 'save'
+  intent: 'continue' | 'save' | 'quote'
   onSubmit: (d: { name: string; phone: string; email: string; company: string }) => Promise<void>
   onClose: () => void
 }
@@ -55,12 +55,19 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
     }
   }
 
-  const heading = intent === 'save' ? 'Send me my visualisation' : 'Keep experimenting'
+  const heading =
+    intent === 'quote'
+      ? 'Get your fixed quote'
+      : intent === 'save'
+        ? 'Send me my visualisation'
+        : 'Keep experimenting'
   // "send", not "email" — email is optional; we can reach people by phone/SMS.
   const blurb =
-    intent === 'save'
-      ? 'Pop in your details and we’ll send you your visualisation and a free, no-obligation quote for this exact look.'
-      : 'Add your details to try more colours and finishes — we’ll send your visualisations and a free quote whenever you’re ready.'
+    intent === 'quote'
+      ? 'Pop in your details and we’ll come back with a fixed, no-obligation quote for this exact look — plus your visualisation to keep.'
+      : intent === 'save'
+        ? 'Pop in your details and we’ll send you your visualisation and a free, no-obligation quote for this exact look.'
+        : 'Add your details to try more colours and finishes — we’ll send your visualisations and a free quote whenever you’re ready.'
 
   return (
     <motion.div
@@ -141,7 +148,13 @@ export default function SoftGate({ intent, onSubmit, onClose }: Props) {
             disabled={sending}
             className="mt-2 bg-brushly-gold px-8 py-4 font-body text-[13px] font-medium uppercase tracking-[0.2em] text-brushly-black transition-colors duration-300 hover:bg-brushly-gold-light disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {sending ? 'Sending…' : intent === 'save' ? 'Send my visualisation' : 'Continue'}
+            {sending
+              ? 'Sending…'
+              : intent === 'quote'
+                ? 'Get my quote'
+                : intent === 'save'
+                  ? 'Send my visualisation'
+                  : 'Continue'}
           </button>
 
           <p className="font-body text-[11px] leading-relaxed text-brushly-cream/40">

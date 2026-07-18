@@ -149,7 +149,11 @@ export async function submitLead(input: {
   consent: true
   renderIds?: string[]
   company?: string
-}): Promise<void> {
+  /** 'quote_request' when submitted through the result screen's quote CTA. */
+  intent?: 'quote_request'
+  /** The render on screen when the quote was requested. */
+  quoteRenderId?: string
+}): Promise<{ leadId?: string }> {
   const res = await fetch('/api/visualizer/lead', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -158,5 +162,31 @@ export async function submitLead(input: {
   if (!res.ok) {
     const j = (await res.json().catch(() => ({}))) as { error?: string }
     throw new Error(j.error || 'Could not save your details. Please try again.')
+  }
+  // leadId enables the later one-tap quote request; treat it as optional so
+  // an older/mocked response shape degrades to the form path, not a crash.
+  const j = (await res.json().catch(() => ({}))) as { leadId?: unknown }
+  return { leadId: typeof j.leadId === 'string' ? j.leadId : undefined }
+}
+
+/** Thrown when the one-tap quote request finds the lead gone server-side —
+    the caller should fall back to the gate form. */
+export const QUOTE_LEAD_GONE = 'quote_lead_gone'
+
+export async function submitQuoteRequest(input: {
+  sessionId: string
+  leadId: string
+  renderIds?: string[]
+  quoteRenderId?: string
+}): Promise<void> {
+  const res = await fetch('/api/visualizer/quote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+  if (!res.ok) {
+    if (res.status === 404) throw new Error(QUOTE_LEAD_GONE)
+    const j = (await res.json().catch(() => ({}))) as { error?: string }
+    throw new Error(j.error || 'Could not send your request — please try again.')
   }
 }

@@ -1,10 +1,18 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 /**
  * AR camera entry + graceful-degradation paths, with getUserMedia mocked so no
  * hardware (or human) is needed. The live-overlay happy path needs WebGPU and
  * is exercised manually / via the debug page's captureStream simulation.
  */
+
+// This desktop project is not live-capable (no touch-first pointer), so the
+// live button opens the phone hand-off modal first — reach the webcam path
+// through its escape hatch, exactly as a real desktop user would.
+const openLiveCamera = async (page: Page) => {
+  await page.getByRole('button', { name: /see colours live/i }).click()
+  await page.getByRole('button', { name: 'use this device anyway' }).click()
+}
 
 // A canvas-backed MediaStream stands in for the camera.
 const FAKE_CAMERA = `
@@ -33,7 +41,7 @@ test('AR entry: no WebGPU degrades to capture-only without fetching the model', 
     `Object.defineProperty(navigator, 'gpu', { get: () => undefined });` + FAKE_CAMERA,
   )
   await page.goto('/visualizer')
-  await page.getByRole('button', { name: /see colours live/i }).click()
+  await openLiveCamera(page)
 
   const dialog = page.getByRole('dialog', { name: 'Camera' })
   await expect(dialog).toBeVisible({ timeout: 20_000 })
@@ -81,7 +89,7 @@ test('shutter: clean capture → instant on-device preview → mocked render res
   })
 
   await page.goto('/visualizer')
-  await page.getByRole('button', { name: /see colours live/i }).click()
+  await openLiveCamera(page)
   const dialog = page.getByRole('dialog', { name: 'Camera' })
   const shutter = dialog.getByRole('button', { name: 'Capture and render this look' })
   await expect(shutter).toBeVisible({ timeout: 20_000 })
@@ -102,7 +110,7 @@ test('permission denied shows the recovery card and returns to upload', async ({
     };
   `)
   await page.goto('/visualizer')
-  await page.getByRole('button', { name: /see colours live/i }).click()
+  await openLiveCamera(page)
 
   const dialog = page.getByRole('dialog', { name: 'Camera' })
   await expect(dialog.getByRole('alert')).toContainText('Camera access needed', {
@@ -122,7 +130,7 @@ test('camera-in-use (NotReadableError) shows the busy card with retry', async ({
     };
   `)
   await page.goto('/visualizer')
-  await page.getByRole('button', { name: /see colours live/i }).click()
+  await openLiveCamera(page)
 
   const dialog = page.getByRole('dialog', { name: 'Camera' })
   await expect(dialog.getByRole('alert')).toContainText('Camera is in use', { timeout: 20_000 })

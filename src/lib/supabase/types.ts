@@ -6,6 +6,7 @@
 
 export type LeadSource = 'website' | 'ads' | 'referral' | 'phone' | 'manual' | 'visualizer'
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost' | 'spam'
+export type LeadIntent = 'quote_request'
 export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired'
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'overdue' | 'void'
 export type ItemUnit = 'job' | 'day' | 'room' | 'm2' | 'item'
@@ -48,6 +49,7 @@ export type Database = {
           notes: string | null
           status_changed_at: string
           follow_up_at: string | null
+          intent: LeadIntent | null
         }
         Insert: {
           id?: string
@@ -62,6 +64,7 @@ export type Database = {
           notes?: string | null
           status_changed_at?: string
           follow_up_at?: string | null
+          intent?: LeadIntent | null
         }
         Update: {
           id?: string
@@ -76,6 +79,7 @@ export type Database = {
           notes?: string | null
           status_changed_at?: string
           follow_up_at?: string | null
+          intent?: LeadIntent | null
         }
         Relationships: []
       }
@@ -470,6 +474,7 @@ export type Database = {
           qa_score: number | null
           cost_pence: number
           lead_id: string | null
+          customer_email_sent_at: string | null
         }
         Insert: {
           id?: string
@@ -488,6 +493,7 @@ export type Database = {
           qa_score?: number | null
           cost_pence?: number
           lead_id?: string | null
+          customer_email_sent_at?: string | null
         }
         Update: {
           id?: string
@@ -506,6 +512,7 @@ export type Database = {
           qa_score?: number | null
           cost_pence?: number
           lead_id?: string | null
+          customer_email_sent_at?: string | null
         }
         Relationships: [
           {

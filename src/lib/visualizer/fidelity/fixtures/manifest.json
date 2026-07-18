@@ -1,0 +1,26 @@
+{
+  "$comment": "Fixed fidelity fixtures. Each jpg is a small (long-edge 512) downscaled copy of an existing brushly room/exterior photo, committed here so the baseline stays deterministic even if the marketing images change. wallRects are hand-drawn wall regions in normalised [x0,y0,x1,y1] coords (0-1); testColorIds must exist in src/lib/visualizer/palette.ts. See README.md.",
+  "fixtures": [
+    {
+      "id": "plaster-room",
+      "file": "plaster-room.jpg",
+      "service": "interior",
+      "wallRects": [[0.05, 0.13, 0.39, 0.44]],
+      "testColorIds": ["hague-blue", "off-black", "all-white"]
+    },
+    {
+      "id": "teal-lounge",
+      "file": "teal-lounge.jpg",
+      "service": "interior",
+      "wallRects": [[0.47, 0.18, 0.56, 0.4], [0.6, 0.15, 0.82, 0.25]],
+      "testColorIds": ["studio-green", "terracotta", "all-white"]
+    },
+    {
+      "id": "cream-facade",
+      "file": "cream-facade.jpg",
+      "service": "exterior",
+      "wallRects": [[0.31, 0.22, 0.395, 0.54], [0.55, 0.2, 0.65, 0.34]],
+      "testColorIds": ["slate-grey-masonry", "heritage-green", "classic-white-masonry"]
+    }
+  ]
+}
