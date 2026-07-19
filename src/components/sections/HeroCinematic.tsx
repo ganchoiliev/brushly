@@ -336,48 +336,56 @@ export default function HeroCinematic() {
         </div>
 
         {/* --- HEADLINE --- */}
+        {/* One real h1 for search engines and screen readers; the animated
+            split-text lines are decorative duplicates (three h1s diluted the
+            page's primary heading and read as word salad in AT). */}
         <div className="hero-left-fade my-auto py-4">
-          <div className="overflow-hidden pb-[0.1em]">
-            <h1
-              className="hero-line hero-line-premium font-display font-light whitespace-nowrap"
-              style={{
-                fontSize: 'clamp(42px, 6.5vw, 110px)',
-                lineHeight: 0.9,
-                color: p.text,
-                transition: 'color 0.8s ease',
-                perspective: '600px',
-              }}
-            >
-              <SplitText>Premium</SplitText>
-            </h1>
-          </div>
-          <div className="overflow-hidden pb-[0.1em]">
-            <h1
-              className="hero-line hero-line-painting font-display font-light italic whitespace-nowrap"
-              style={{
-                fontSize: 'clamp(42px, 6.5vw, 110px)',
-                lineHeight: 0.9,
-                color: p.accent,
-                transition: 'color 0.8s ease',
-                perspective: '600px',
-              }}
-            >
-              <SplitText>Painting</SplitText>
-            </h1>
-          </div>
-          <div className="overflow-hidden pb-[0.1em]">
-            <h1
-              className="hero-line hero-line-decorating font-display font-light whitespace-nowrap"
-              style={{
-                fontSize: 'clamp(42px, 6.5vw, 110px)',
-                lineHeight: 0.9,
-                color: p.text,
-                transition: 'color 0.8s ease',
-                perspective: '600px',
-              }}
-            >
-              <SplitText>{'& Decorating'}</SplitText>
-            </h1>
+          <h1 className="sr-only">
+            Premium Painting &amp; Decorating in Reigate &amp; Surrey
+          </h1>
+          <div aria-hidden="true">
+            <div className="overflow-hidden pb-[0.1em]">
+              <div
+                className="hero-line hero-line-premium font-display font-light whitespace-nowrap"
+                style={{
+                  fontSize: 'clamp(42px, 6.5vw, 110px)',
+                  lineHeight: 0.9,
+                  color: p.text,
+                  transition: 'color 0.8s ease',
+                  perspective: '600px',
+                }}
+              >
+                <SplitText>Premium</SplitText>
+              </div>
+            </div>
+            <div className="overflow-hidden pb-[0.1em]">
+              <div
+                className="hero-line hero-line-painting font-display font-light italic whitespace-nowrap"
+                style={{
+                  fontSize: 'clamp(42px, 6.5vw, 110px)',
+                  lineHeight: 0.9,
+                  color: p.accent,
+                  transition: 'color 0.8s ease',
+                  perspective: '600px',
+                }}
+              >
+                <SplitText>Painting</SplitText>
+              </div>
+            </div>
+            <div className="overflow-hidden pb-[0.1em]">
+              <div
+                className="hero-line hero-line-decorating font-display font-light whitespace-nowrap"
+                style={{
+                  fontSize: 'clamp(42px, 6.5vw, 110px)',
+                  lineHeight: 0.9,
+                  color: p.text,
+                  transition: 'color 0.8s ease',
+                  perspective: '600px',
+                }}
+              >
+                <SplitText>{'& Decorating'}</SplitText>
+              </div>
+            </div>
           </div>
 
           {/* Tagline */}
