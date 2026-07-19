@@ -12,15 +12,11 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      /* Canonical-host enforcement: GSC showed https://www.brushly.uk/
-         serving full duplicate content ("Duplicate without user-selected
-         canonical", crawled 2026-07-05). One host, one site. */
-      {
-        source: '/:path*',
-        has: [{ type: 'host', value: 'www.brushly.uk' }],
-        destination: 'https://brushly.uk/:path*',
-        permanent: true,
-      },
+      /* Canonical-host note: www -> apex is enforced at the INFRA layer
+         (Vercel domain config + DNS), never here. A code-level host
+         redirect took the site down on 2026-07-19: apex lived at a
+         Hostinger redirect pointing back to www, so code redirecting
+         www -> apex created a loop. Keep host routing out of the app. */
       /* Legacy URL from the pre-launch site still 404ing in GSC. */
       {
         source: '/quote',
