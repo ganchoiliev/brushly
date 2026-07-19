@@ -5,9 +5,10 @@ import GalleryGrid from './GalleryGrid'
 import CTASection from '@/components/sections/CTASection'
 
 export const metadata: Metadata = {
-  title: 'Gallery',
+  title: 'Our Work — Painting & Decorating Gallery',
   description:
-    'Browse our portfolio of completed painting and decorating projects across Surrey, Epsom, and Reigate.',
+    'Before-and-after transformations and finished projects from Brushly decorators across Reigate, Epsom and Surrey — interiors, exteriors, wallpaper and specialist finishes.',
+  alternates: { canonical: '/gallery' },
 }
 
 export default function GalleryPage() {

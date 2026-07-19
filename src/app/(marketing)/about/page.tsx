@@ -7,9 +7,10 @@ import CredentialsStrip from '@/components/sections/CredentialsStrip'
 import CTASection from '@/components/sections/CTASection'
 
 export const metadata: Metadata = {
-  title: 'About',
+  title: 'About Brushly — Decorators Based in Reigate, Surrey',
   description:
-    'The story behind Brushly UK. Learn about our commitment to premium craftsmanship and exceptional decorating services.',
+    'The story behind Brushly: a Reigate-based painting and decorating company built on meticulous preparation, premium paints and finishes that last. Fully insured, quotes always free.',
+  alternates: { canonical: '/about' },
 }
 
 export default function AboutPage() {

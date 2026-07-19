@@ -20,7 +20,22 @@ const footerLinks = {
   company: [
     { label: 'About', href: '/about' },
     { label: 'Gallery', href: '/gallery' },
+    { label: 'Visualizer', href: '/visualizer' },
     { label: 'Contact', href: '/contact' },
+  ],
+  /* Crawlable links to every location page — keep in sync with
+     SERVICE_AREAS in lib/seo.ts and AREAS in lib/areas.ts. */
+  areas: [
+    { label: 'Reigate', href: '/areas/reigate' },
+    { label: 'Redhill', href: '/areas/redhill' },
+    { label: 'Epsom', href: '/areas/epsom' },
+    { label: 'Banstead', href: '/areas/banstead' },
+    { label: 'Tadworth', href: '/areas/tadworth' },
+    { label: 'Ashtead', href: '/areas/ashtead' },
+    { label: 'Leatherhead', href: '/areas/leatherhead' },
+    { label: 'Dorking', href: '/areas/dorking' },
+    { label: 'Horley', href: '/areas/horley' },
+    { label: 'Esher', href: '/areas/esher' },
   ],
 }
 
@@ -60,7 +75,7 @@ export default function Footer() {
       {/* Main Footer */}
       <div className="pt-20 pb-10">
         <Container>
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-5">
             {/* Brand */}
             <ScrollReveal className="md:col-span-2">
               <Image
@@ -152,6 +167,30 @@ export default function Footer() {
                 </div>
               </div>
             </ScrollReveal>
+
+            {/* Areas */}
+            <ScrollReveal delay={0.3}>
+              <Badge className="mb-6">
+                <Link
+                  href="/areas"
+                  className="transition-colors hover:text-brushly-gold-light"
+                >
+                  Areas
+                </Link>
+              </Badge>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-1 lg:grid-cols-2">
+                {footerLinks.areas.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-[14px] font-body text-brushly-cream/50 transition-colors hover:text-brushly-gold"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </ScrollReveal>
           </div>
 
           {/* Divider */}
@@ -165,7 +204,8 @@ export default function Footer() {
               &copy; {new Date().getFullYear()} Brushly UK. All rights reserved.
             </p>
             <p className="text-[13px] font-body text-brushly-cream/30">
-              Surrey &middot; Epsom &middot; Reigate
+              Reigate &middot; Epsom &middot; Dorking &middot; Esher &middot;
+              Surrey
             </p>
           </div>
 

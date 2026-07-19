@@ -3,7 +3,7 @@ import Container from '@/components/ui/Container'
 import VisualizerWizard from '@/components/visualizer/VisualizerWizard'
 
 export const metadata: Metadata = {
-  title: 'AI Paint Visualizer',
+  title: 'AI Paint Visualizer — See Your Room Repainted Free',
   description:
     'Upload a photo of your room and see it repainted in seconds — interior, exterior, wallpaper and specialist finishes. Free to try, from Brushly in Surrey.',
   alternates: { canonical: '/visualizer' },

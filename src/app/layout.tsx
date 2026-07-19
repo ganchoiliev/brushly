@@ -4,22 +4,12 @@ import './globals.css'
 
 /* Default metadata. The (marketing) layout re-declares this in full and the
    admin layout overrides it — it lives here too so the root-level 404 page
-   keeps the exact head output it had before the route-group split. */
+   keeps sane head output. metadataBase makes OG/canonical URLs absolute. */
 export const metadata: Metadata = {
-  title: 'Brushly UK | Premium Painting & Decorating',
+  metadataBase: new URL('https://brushly.uk'),
+  title: 'Brushly — Premium Painter & Decorator in Reigate & Surrey',
   description:
-    'Premium painting and decorating services in Surrey, Epsom & Reigate. Flawless finishes for homes and businesses that demand more than just a coat of paint.',
-  keywords: [
-    'painting',
-    'decorating',
-    'premium',
-    'Surrey',
-    'Epsom',
-    'Reigate',
-    'interior painting',
-    'exterior painting',
-    'wallpapering',
-  ],
+    'Premium painting and decorating across Reigate, Redhill, Epsom and Surrey. Interior & exterior painting, wallpapering and specialist finishes — flawless results for homes that demand more than a coat of paint.',
 }
 
 export const viewport: Viewport = {

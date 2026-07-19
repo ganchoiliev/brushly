@@ -4,9 +4,10 @@ import ContactForm from './ContactForm'
 import MapSection from './MapSection'
 
 export const metadata: Metadata = {
-  title: 'Contact',
+  title: 'Contact — Free Painting & Decorating Quote',
   description:
-    'Get in touch with Brushly UK. Request a free quote for premium painting and decorating services in Surrey.',
+    'Call 01737 479 161 or send the form for a free, itemised painting and decorating quote anywhere in our Surrey coverage area. Site visits are free; the quote is in writing.',
+  alternates: { canonical: '/contact' },
 }
 
 export default function ContactPage() {
