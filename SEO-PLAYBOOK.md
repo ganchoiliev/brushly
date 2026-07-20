@@ -51,8 +51,10 @@ address SAB). Same format everywhere:
 
 ## Never do
 
-- No fabricated reviews, no aggregateRating schema until real Google reviews
-  exist (then mirror the true count/score only).
+- No fabricated reviews. No aggregateRating schema mirroring Google reviews
+  EVER — Google treats LocalBusiness review markup sourced from Google's own
+  reviews as self-serving and ignores/penalizes it. aggregateRating only
+  becomes an option if Brushly ever collects first-party reviews on-site.
 - No new towns on the site without adding them to GBP in the same change
   (suspension history — site and profile must never diverge).
 - No doorway pages: any future area page gets genuinely unique copy, like the
