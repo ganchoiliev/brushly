@@ -136,7 +136,12 @@ export const FINISHES: Record<VisualizerService, string[]> = {
 /* Exact surfaces the AI may change per service. Everything else is preserved.
    Injected verbatim into the prompt. */
 export const SERVICE_SURFACES: Record<VisualizerService, string> = {
-  interior: 'interior walls (and ceiling where clearly visible)',
+  /* Walls ONLY. Ceilings stay original: UK interiors default to white
+     ceilings, and a wall-coloured ceiling makes renders read as wrong at
+     the exact moment the quote CTA appears (first real-user feedback,
+     2026-07-20). Colour-drenched ceilings become an explicit option if
+     demand ever shows. */
+  interior: 'the interior walls only',
   exterior: 'exterior masonry, render and painted wall surfaces of the building',
   wallpaper: 'the main feature wall',
   finish: 'the main feature wall',

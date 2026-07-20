@@ -48,7 +48,7 @@ import RenderProgress from './RenderProgress'
 type Step = 'upload' | 'design' | 'result'
 
 const SERVICES: { id: VisualizerService; label: string; blurb: string }[] = [
-  { id: 'interior', label: 'Interior', blurb: 'Walls, ceilings & woodwork' },
+  { id: 'interior', label: 'Interior', blurb: 'Walls in any colour' },
   { id: 'exterior', label: 'Exterior', blurb: 'Masonry, render & trim' },
   { id: 'wallpaper', label: 'Wallpaper', blurb: 'Feature walls & rooms' },
   { id: 'finish', label: 'Specialist', blurb: 'Plaster, limewash, metallic' },
