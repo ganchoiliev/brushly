@@ -33,6 +33,8 @@ export const renderSchema = z.object({
     .max(300)
     .regex(/^[A-Za-z0-9/_.-]+$/, 'Invalid path')
     .optional(),
+  // Interior only: explicit opt-in to paint the ceiling the wall colour.
+  paintCeiling: z.boolean().optional(),
 })
 
 /* Staff (native app) attaching a finished render to a CRM lead. */

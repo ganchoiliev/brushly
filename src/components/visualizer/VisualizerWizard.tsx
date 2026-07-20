@@ -84,7 +84,9 @@ const keyOf = (
   colorId: string,
   finish: string,
   wallpaperPath = '',
-) => `${service}|${colorId}|${finish}|${wallpaperPath}`
+  paintCeiling = false,
+) =>
+  `${service}|${colorId}|${finish}|${wallpaperPath}|${paintCeiling ? 'c1' : 'c0'}`
 
 // Colour is irrelevant when a custom wallpaper drives the render, but the
 // API requires a valid palette id — a neutral stands in silently.
@@ -136,6 +138,8 @@ export default function VisualizerWizard() {
   const [service, setService] = useState<VisualizerService>('interior')
   const [colorId, setColorId] = useState<string>()
   const [finish, setFinish] = useState<string>(FINISHES.interior[0])
+  /* Interior only: opt-in to paint the ceiling too (walls-only default). */
+  const [paintCeiling, setPaintCeiling] = useState(false)
 
   // Customer-supplied wallpaper (service 'wallpaper'): uploaded like the room
   // photo, referenced by storage path in the render request.
@@ -459,6 +463,7 @@ export default function VisualizerWizard() {
     renderAbort.current = ctrl
     setCancellable(true)
     try {
+      const ceil = svc === 'interior' && paintCeiling
       const r = await requestRender(
         {
           sessionId,
@@ -467,6 +472,7 @@ export default function VisualizerWizard() {
           colorId: renderCid,
           finish: renderFin || undefined,
           wallpaperPath: wp || undefined,
+          paintCeiling: ceil || undefined,
         },
         { signal: ctrl.signal },
       )
@@ -481,7 +487,7 @@ export default function VisualizerWizard() {
         Promise.all([preloadImage(r.beforeUrl), preloadImage(r.afterUrl)]),
         new Promise((resolve) => setTimeout(resolve, 6000)),
       ])
-      const key = keyOf(svc, renderCid, renderFin, wp)
+      const key = keyOf(svc, renderCid, renderFin, wp, ceil)
       setResults((prev) => ({
         ...prev,
         [key]: {
@@ -534,7 +540,7 @@ export default function VisualizerWizard() {
     setColorId(cid)
     setFinish(fin)
     const norm = normalizeSelection(service, cid, fin, wallpaperPath)
-    const key = keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath)
+    const key = keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath, service === 'interior' && paintCeiling)
     const cached = results[key]
     if (cached) {
       setActiveKey(key)
@@ -648,7 +654,7 @@ export default function VisualizerWizard() {
     trackConversion(CONV_LABELS.form)
     if (intent === 'continue' && colorId) {
       const norm = normalizeSelection(service, colorId, finish, wallpaperPath)
-      const key = keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath)
+      const key = keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath, service === 'interior' && paintCeiling)
       if (results[key]) {
         setActiveKey(key)
         setStep('result')
@@ -743,7 +749,7 @@ export default function VisualizerWizard() {
     effectiveColorId &&
       (() => {
         const norm = normalizeSelection(service, effectiveColorId, finish, wallpaperPath)
-        return results[keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath)]
+        return results[keyOf(service, norm.colorId, norm.finish, norm.wallpaperPath, service === 'interior' && paintCeiling)]
       })(),
   )
 
@@ -924,6 +930,47 @@ export default function VisualizerWizard() {
                   </button>
                 ))}
               </div>
+
+              {/* Ceiling opt-in — interior only. Walls-only is the default
+                  (first real-user feedback); this is the explicit switch for
+                  colour-drenched ceilings. */}
+              {service === 'interior' && (
+                <button
+                  type="button"
+                  onClick={() => setPaintCeiling((v) => !v)}
+                  aria-pressed={paintCeiling}
+                  className={`mt-3 flex w-full items-center justify-between border p-3 text-left transition-all duration-300 ${
+                    paintCeiling
+                      ? 'border-brushly-gold bg-brushly-gold/5'
+                      : 'border-brushly-gold/20 hover:border-brushly-gold/50'
+                  }`}
+                >
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-body text-[13px] text-brushly-cream">
+                      Also paint the ceiling
+                    </span>
+                    <span className="font-body text-[11px] text-brushly-cream/50">
+                      {paintCeiling
+                        ? 'Ceiling gets the same colour as the walls'
+                        : 'Off — your ceiling keeps its current colour'}
+                    </span>
+                  </span>
+                  <span
+                    aria-hidden
+                    className={`flex h-5 w-9 shrink-0 items-center rounded-full border px-0.5 transition-colors duration-300 ${
+                      paintCeiling
+                        ? 'justify-end border-brushly-gold bg-brushly-gold/30'
+                        : 'justify-start border-brushly-cream/30 bg-transparent'
+                    }`}
+                  >
+                    <span
+                      className={`h-3.5 w-3.5 rounded-full transition-colors duration-300 ${
+                        paintCeiling ? 'bg-brushly-gold' : 'bg-brushly-cream/40'
+                      }`}
+                    />
+                  </span>
+                </button>
+              )}
             </div>
 
             <div>

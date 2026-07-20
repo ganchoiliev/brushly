@@ -39,6 +39,8 @@ export async function POST(request: Request) {
   const { sessionId, sourcePath, service, colorId, finish } = parsed.data
   // Custom wallpaper only applies to the wallpaper service.
   const wallpaperPath = service === 'wallpaper' ? parsed.data.wallpaperPath : undefined
+  // Ceiling opt-in only applies to interior renders.
+  const paintCeiling = service === 'interior' && Boolean(parsed.data.paintCeiling)
 
   // Paths must belong to this session — blocks reading another session's upload.
   // The `..` guard matters: the path regex permits '.' and '/', and Supabase
@@ -65,8 +67,10 @@ export async function POST(request: Request) {
   // in-flight guard distinguish renders that differ only by wallpaper file
   // (there is no dedicated DB column; the model ignores the bracketed token).
   const prompt =
-    buildPrompt(service, color, finish, { customWallpaper: Boolean(wallpaperPath) }) +
-    (wallpaperPath ? ` [wallpaper:${wallpaperPath}]` : '')
+    buildPrompt(service, color, finish, {
+      customWallpaper: Boolean(wallpaperPath),
+      paintCeiling,
+    }) + (wallpaperPath ? ` [wallpaper:${wallpaperPath}]` : '')
 
   // 1) Cache: reuse a prior successful render for identical inputs (session-scoped).
   //    Instant, free, and does not consume quota.

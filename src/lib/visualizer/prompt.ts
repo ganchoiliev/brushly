@@ -12,9 +12,15 @@ export function buildPrompt(
     /** A customer-supplied wallpaper image rides along as the second image
         part instead of the colour swatch. */
     customWallpaper?: boolean
+    /** Interior only: explicit opt-in to paint the ceiling the wall colour.
+        Default (false) preserves the ceiling — first real-user feedback. */
+    paintCeiling?: boolean
   },
 ): string {
-  const surfaces = SERVICE_SURFACES[service]
+  const paintCeiling = Boolean(opts?.paintCeiling) && service === 'interior'
+  const surfaces = paintCeiling
+    ? 'the interior walls and the ceiling'
+    : SERVICE_SURFACES[service]
   const customWallpaper = Boolean(opts?.customWallpaper) && service === 'wallpaper'
 
   let action: string
@@ -39,7 +45,7 @@ export function buildPrompt(
   return [
     action,
     reference,
-    'Preserve everything else EXACTLY as in the original photograph: the ceiling (keep its original colour — never paint the ceiling), furniture, flooring, rugs, windows, doors, skirting where not being painted, radiators, decor, personal belongings, clutter, room layout and camera perspective.',
+    `Preserve everything else EXACTLY as in the original photograph: ${paintCeiling ? '' : 'the ceiling (keep its original colour — never paint the ceiling), '}furniture, flooring, rugs, windows, doors, skirting where not being painted, radiators, decor, personal belongings, clutter, room layout and camera perspective.`,
     'Where the original photograph is dark, blurry, underexposed or ambiguous — for example the view through a doorway into another room, hallway or stairwell — reproduce that region exactly as it appears. NEVER invent doors, stairs, banisters, carpets, furniture or any architectural detail that is not clearly visible in the original.',
     'Do not change the colour, material or style of ANY object: chairs, desks, appliances and every other item keep their exact original colours. Keep all natural lighting, reflections and shadows physically consistent with the original. Do not add, remove, move or restyle any objects. Do not alter the floor.',
     'Do not crop, zoom, rotate or change the aspect ratio or framing of the photograph.',

@@ -103,6 +103,8 @@ export async function requestRender(
     finish?: string
     /** Customer-supplied wallpaper reference (service 'wallpaper' only). */
     wallpaperPath?: string
+    /** Interior only: opt-in to paint the ceiling the wall colour. */
+    paintCeiling?: boolean
   },
   opts?: { signal?: AbortSignal; timeoutMs?: number },
 ): Promise<RenderResult> {
