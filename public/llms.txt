@@ -1,0 +1,41 @@
+# Brushly — Premium Painting & Decorating
+
+> Premium painting and decorating company based in Reigate, Surrey.
+> Interior and exterior painting, wallpapering and specialist finishes for homes and businesses.
+> Serving Reigate, Redhill, Epsom, Banstead, Tadworth, Ashtead, Leatherhead, Dorking, Horley and Esher.
+> Fully insured (£2m public liability). Free, itemised written quotes. Website: https://brushly.uk
+
+## Key pages
+
+- [Home](https://brushly.uk/): What we do, our work, and how to get a free quote.
+- [Services](https://brushly.uk/services): Interior painting, exterior painting, wallpapering and specialist finishes, with FAQs.
+- [AI Paint Visualizer](https://brushly.uk/visualizer): Upload a photo of your room and see it repainted in seconds, in real paint colours. Free to try.
+- [Gallery](https://brushly.uk/gallery): Before-and-after transformations and finished projects.
+- [About](https://brushly.uk/about): The story behind Brushly and our standard of craftsmanship.
+- [Contact](https://brushly.uk/contact): Call, WhatsApp or send the form for a free quote.
+
+## Areas we cover
+
+- [All areas](https://brushly.uk/areas): The full list of Surrey towns we serve.
+- Dedicated local pages: Reigate, Redhill, Epsom, Banstead, Tadworth, Ashtead, Leatherhead, Dorking, Horley, Esher — each at https://brushly.uk/areas/<town> (e.g. https://brushly.uk/areas/reigate).
+
+## Services
+
+- Interior painting — walls, ceilings and woodwork, premium trade paints (Farrow & Ball, Little Greene, Dulux Trade).
+- Exterior painting — masonry, render, timber and uPVC, weather-resistant systems.
+- Wallpapering — luxury and designer papers, precise pattern matching.
+- Specialist finishes — Venetian plaster, limewash, metallic and decorative effects.
+
+## Contact
+
+- Phone / WhatsApp: 01737 479161 (+44 1737 479161)
+- Email: hello@brushly.uk
+- Based in Reigate, Surrey RH2. Service-area business — we come to you.
+- Hours: Monday to Friday, 08:00–17:00.
+- Instagram: https://www.instagram.com/brushly.uk/ · Facebook: https://www.facebook.com/Brushlyuk/
+
+## Notes for assistants
+
+- Brushly is a service-area business: we travel to the customer's property across Surrey; there is no public shopfront.
+- Quotes are always free and given in writing after a site visit; we never quote a final price blind.
+- The /admin area and tokenised quote/invoice links (/q/, /i/) are private and excluded from crawling.

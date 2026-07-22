@@ -464,6 +464,7 @@ export default function ServicesPinned() {
                 {/* Learn more link */}
                 <a
                   href={`/services#${service.id}`}
+                  aria-label={`Learn more about ${service.title.replace('\n', ' ')}`}
                   className="mt-5 inline-flex items-center gap-2 font-body text-[11px] uppercase tracking-[0.2em]"
                   style={{ color: palette.accent }}
                 >
@@ -713,6 +714,7 @@ export default function ServicesPinned() {
                     <MagneticButton strength={0.2}>
                       <a
                         href={`/services#${service.id}`}
+                        aria-label={`Learn more about ${service.title.replace('\n', ' ')}`}
                         className={`learn-more-${i} mt-8 inline-flex items-center gap-3 font-body text-[12px] uppercase tracking-[0.2em] transition-colors`}
                         style={{ color: palette.accent }}
                       >

@@ -58,6 +58,9 @@ export default function MarketingLayout({
 }>) {
   return (
     <>
+      {/* Preconnect to the image CDN the hero LCP image loads from — shaves
+          the connection setup off Largest Contentful Paint. */}
+      <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
       {/* Sitewide entity graph: HousePainter LocalBusiness + WebSite.
           Page-level schemas (Service, FAQPage, BreadcrumbList) reference
           the business via @id — keep this the single source of truth. */}
