@@ -7,6 +7,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Container from '@/components/ui/Container'
 import Badge from '@/components/ui/Badge'
 import { trackEvent, trackConversion, CONV_LABELS } from '@/lib/gtag'
+import { readAttribution } from '@/lib/attribution'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -72,6 +73,7 @@ export default function ContactForm() {
       phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
       service: (form.elements.namedItem('service') as HTMLSelectElement).value,
       message: (form.elements.namedItem('message') as HTMLTextAreaElement).value,
+      attribution: readAttribution(),
     }
 
     try {

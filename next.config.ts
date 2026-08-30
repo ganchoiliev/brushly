@@ -17,12 +17,8 @@ const nextConfig: NextConfig = {
          redirect took the site down on 2026-07-19: apex lived at a
          Hostinger redirect pointing back to www, so code redirecting
          www -> apex created a loop. Keep host routing out of the app. */
-      /* Legacy URL from the pre-launch site still 404ing in GSC. */
-      {
-        source: '/quote',
-        destination: '/contact',
-        permanent: true,
-      },
+      /* /quote is a real route again (paid-search landing page, 2026-08-30);
+         the legacy 301 to /contact was removed with it. */
     ]
   },
 };

@@ -18,7 +18,30 @@ const contactSchema = z.object({
   phone: singleLine.max(50),
   service: singleLine,
   message: z.string().min(1).max(10000),
+  // Optional first-touch attribution stamped by the client (see
+  // src/lib/attribution.ts). Everything is bounded and single-line; the
+  // route derives `source` from it — the client never sets source itself.
+  attribution: z
+    .object({
+      gclid: singleLine.max(200).optional(),
+      utm_source: singleLine.max(100).optional(),
+      utm_medium: singleLine.max(100).optional(),
+      utm_campaign: singleLine.max(200).optional(),
+      landing_path: singleLine.max(200).optional(),
+      referrer: singleLine.max(500).optional(),
+    })
+    .partial()
+    .optional(),
 })
+
+/** Paid search is the only channel we can prove from the URL alone. */
+function deriveSource(attr: z.infer<typeof contactSchema>['attribution']): 'website' | 'ads' {
+  if (!attr) return 'website'
+  if (attr.gclid) return 'ads'
+  if ((attr.utm_medium || '').toLowerCase() === 'cpc') return 'ads'
+  if ((attr.utm_source || '').toLowerCase() === 'google' && attr.utm_campaign) return 'ads'
+  return 'website'
+}
 
 // Escape user input before it goes into the notification email's HTML.
 function escapeHtml(value: string): string {
@@ -48,7 +71,14 @@ export async function POST(request: Request) {
       { status: 400 }
     )
   }
-  const { name, email, phone, service, message } = parsed.data
+  const { name, email, phone, service, message, attribution } = parsed.data
+  const source = deriveSource(attribution)
+  const attributionLine = attribution
+    ? Object.entries(attribution)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' · ')
+    : ''
   // Email is optional now — normalise empty/absent to null for storage,
   // reply-to, and the notification email.
   const emailValue = email && email.length > 0 ? email : null
@@ -64,7 +94,7 @@ export async function POST(request: Request) {
       phone,
       service,
       message,
-      source: 'website',
+      source,
     })
     if (error) console.error('Contact lead insert failed:', error)
   } catch (error) {
@@ -85,6 +115,7 @@ export async function POST(request: Request) {
           <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Phone</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(phone)}</td></tr>
           <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Email</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${emailValue ? escapeHtml(emailValue) : 'Not provided'}</td></tr>
           <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Service</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(service)}</td></tr>
+          <tr><td style="padding:8px 12px;font-weight:bold;border-bottom:1px solid #eee;">Source</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${escapeHtml(source)}${attributionLine ? ` — ${escapeHtml(attributionLine)}` : ''}</td></tr>
         </table>
         <h3 style="margin-top:20px;">Message</h3>
         <p style="white-space:pre-wrap;background:#f9f9f9;padding:16px;border-radius:4px;">${escapeHtml(message)}</p>

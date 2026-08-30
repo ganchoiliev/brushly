@@ -7,7 +7,6 @@ import StatsCounter from '@/components/sections/StatsCounter'
 import ProcessTimeline from '@/components/sections/ProcessTimeline'
 import ShowcaseGrid from '@/components/sections/ShowcaseGrid'
 import BrandMarquee from '@/components/sections/BrandMarquee'
-import Testimonials from '@/components/sections/Testimonials'
 import CTASection from '@/components/sections/CTASection'
 import CredentialsStrip from '@/components/sections/CredentialsStrip'
 import ParallaxBreak from '@/components/sections/ParallaxBreak'
@@ -24,7 +23,9 @@ export default function HomePageClient() {
       <VisualizerTeaser />
       <ParallaxBreak />
       <BrandMarquee />
-      <Testimonials />
+      {/* Testimonials removed 2026-08-30: the three quotes were placeholder
+          copy, not real clients. Re-add once real Google reviews exist and
+          the component reads them verbatim. */}
       <CredentialsStrip />
       <CTASection />
     </ThemeProvider>

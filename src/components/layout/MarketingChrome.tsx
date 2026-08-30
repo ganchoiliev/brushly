@@ -3,6 +3,7 @@ import PageLoader from '@/components/layout/PageLoader'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import MobileContactBar from '@/components/layout/MobileContactBar'
+import AttributionCapture from '@/components/layout/AttributionCapture'
 import CustomCursor from '@/components/animations/CustomCursor'
 import GrainOverlay from '@/components/animations/GrainOverlay'
 import { Analytics } from '@vercel/analytics/next'
@@ -45,6 +46,7 @@ gtag('config', '${ADS_ID}');`}
           containing block for its fixed positioning (same reason the mobile
           nav overlay lives outside the header). */}
       <MobileContactBar />
+      <AttributionCapture />
       <CustomCursor />
       <GrainOverlay />
       <Analytics />
