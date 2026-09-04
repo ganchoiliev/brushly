@@ -11,10 +11,13 @@ import { useTheme } from '@/lib/ThemeContext'
 
 gsap.registerPlugin(ScrollTrigger)
 
+/* Only claims that can be backed with a document: trading history, the
+   Churchill policy, the quote format. Project counts and satisfaction
+   percentages were removed 2026-08-30 — nothing on file supports them. */
 const stats = [
   { value: 10, suffix: '+', label: 'Years of experience' },
-  { value: 500, suffix: '+', label: 'Projects completed' },
-  { value: 100, suffix: '%', label: 'Client satisfaction' },
+  { value: null, text: '£2m', label: 'Public liability cover' },
+  { value: null, text: 'Fixed', label: 'Price, in writing' },
   { value: null, text: 'Surrey', label: 'Based & proud' },
 ]
 
@@ -38,6 +41,9 @@ export default function StatsCounter() {
         const el = counterRefs.current[i]
         if (!el || stat.value === null) return
 
+        // Server markup carries the final value; the count-up only starts
+        // when the trigger fires and never reverses, so a missed trigger
+        // (touch devices, reduced scroll) leaves "10+" rather than "0+".
         const obj = { val: 0 }
         gsap.to(obj, {
           val: stat.value,
@@ -46,7 +52,7 @@ export default function StatsCounter() {
           scrollTrigger: {
             trigger: sectionRef.current,
             start: 'top 75%',
-            toggleActions: 'play none none reverse',
+            once: true,
           },
           onUpdate: () => {
             el.textContent = Math.round(obj.val) + stat.suffix
@@ -147,7 +153,7 @@ export default function StatsCounter() {
                 className="font-display font-light"
                 style={{ color: palette.accent, transition: 'color 0.8s ease', fontSize: 'clamp(48px, 8vw, 80px)' }}
               >
-                {stat.value !== null ? `0${stat.suffix}` : stat.text}
+                {stat.value !== null ? `${stat.value}${stat.suffix}` : stat.text}
               </span>
               <p className="mt-3 text-[14px] font-body text-brushly-cream/60">
                 {stat.label}

@@ -7,12 +7,15 @@ let hasLoaded = false
 
 export default function PageLoader() {
   const pathname = usePathname()
-  // /visualizer is a conversion landing page (ads, QR deep links): first paint
-  // must be the content, never the branded intro. Decided during SSR too, so
-  // the overlay is absent from the served HTML — content shows before any JS
+  // The branded intro runs ONLY on a full load of the home page. Every other
+  // entry point (/quote, /contact, /visualizer, area pages) is a landing page
+  // for paid or intent-driven traffic: first paint must be the content, never
+  // a ~5s progress screen. Decided during SSR too, so the overlay is absent
+  // from the served HTML on those routes — content shows before any JS
   // arrives. Captured once at mount: a later client-side navigation must not
-  // resurrect the intro mid-session.
-  const [skip] = useState(() => pathname === '/visualizer' || pathname.startsWith('/visualizer/'))
+  // resurrect the intro mid-session. (2026-08-30: /contact was the Google Ads
+  // final URL and every paid click sat behind the loader.)
+  const [skip] = useState(() => pathname !== '/')
   const [progress, setProgress] = useState(0)
   const [exiting, setExiting] = useState(false)
   const [hidden, setHidden] = useState(false)

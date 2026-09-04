@@ -621,9 +621,9 @@ export default function HeroCinematic() {
           {/* Stats row */}
           <div className="overlay-stats mt-8 flex items-center gap-6 md:gap-10">
             {[
-              { number: '500+', label: 'Projects' },
               { number: '10+', label: 'Years' },
-              { number: '100%', label: 'Satisfaction' },
+              { number: '£2m', label: 'Insured' },
+              { number: 'Fixed', label: 'Price quotes' },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <span className="block font-display text-[28px] md:text-[36px] font-light text-brushly-gold leading-none">
